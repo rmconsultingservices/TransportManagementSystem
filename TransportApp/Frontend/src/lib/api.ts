@@ -2,8 +2,7 @@ import axios from 'axios';
 
 // Create an Axios instance with base URL pointing to the .NET Backend
 const api = axios.create({
-  baseURL: 'http://localhost:5024/api', // Matches backend Properties/launchSettings.json
-  // baseURL: 'https://eos-athletic-possible-yards.trycloudflare.com/api',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5024/api',
   headers: {
     'Content-Type': 'application/json',
   },
