@@ -1,0 +1,24 @@
+# .NET Core
+[Bb]in/
+[Oo]bj/
+*.user
+*.userosscache
+*.sln.docstates
+.vs/
+.vscode/
+
+# Node.js / React
+node_modules/
+dist/
+dist-ssr/
+*.local
+.env
+.env.*.local
+
+# IDEs
+.idea/
+.DS_Store
+
+# SQL
+*.sql
+!production_migration.sql # Keep this one as it's useful for deployment
