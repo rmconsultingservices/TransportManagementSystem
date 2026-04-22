@@ -19,13 +19,12 @@ builder.Services.AddScoped<IUnitsOfMeasureService, UnitsOfMeasureService>();
 // Configure CORS
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowFrontend",
-        policy =>
-        {
-            policy.WithOrigins("https://www.rmconsultingsrv.com")
-                  .AllowAnyHeader()
-                  .AllowAnyMethod();
-        });
+    options.AddPolicy("WebAppPolicy", policy =>
+    {
+        policy.WithOrigins("https://transportmanagementsystem.pages.dev", "https://rmconsultingsrv.com")
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
 });
 builder.Services.AddOpenApi();
 
@@ -73,7 +72,7 @@ else
     app.MapOpenApi(); // Habilitar OpenAPI también en producción
 }
 
-app.UseCors("AllowFrontend");
+app.UseCors("WebAppPolicy");
 
 app.UseHttpsRedirection();
 
