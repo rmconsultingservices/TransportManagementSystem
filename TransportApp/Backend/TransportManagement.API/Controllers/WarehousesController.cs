@@ -53,6 +53,17 @@ namespace TransportManagement.API.Controllers
                 return BadRequest();
             }
 
+            // Preserve the original CompanyId to prevent it from being reset to 0
+            // when the client payload does not include it.
+            var originalCompanyId = await _context.Warehouses
+                .Where(w => w.Id == id)
+                .Select(w => w.CompanyId)
+                .FirstOrDefaultAsync();
+
+            if (originalCompanyId == 0)
+                return NotFound();
+
+            warehouse.CompanyId = originalCompanyId;
             _context.Entry(warehouse).State = EntityState.Modified;
 
             try
