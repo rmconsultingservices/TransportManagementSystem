@@ -15,6 +15,11 @@ dist-ssr/
 .env
 .env.*.local
 
+# Configuration secrets
+appsettings.Development.json
+appsettings.Production.json
+!appsettings.json # Keep the base template but without real secrets
+
 # IDEs
 .idea/
 .DS_Store

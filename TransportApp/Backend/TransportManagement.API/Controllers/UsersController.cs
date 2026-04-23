@@ -43,6 +43,10 @@ namespace TransportManagement.API.Controllers
         [HttpPost]
         public async Task<ActionResult<User>> PostUser(User user)
         {
+            if (!string.IsNullOrEmpty(user.PasswordHash))
+            {
+                user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(user.PasswordHash);
+            }
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
             return Ok(user);
@@ -52,10 +56,18 @@ namespace TransportManagement.API.Controllers
         public async Task<IActionResult> PutUser(int id, User user)
         {
             if (id != user.Id) return BadRequest();
+
+            var existingUser = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == id);
+            if (existingUser == null) return NotFound();
+
+            // Only hash if the password has changed and is not already hashed
+            // In a real app, you'd probably have a separate ChangePassword endpoint
+            if (!string.IsNullOrEmpty(user.PasswordHash) && user.PasswordHash != existingUser.PasswordHash)
+            {
+                user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(user.PasswordHash);
+            }
+
             _context.Entry(user).State = EntityState.Modified;
-            
-            // Note: In an ideal scenario, password updates would be handled separately.
-            // For simplicity, we just mark state as modified.
             await _context.SaveChangesAsync();
             return NoContent();
         }

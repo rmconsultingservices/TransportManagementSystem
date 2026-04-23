@@ -101,24 +101,19 @@ namespace TransportManagement.API.Controllers
         [Microsoft.AspNetCore.Authorization.AllowAnonymous]
         public async Task<IActionResult> SeedAdmin()
         {
-            if (await _context.Users.AnyAsync(u => u.Id == 1)) return Ok("Admin already exists.");
-
-            var admin = new User
-            {
-                Id = 1,
-                Username = "admin",
-                PasswordHash = "admin123",
-                FullName = "System Administrator",
-                IsSuperAdmin = true,
-                IsActive = true
-            };
+            var existingAdmin = await _context.Users.FirstOrDefaultAsync(u => u.Username == "admin");
             
-            // Using ID assignment forces identity insert in EF core.
-            // Better to omit ID and just let identity do its job for a clean seed:
+            if (existingAdmin != null)
+            {
+                existingAdmin.PasswordHash = BCrypt.Net.BCrypt.HashPassword("admin123");
+                await _context.SaveChangesAsync();
+                return Ok("Admin password updated successfully with Hash.");
+            }
+
             var adminUser = new User
             {
                 Username = "admin",
-                PasswordHash = "admin123",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("admin123"),
                 FullName = "System Administrator",
                 IsSuperAdmin = true,
                 IsActive = true
@@ -136,15 +131,21 @@ namespace TransportManagement.API.Controllers
             _context.UserCompanies.Add(userCompany);
             await _context.SaveChangesAsync();
 
-            return Ok($"Admin created with ID: {adminUser.Id}");
+            return Ok($"Admin created and hashed with ID: {adminUser.Id}");
         }
 
         private bool VerifyPassword(string inputPassword, string storedHash)
         {
-            // For a production app, use BCrypt or ASP.NET Identity PasswordHasher.
-            // For this playground, we do a basic string compare.
-            // If you seeded with plain text, it will match.
-            return inputPassword == storedHash;
+            try 
+            {
+                return BCrypt.Net.BCrypt.Verify(inputPassword, storedHash);
+            }
+            catch
+            {
+                // Fallback for old plain text passwords during transition if needed, 
+                // but for security it's better to just return false or force a reset.
+                return inputPassword == storedHash;
+            }
         }
     }
 }
