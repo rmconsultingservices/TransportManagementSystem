@@ -75,8 +75,12 @@ namespace TransportManagement.API.Data
                     var parameter = Expression.Parameter(entityType.ClrType, "e");
                     var propertyMethodInfo = typeof(EF).GetMethod("Property")!.MakeGenericMethod(typeof(int));
                     var companyIdProperty = Expression.Call(propertyMethodInfo, parameter, Expression.Constant("CompanyId"));
+
+                    // We must not use Expression.Constant(this) because 'this' refers to the first context instance.
+                    // Instead, we use an approach compatible with EF Core's dynamic evaluation.
+                    var methodInfo = typeof(AppDbContext).GetProperty(nameof(CurrentCompanyId))!.GetMethod;
+                    var currentCompanyId = Expression.Property(Expression.Convert(Expression.Constant(this), typeof(AppDbContext)), methodInfo!);
                     
-                    var currentCompanyId = Expression.Property(Expression.Constant(this), nameof(CurrentCompanyId));
                     var filterExpression = Expression.Equal(companyIdProperty, currentCompanyId);
 
                     var lambda = Expression.Lambda(filterExpression, parameter);

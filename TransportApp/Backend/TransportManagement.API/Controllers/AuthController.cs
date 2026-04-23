@@ -45,15 +45,15 @@ namespace TransportManagement.API.Controllers
                 return Unauthorized(new { message = "User is inactive" });
             }
 
-            var activeCompanies = user.UserCompanies
-                .Where(uc => uc.Company.IsActive)
+            var activeCompanies = user.UserCompanies?
+                .Where(uc => uc.Company != null && uc.Company.IsActive)
                 .Select(uc => new CompanyDto
                 {
-                    Id = uc.Company.Id,
+                    Id = uc.Company!.Id,
                     Name = uc.Company.Name,
                     Rif = uc.Company.Rif,
                     LogoUrl = uc.Company.LogoUrl
-                }).ToList();
+                }).ToList() ?? new List<CompanyDto>();
 
             var token = GenerateJwtToken(user);
 

@@ -20,7 +20,7 @@ api.interceptors.request.use((config) => {
   if (selectedCompanyStr) {
     try {
       const companyData = JSON.parse(selectedCompanyStr);
-      if (companyData && companyData.id) {
+      if (companyData && companyData.id !== undefined && companyData.id !== null) {
         config.headers['X-Company-Id'] = companyData.id.toString();
       }
     } catch (e) {

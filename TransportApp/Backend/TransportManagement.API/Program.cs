@@ -16,11 +16,14 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IUnitsOfMeasureService, UnitsOfMeasureService>();
 
-// Configure CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("WebAppPolicy", policy =>
     {
+        policy.SetIsOriginAllowed(origin => new Uri(origin).Host == "localhost")
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+
         policy.WithOrigins("https://transportmanagementsystem.pages.dev", "https://rmconsultingsrv.com")
               .AllowAnyHeader()
               .AllowAnyMethod();
