@@ -22,6 +22,12 @@ namespace TransportManagement.API.Models
         public int StockQuantity { get; set; } = 0;
         public decimal UnitCost { get; set; } = 0;
         
+        public int? WarehouseId { get; set; }
+        public Warehouse? Warehouse { get; set; }
+
+        public int? LocationId { get; set; }
+        public Location? Location { get; set; }
+        
         public DateTime RegistrationDate { get; set; } = DateTime.UtcNow;
 
         public bool IsActive { get; set; } = true;

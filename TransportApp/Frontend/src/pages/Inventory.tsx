@@ -20,6 +20,11 @@ export default function Inventory() {
 
   const [categories, setCategories] = useState<any[]>([]);
   const [units, setUnits] = useState<any[]>([]);
+  const [warehouses, setWarehouses] = useState<any[]>([]);
+  const [locations, setLocations] = useState<any[]>([]);
+  
+  const [warehouseId, setWarehouseId] = useState<number>(0);
+  const [locationId, setLocationId] = useState<number>(0);
 
   // Kardex details
   const [showHistoryModal, setShowHistoryModal] = useState(false);
@@ -30,22 +35,45 @@ export default function Inventory() {
   const fetchSparePartsAndCategories = async () => {
     try {
       setLoading(true);
-      const [partsData, catData, unitsData] = await Promise.all([
+      const [partsData, catData, unitsData, whData] = await Promise.all([
          inventoryService.getSpareParts(),
          import('../services/sparePartCategoriesService').then(m => m.sparePartCategoriesService.getCategories()),
-         import('../services/unitsOfMeasureService').then(m => m.unitsOfMeasureService.getUnits())
+         import('../services/unitsOfMeasureService').then(m => m.unitsOfMeasureService.getUnits()),
+         import('../services/warehouseService').then(m => m.warehouseService.getWarehouses())
       ]);
       setSpareParts(partsData);
       setCategories(catData);
       setUnits(unitsData);
+      setWarehouses(whData);
       if (catData.length > 0) setCategoryId(catData[0].id);
       if (unitsData.length > 0) setUnitOfMeasureId(unitsData[0].id);
+      if (whData.length > 0) {
+        setWarehouseId(whData[0].id);
+        fetchLocations(whData[0].id);
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  const fetchLocations = async (wId: number) => {
+    try {
+      const locData = await import('../services/locationService').then(m => m.locationService.getLocations(wId));
+      setLocations(locData);
+      if (locData.length > 0) setLocationId(locData[0].id);
+      else setLocationId(0);
+    } catch (error) {
+      console.error('Error fetching locations:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (warehouseId > 0) {
+      fetchLocations(warehouseId);
+    }
+  }, [warehouseId]);
 
   useEffect(() => {
     fetchSparePartsAndCategories();
@@ -64,10 +92,10 @@ export default function Inventory() {
       };
       if (categoryId > 0) payload.categoryId = categoryId;
       if (unitOfMeasureId > 0) payload.unitOfMeasureId = unitOfMeasureId;
+      if (warehouseId > 0) payload.warehouseId = warehouseId;
+      if (locationId > 0) payload.locationId = locationId;
       
       if (editingId) {
-         // for updates, we shouldn't zero out stock manually unless intended, but we map unitCost and stock if backend needs it. 
-         // Assuming our update API only patches changed fields or we send the full object
          payload.id = editingId;
          const existingPart = spareParts.find(p => p.id === editingId);
          if (existingPart) {
@@ -108,6 +136,10 @@ export default function Inventory() {
     else setUnitOfMeasureId(0);
     if (categories.length > 0) setCategoryId(categories[0].id);
     else setCategoryId(0);
+    if (warehouses.length > 0) setWarehouseId(warehouses[0].id);
+    else setWarehouseId(0);
+    if (locations.length > 0) setLocationId(locations[0].id);
+    else setLocationId(0);
     setLifeSpanKm('');
     setLifeSpanMonths('');
     setRegistrationDate(new Date().toISOString().split('T')[0]);
@@ -119,6 +151,8 @@ export default function Inventory() {
      setName(part.name);
      setUnitOfMeasureId(part.unitOfMeasureId || 0);
      setCategoryId(part.categoryId || 0);
+     setWarehouseId(part.warehouseId || 0);
+     setLocationId(part.locationId || 0);
      setLifeSpanKm(part.estimatedLifeSpanKm ?? '');
      setLifeSpanMonths(part.estimatedLifeSpanMonths ?? '');
      if (part.registrationDate) {
@@ -226,6 +260,28 @@ export default function Inventory() {
                 {categories.map(c => <option key={c.id} value={c.id} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">{c.name}</option>)}
               </select>
             </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Almacén</label>
+              <select 
+                value={warehouseId} onChange={e => setWarehouseId(Number(e.target.value))}
+                className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-500 outline-none"
+              >
+                {warehouses.length === 0 && <option value="0" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">Sin Almacenes</option>}
+                {warehouses.map(w => <option key={w.id} value={w.id} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">{w.name}</option>)}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ubicación (Rack/Estante)</label>
+              <select 
+                value={locationId} onChange={e => setLocationId(Number(e.target.value))}
+                className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-500 outline-none"
+              >
+                {locations.length === 0 && <option value="0" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">Sin Ubicaciones</option>}
+                {locations.map(l => <option key={l.id} value={l.id} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">{l.name}</option>)}
+              </select>
+            </div>
             
             {/* Predictive Maintenance Fields */}
             <div className="bg-amber-50 dark:bg-amber-900/10 p-4 rounded-lg border border-amber-200 dark:border-amber-700/50 relative">
@@ -302,6 +358,12 @@ export default function Inventory() {
                         </span>
                       </div>
                       <div className="text-sm text-gray-600 dark:text-gray-300">{part.name}</div>
+                      {(part.warehouse || part.location) && (
+                        <div className="text-xs text-amber-600 dark:text-amber-500 mt-1 flex items-center gap-1">
+                          <PackageOpen size={12} />
+                          {part.warehouse?.name || 'Sin almacén'} / {part.location?.name || 'Sin rack'}
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <div className={`text-2xl font-black ${

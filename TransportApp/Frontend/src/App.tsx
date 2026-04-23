@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, Outlet, Navigate, useNavigate } from 'react-router-dom';
-import { Truck, Home, PackageOpen, Wrench, Users, ShoppingCart, FileText, LogOut, Menu, X, ChevronDown, ChevronRight, List, SlidersHorizontal, Tags, Scale } from 'lucide-react';
+import { Truck, Home, PackageOpen, Wrench, Users, ShoppingCart, FileText, LogOut, Menu, X, ChevronDown, ChevronRight, List, SlidersHorizontal, Tags, Scale, MapPin } from 'lucide-react';
 import { useAuthStore } from './store/authStore';
 
 import Fleet from './pages/Fleet';
@@ -20,6 +20,8 @@ import PrintPurchaseOrder from './pages/PrintPurchaseOrder';
 import InventoryAdjustments from './pages/InventoryAdjustments';
 import InventoryCategories from './pages/InventoryCategories';
 import UnitsOfMeasure from './pages/UnitsOfMeasure';
+import Warehouses from './pages/Warehouses';
+import Locations from './pages/Locations';
 import { Shield, Building2, History } from 'lucide-react';
 import Dashboard from './pages/Dashboard';
 import VehicleDetail from './pages/VehicleDetail';
@@ -94,6 +96,8 @@ function Layout() {
                   <li><Link onClick={closeSidebar} to="/inventory/adjustments" className="flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"><SlidersHorizontal size={16} className="text-gray-400" /> Ajustes</Link></li>
                   <li><Link onClick={closeSidebar} to="/inventory/categories" className="flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"><Tags size={16} className="text-gray-400" /> Categorías</Link></li>
                   <li><Link onClick={closeSidebar} to="/inventory/units" className="flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"><Scale size={16} className="text-gray-400" /> Unidades</Link></li>
+                  <li><Link onClick={closeSidebar} to="/inventory/warehouses" className="flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"><PackageOpen size={16} className="text-gray-400" /> Almacenes</Link></li>
+                  <li><Link onClick={closeSidebar} to="/inventory/locations" className="flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"><MapPin size={16} className="text-gray-400" /> Ubicaciones</Link></li>
                 </ul>
               )}
             </li>
@@ -164,6 +168,8 @@ function App() {
             <Route path="/inventory/adjustments" element={<InventoryAdjustments />} />
             <Route path="/inventory/categories" element={<InventoryCategories />} />
             <Route path="/inventory/units" element={<UnitsOfMeasure />} />
+            <Route path="/inventory/warehouses" element={<Warehouses />} />
+            <Route path="/inventory/locations" element={<Locations />} />
             <Route path="/workshop" element={<Workshop />} />
             <Route path="/workshop/:id" element={<ServiceExecutionDetail />} />
             <Route path="/staff" element={<Staff />} />

@@ -32,6 +32,8 @@ namespace TransportManagement.API.Data
         public DbSet<SparePart> SpareParts => Set<SparePart>();
         public DbSet<SparePartCategory> SparePartCategories => Set<SparePartCategory>();
         public DbSet<UnitOfMeasure> UnitsOfMeasure => Set<UnitOfMeasure>();
+        public DbSet<Warehouse> Warehouses => Set<Warehouse>();
+        public DbSet<Location> Locations => Set<Location>();
         public DbSet<InventoryAdjustment> InventoryAdjustments => Set<InventoryAdjustment>();
         public DbSet<InventoryAdjustmentDetail> InventoryAdjustmentDetails => Set<InventoryAdjustmentDetail>();
         public DbSet<MaintenanceOrder> MaintenanceOrders => Set<MaintenanceOrder>();

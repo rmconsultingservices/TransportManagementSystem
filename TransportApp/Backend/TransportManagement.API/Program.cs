@@ -18,15 +18,12 @@ builder.Services.AddScoped<IUnitsOfMeasureService, UnitsOfMeasureService>();
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("WebAppPolicy", policy =>
+    options.AddPolicy("AllowCloudflare", policy =>
     {
-        policy.SetIsOriginAllowed(origin => new Uri(origin).Host == "localhost")
+        policy.WithOrigins("https://transportmanagementsystem.pages.dev") // Sin el "/" al final
               .AllowAnyHeader()
-              .AllowAnyMethod();
-
-        policy.WithOrigins("https://transportmanagementsystem.pages.dev", "https://rmconsultingsrv.com")
-              .AllowAnyHeader()
-              .AllowAnyMethod();
+              .AllowAnyMethod()
+              .AllowCredentials(); // Necesario si usas cookies o auth específica
     });
 });
 builder.Services.AddOpenApi();
@@ -62,6 +59,12 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 var app = builder.Build();
 
+// 1. Siempre primero
+app.UseCors("AllowCloudflare");
+
+// 2. Después la redirección (o coméntala si sigues con problemas)
+// app.UseHttpsRedirection();
+
 // Configure the HTTP request pipeline.
 app.UseSwagger();
 app.UseSwaggerUI();
@@ -75,10 +78,7 @@ else
     app.MapOpenApi(); // Habilitar OpenAPI también en producción
 }
 
-app.UseCors("WebAppPolicy");
-
-app.UseHttpsRedirection();
-
+// 3. Luego la autenticación y autorización
 app.UseAuthentication();
 app.UseAuthorization();
 

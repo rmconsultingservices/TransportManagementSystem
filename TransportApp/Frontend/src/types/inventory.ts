@@ -24,6 +24,10 @@ export interface SparePart {
   unitCost: number;
   unitOfMeasureId?: number;
   unitOfMeasure?: UnitOfMeasure;
+  warehouseId?: number;
+  warehouse?: { id: number; name: string };
+  locationId?: number;
+  location?: { id: number; name: string };
   registrationDate?: string;
   isActive: boolean;
 }
