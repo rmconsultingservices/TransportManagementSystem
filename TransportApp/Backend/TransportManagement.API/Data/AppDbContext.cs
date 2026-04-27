@@ -61,9 +61,11 @@ namespace TransportManagement.API.Data
                 .HasKey(uc => new { uc.UserId, uc.CompanyId });
 
             // Apply Global Query Filter for Multi-Tenant Isolation
+            var applyFilterMethod = typeof(AppDbContext).GetMethod(nameof(ApplyCompanyFilter), BindingFlags.NonPublic | BindingFlags.Instance);
+
             foreach (var entityType in modelBuilder.Model.GetEntityTypes())
             {
-                // Disable cascading delete for CompanyId foreign keys to prevent cyclic paths
+                // Disable cascading delete for CompanyId foreign keys
                 foreach (var fk in entityType.GetForeignKeys())
                 {
                     if (fk.Properties.Any(p => p.Name == "CompanyId"))
@@ -74,18 +76,15 @@ namespace TransportManagement.API.Data
 
                 if (typeof(IMustHaveCompany).IsAssignableFrom(entityType.ClrType))
                 {
-                    var parameter = Expression.Parameter(entityType.ClrType, "e");
-                    var companyIdProperty = Expression.Property(parameter, "CompanyId");
-                    
-                    // The correct way to refer to 'this.CurrentCompanyId' in a way that EF Core 
-                    // understands it should use the property from the CURRENT context instance.
-                    var currentCompanyIdProperty = Expression.Property(Expression.Constant(this), nameof(CurrentCompanyId));
-                    var filterExpression = Expression.Equal(companyIdProperty, currentCompanyIdProperty);
-
-                    var lambda = Expression.Lambda(filterExpression, parameter);
-                    modelBuilder.Entity(entityType.ClrType).HasQueryFilter(lambda);
+                    var genericMethod = applyFilterMethod.MakeGenericMethod(entityType.ClrType);
+                    genericMethod.Invoke(this, new object[] { modelBuilder });
                 }
             }
+        }
+
+        private void ApplyCompanyFilter<T>(ModelBuilder modelBuilder) where T : class, IMustHaveCompany
+        {
+            modelBuilder.Entity<T>().HasQueryFilter(e => e.CompanyId == CurrentCompanyId);
         }
 
         // Helper property for the expression tree to read the scoped service value dynamically during queries
