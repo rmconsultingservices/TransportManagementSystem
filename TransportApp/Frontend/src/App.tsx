@@ -132,9 +132,13 @@ function Layout() {
                <Menu size={24} />
              </button>
              <div className="text-xs sm:text-sm font-medium text-gray-500 flex items-center gap-2 sm:gap-4 flex-wrap">
-               <span className="bg-blue-100 text-blue-800 px-2 sm:px-3 py-1 rounded-full dark:bg-blue-900 dark:text-blue-200 truncate max-w-[120px] sm:max-w-xs">
+               <Link 
+                 to="/select-company" 
+                 className="bg-blue-100 text-blue-800 px-2 sm:px-3 py-1 rounded-full dark:bg-blue-900 dark:text-blue-200 truncate max-w-[120px] sm:max-w-xs hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
+                 title="Cambiar empresa"
+                >
                  🏢 {selectedCompany?.name}
-               </span>
+               </Link>
                <span className="hidden sm:inline">👤 {user?.fullName}</span>
              </div>
            </div>
