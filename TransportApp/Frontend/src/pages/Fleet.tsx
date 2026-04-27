@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Truck, Plus, Loader2, Trash2, History, AlertTriangle, CheckCircle2, Container, UserPlus } from 'lucide-react';
 import { fleetService } from '../services/fleetService';
+import { useAuthStore } from '../store/authStore';
 import type { Vehicle, Trailer } from '../types';
 
 export default function Fleet() {
+  const { selectedCompany } = useAuthStore();
   const [activeTab, setActiveTab] = useState<'vehicles' | 'trailers'>('vehicles');
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [trailers, setTrailers] = useState<Trailer[]>([]);
@@ -105,11 +107,10 @@ export default function Fleet() {
   const handleSyncOrphaned = async () => {
     try {
       setLoading(true);
-      const companyData = JSON.parse(localStorage.getItem('selectedCompany') || '{}');
-      const companyId = companyData.id;
+      const companyId = selectedCompany?.id;
 
       if (!companyId) {
-        alert('No hay una empresa seleccionada. Por favor, selecciona una empresa primero.');
+        alert('No hay una empresa seleccionada en el sistema. Por favor, selecciona una empresa primero.');
         return;
       }
 
