@@ -107,10 +107,14 @@ export default function Fleet() {
   const handleSyncOrphaned = async () => {
     try {
       setLoading(true);
-      const companyId = selectedCompany?.id;
+      console.log('Selected Company Data:', selectedCompany);
+      
+      // Try to find the ID in any possible property name
+      const companyId = selectedCompany?.id || (selectedCompany as any)?.Id || (selectedCompany as any)?.companyId;
 
       if (!companyId) {
-        alert('No hay una empresa seleccionada en el sistema. Por favor, selecciona una empresa primero.');
+        const dataStr = JSON.stringify(selectedCompany);
+        alert(`No hay una empresa seleccionada con ID válido. Datos actuales: ${dataStr}`);
         return;
       }
 
