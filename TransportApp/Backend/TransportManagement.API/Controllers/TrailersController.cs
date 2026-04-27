@@ -26,7 +26,7 @@ namespace TransportManagement.API.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<Trailer>> GetTrailer(int id)
         {
-            var trailer = await _context.Trailers.FindAsync(id);
+            var trailer = await _context.Trailers.FirstOrDefaultAsync(t => t.Id == id);
 
             if (trailer == null || !trailer.IsActive)
             {

@@ -26,7 +26,7 @@ namespace TransportManagement.API.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<Vehicle>> GetVehicle(int id)
         {
-            var vehicle = await _context.Vehicles.FindAsync(id);
+            var vehicle = await _context.Vehicles.FirstOrDefaultAsync(v => v.Id == id);
 
             if (vehicle == null || !vehicle.IsActive)
             {
