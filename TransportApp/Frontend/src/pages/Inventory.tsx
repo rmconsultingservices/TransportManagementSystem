@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { PackageOpen, Plus, Loader2, Trash2, AlertTriangle, FileClock, X, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { PackageOpen, Plus, Loader2, Trash2, AlertTriangle, FileClock, X, ArrowUpRight, ArrowDownRight, Search } from 'lucide-react';
 import { inventoryService } from '../services/inventoryService';
 import type { SparePart } from '../types';
 
@@ -7,8 +7,10 @@ export default function Inventory() {
   const [spareParts, setSpareParts] = useState<SparePart[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   
   // Form state
+// ... existing state ...
   const [editingId, setEditingId] = useState<number | null>(null);
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
@@ -32,7 +34,18 @@ export default function Inventory() {
   const [historyData, setHistoryData] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
+  const filteredParts = spareParts.filter(part => {
+    const search = searchTerm.toLowerCase();
+    return (
+      part.name.toLowerCase().includes(search) ||
+      part.code.toLowerCase().includes(search) ||
+      (part.location?.name || '').toLowerCase().includes(search) ||
+      (part.category?.name || '').toLowerCase().includes(search)
+    );
+  });
+
   const fetchSparePartsAndCategories = async () => {
+// ... existing code ...
     try {
       setLoading(true);
       const [partsData, catData, unitsData, whData] = await Promise.all([
@@ -59,6 +72,7 @@ export default function Inventory() {
   };
 
   const fetchLocations = async (wId: number) => {
+// ... existing code ...
     try {
       const locData = await import('../services/locationService').then(m => m.locationService.getLocations(wId));
       setLocations(locData);
@@ -80,6 +94,7 @@ export default function Inventory() {
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
+// ... existing code ...
     e.preventDefault();
     try {
       const payload: any = {
@@ -118,6 +133,7 @@ export default function Inventory() {
   };
 
   const handleDelete = async (id: number) => {
+// ... existing code ...
     if (confirm('¿Estás seguro de que deseas eliminar este repuesto?')) {
       try {
         await inventoryService.deleteSparePart(id);
@@ -129,6 +145,7 @@ export default function Inventory() {
   };
 
   const resetForm = () => {
+// ... existing code ...
     setEditingId(null);
     setCode('');
     setName('');
@@ -146,6 +163,7 @@ export default function Inventory() {
   };
 
   const handleEdit = (part: SparePart) => {
+// ... existing code ...
      setEditingId(part.id);
      setCode(part.code);
      setName(part.name);
@@ -164,6 +182,7 @@ export default function Inventory() {
   };
 
   const loadHistory = async (part: SparePart) => {
+// ... existing code ...
     setHistoryPart(part);
     setShowHistoryModal(true);
     setHistoryLoading(true);
@@ -206,6 +225,7 @@ export default function Inventory() {
 
       {showForm && (
         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md border border-gray-100 dark:border-gray-700 mb-8 animate-in fade-in slide-in-from-top-4">
+// ... existing form content ...
           <h2 className="text-xl font-semibold mb-6 text-amber-600 dark:text-amber-500 flex items-center gap-2">
             Registrar Nuevo Componente
           </h2>
@@ -322,6 +342,22 @@ export default function Inventory() {
         </div>
       )}
 
+      <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+        <div className="relative w-full md:w-96">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+          <input 
+            type="text" 
+            placeholder="Buscar por código, nombre o rack..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none transition-all shadow-sm"
+          />
+        </div>
+        <div className="text-sm text-gray-500">
+          Mostrando <span className="font-bold text-gray-900 dark:text-white">{filteredParts.length}</span> de <span className="font-bold text-gray-900 dark:text-white">{spareParts.length}</span> repuestos
+        </div>
+      </div>
+
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -341,14 +377,15 @@ export default function Inventory() {
                     Cargando catálogo...
                   </td>
                 </tr>
-              ) : spareParts.length === 0 ? (
+              ) : filteredParts.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
-                    Catálogo vacío. Añade repuestos para activar las predicciones de mantenimiento.
+                    {searchTerm ? 'No se encontraron repuestos para tu búsqueda.' : 'Catálogo vacío. Añade repuestos para activar las predicciones de mantenimiento.'}
                   </td>
                 </tr>
               ) : (
-                spareParts.map((part) => (
+                filteredParts.map((part) => (
+// ... existing table row ...
                   <tr key={part.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer group" onClick={() => loadHistory(part)}>
                     <td className="px-6 py-4">
                       <div className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
