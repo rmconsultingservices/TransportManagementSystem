@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Truck, Plus, Loader2, Trash2, History, AlertTriangle, CheckCircle2, Container } from 'lucide-react';
+import { Truck, Plus, Loader2, Trash2, History, AlertTriangle, CheckCircle2, Container, UserPlus } from 'lucide-react';
 import { fleetService } from '../services/fleetService';
 import type { Vehicle, Trailer } from '../types';
 
@@ -102,23 +102,52 @@ export default function Fleet() {
     };
   };
 
+  const handleSyncOrphaned = async () => {
+    try {
+      setLoading(true);
+      if (activeTab === 'vehicles') {
+        const res = await fleetService.syncOrphanedVehicles();
+        alert(`Sincronizados ${res.count} vehículos.`);
+      } else {
+        const res = await fleetService.syncOrphanedTrailers();
+        alert(`Sincronizados ${res.count} remolques.`);
+      }
+      fetchData();
+    } catch (error) {
+      console.error('Error syncing units:', error);
+      alert('Error al sincronizar unidades.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="p-4 sm:p-8 max-w-7xl mx-auto">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-8 gap-4">
+    <div className="p-8 max-w-7xl mx-auto">
+      <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2 sm:gap-3">
-            <Truck className="text-indigo-600" size={28} />
-            Gestión de Flota
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+            <Truck className="text-blue-600" size={32} />
+            Flota de Transporte
           </h1>
-          <p className="text-sm sm:text-base text-gray-500 mt-1">Administra tus camiones y remolques.</p>
+          <p className="text-gray-500 mt-1">Gestión de vehículos, remolques y mantenimientos.</p>
         </div>
-        <button 
-          onClick={() => { setShowForm(!showForm); resetForm(); }}
-          className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium flex items-center justify-center gap-2 transition-colors shadow-sm"
-        >
-          <Plus size={20} />
-          {showForm ? 'Cancelar' : `Añadir ${activeTab === 'vehicles' ? 'Vehículo' : 'Remolque'}`}
-        </button>
+        <div className="flex gap-3">
+          <button 
+            onClick={handleSyncOrphaned}
+            className="bg-amber-100 hover:bg-amber-200 text-amber-700 px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors border border-amber-200 shadow-sm"
+            title="Vincular unidades sin empresa"
+          >
+            <UserPlus size={20} />
+            Vincular Huérfanos
+          </button>
+          <button 
+            onClick={() => { setShowForm(!showForm); resetForm(); }}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors shadow-sm"
+          >
+            <Plus size={20} />
+            {showForm ? 'Cancelar' : activeTab === 'vehicles' ? 'Nuevo Vehículo' : 'Nuevo Remolque'}
+          </button>
+        </div>
       </div>
 
       <div className="flex overflow-x-auto whitespace-nowrap border-b border-gray-200 dark:border-gray-700 mb-6 pb-px">

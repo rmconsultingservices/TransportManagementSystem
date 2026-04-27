@@ -48,5 +48,15 @@ export const fleetService = {
 
   deleteTrailer: async (id: number): Promise<void> => {
     await api.delete(`/trailers/${id}`);
+  },
+
+  syncOrphanedVehicles: async (): Promise<{ count: number }> => {
+    const response = await api.post<{ count: number }>('/vehicles/sync-orphaned');
+    return response.data;
+  },
+
+  syncOrphanedTrailers: async (): Promise<{ count: number }> => {
+    const response = await api.post<{ count: number }>('/trailers/sync-orphaned');
+    return response.data;
   }
 };

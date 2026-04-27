@@ -90,6 +90,27 @@ namespace TransportManagement.API.Controllers
             return NoContent();
         }
 
+        [HttpPost("sync-orphaned")]
+        public async Task<IActionResult> SyncOrphanedVehicles()
+        {
+            var companyId = _context.CurrentCompanyId;
+            if (companyId == 0) return BadRequest("No se detectó una empresa válida en la sesión.");
+
+            // We must use IgnoreQueryFilters to see the orphans
+            var orphans = await _context.Vehicles
+                .IgnoreQueryFilters()
+                .Where(v => v.CompanyId == 0)
+                .ToListAsync();
+
+            foreach (var vehicle in orphans)
+            {
+                vehicle.CompanyId = companyId;
+            }
+
+            await _context.SaveChangesAsync();
+            return Ok(new { count = orphans.Count });
+        }
+
         private bool VehicleExists(int id)
         {
             return _context.Vehicles.Any(e => e.Id == id);

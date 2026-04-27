@@ -75,15 +75,12 @@ namespace TransportManagement.API.Data
                 if (typeof(IMustHaveCompany).IsAssignableFrom(entityType.ClrType))
                 {
                     var parameter = Expression.Parameter(entityType.ClrType, "e");
-                    var propertyMethodInfo = typeof(EF).GetMethod("Property")!.MakeGenericMethod(typeof(int));
-                    var companyIdProperty = Expression.Call(propertyMethodInfo, parameter, Expression.Constant("CompanyId"));
-
-                    // We must not use Expression.Constant(this) because 'this' refers to the first context instance.
-                    // Instead, we use an approach compatible with EF Core's dynamic evaluation.
-                    var methodInfo = typeof(AppDbContext).GetProperty(nameof(CurrentCompanyId))!.GetMethod;
-                    var currentCompanyId = Expression.Property(Expression.Convert(Expression.Constant(this), typeof(AppDbContext)), methodInfo!);
+                    var companyIdProperty = Expression.Property(parameter, "CompanyId");
                     
-                    var filterExpression = Expression.Equal(companyIdProperty, currentCompanyId);
+                    // The correct way to refer to 'this.CurrentCompanyId' in a way that EF Core 
+                    // understands it should use the property from the CURRENT context instance.
+                    var currentCompanyIdProperty = Expression.Property(Expression.Constant(this), nameof(CurrentCompanyId));
+                    var filterExpression = Expression.Equal(companyIdProperty, currentCompanyIdProperty);
 
                     var lambda = Expression.Lambda(filterExpression, parameter);
                     modelBuilder.Entity(entityType.ClrType).HasQueryFilter(lambda);
