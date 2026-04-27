@@ -4,6 +4,7 @@ import { workshopService } from '../services/workshopService';
 import { inventoryService } from '../services/inventoryService';
 import { ArrowLeft, Loader2, CheckCircle2, Clock, AlertCircle, ShoppingCart, Text, Box, Plus, Minus, X } from 'lucide-react';
 import type { ServiceRequest, SparePart } from '../types';
+import SparePartSelector from '../components/SparePartSelector';
 
 export default function ServiceExecutionDetail() {
   const { id } = useParams<{ id: string }>();
@@ -319,19 +320,14 @@ export default function ServiceExecutionDetail() {
             {showStockForm && (
               <form onSubmit={handleConsumeStock} className="mb-4 bg-emerald-50 dark:bg-emerald-900/30 p-4 rounded-lg border border-emerald-100 dark:border-emerald-800">
                 <label className="block text-xs font-semibold text-emerald-700 dark:text-emerald-400 uppercase mb-2">Seleccionar para Descontar</label>
-                <select 
-                  required
-                  value={selectedPartId} 
-                  onChange={e => setSelectedPartId(e.target.value === '' ? '' : Number(e.target.value))}
-                  className="w-full text-sm rounded border border-emerald-200 dark:border-emerald-700 px-3 py-2 mb-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-white outline-none"
-                >
-                  <option value="" disabled className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">Seleccione repuesto...</option>
-                  {spareParts.map(p => (
-                    <option key={p.id} value={p.id} disabled={p.stockQuantity <= 0} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
-                      {p.code} - {p.name} (Stock: {p.stockQuantity})
-                    </option>
-                  ))}
-                </select>
+                <div className="mb-3">
+                  <SparePartSelector 
+                    value={selectedPartId} 
+                    spareParts={spareParts} 
+                    onChange={val => setSelectedPartId(val)} 
+                    placeholder="Escriba código o nombre..."
+                  />
+                </div>
                 
                 <div className="flex items-center gap-4">
                    <div className="flex items-center bg-white dark:bg-gray-800 rounded border border-emerald-200 dark:border-emerald-700">

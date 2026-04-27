@@ -51,6 +51,7 @@ namespace TransportManagement.API.Controllers
                 .Include(s => s.Execution)
                     .ThenInclude(e => e.UsedSpareParts)
                         .ThenInclude(usp => usp.SparePart)
+                .AsSplitQuery()
                 .FirstOrDefaultAsync(s => s.Id == id);
 
             if (serviceRequest == null)
