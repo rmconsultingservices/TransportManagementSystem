@@ -50,13 +50,13 @@ export const fleetService = {
     await api.delete(`/trailers/${id}`);
   },
 
-  syncOrphanedVehicles: async (): Promise<{ count: number }> => {
-    const response = await api.post<{ count: number }>('/vehicles/sync-orphaned');
+  syncOrphanedVehicles: async (companyId: number): Promise<{ count: number }> => {
+    const response = await api.post<{ count: number }>(`/vehicles/sync-orphaned?targetCompanyId=${companyId}`);
     return response.data;
   },
 
-  syncOrphanedTrailers: async (): Promise<{ count: number }> => {
-    const response = await api.post<{ count: number }>('/trailers/sync-orphaned');
+  syncOrphanedTrailers: async (companyId: number): Promise<{ count: number }> => {
+    const response = await api.post<{ count: number }>(`/trailers/sync-orphaned?targetCompanyId=${companyId}`);
     return response.data;
   }
 };

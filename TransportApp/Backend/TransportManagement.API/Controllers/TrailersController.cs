@@ -91,10 +91,10 @@ namespace TransportManagement.API.Controllers
         }
 
         [HttpPost("sync-orphaned")]
-        public async Task<IActionResult> SyncOrphanedTrailers()
+        public async Task<IActionResult> SyncOrphanedTrailers([FromQuery] int? targetCompanyId)
         {
-            var companyId = _context.CurrentCompanyId;
-            if (companyId == 0) return BadRequest("No se detectó una empresa válida en la sesión.");
+            var companyId = targetCompanyId ?? _context.CurrentCompanyId;
+            if (companyId == 0) return BadRequest("No se detectó una empresa válida.");
 
             var orphans = await _context.Trailers
                 .IgnoreQueryFilters()

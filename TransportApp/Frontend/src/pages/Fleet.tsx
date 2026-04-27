@@ -105,11 +105,19 @@ export default function Fleet() {
   const handleSyncOrphaned = async () => {
     try {
       setLoading(true);
+      const companyData = JSON.parse(localStorage.getItem('selectedCompany') || '{}');
+      const companyId = companyData.id;
+
+      if (!companyId) {
+        alert('No hay una empresa seleccionada. Por favor, selecciona una empresa primero.');
+        return;
+      }
+
       if (activeTab === 'vehicles') {
-        const res = await fleetService.syncOrphanedVehicles();
+        const res = await fleetService.syncOrphanedVehicles(companyId);
         alert(`Sincronizados ${res.count} vehículos.`);
       } else {
-        const res = await fleetService.syncOrphanedTrailers();
+        const res = await fleetService.syncOrphanedTrailers(companyId);
         alert(`Sincronizados ${res.count} remolques.`);
       }
       fetchData();
