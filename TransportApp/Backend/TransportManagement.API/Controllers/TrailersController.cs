@@ -93,21 +93,30 @@ namespace TransportManagement.API.Controllers
         [HttpPost("sync-orphaned")]
         public async Task<IActionResult> SyncOrphanedTrailers([FromQuery] int? targetCompanyId)
         {
-            var companyId = targetCompanyId ?? _context.CurrentCompanyId;
-            if (companyId == 0) return BadRequest("No se detectó una empresa válida.");
-
-            var orphans = await _context.Trailers
-                .IgnoreQueryFilters()
-                .Where(t => t.CompanyId == 0)
-                .ToListAsync();
-
-            foreach (var trailer in orphans)
+            try
             {
-                trailer.CompanyId = companyId;
-            }
+                var companyId = targetCompanyId ?? _context.CurrentCompanyId;
+                
+                var orphans = await _context.Trailers
+                    .IgnoreQueryFilters()
+                    .Where(t => t.CompanyId == 0)
+                    .ToListAsync();
 
-            await _context.SaveChangesAsync();
-            return Ok(new { count = orphans.Count });
+                if (companyId != 0)
+                {
+                    foreach (var trailer in orphans)
+                    {
+                        trailer.CompanyId = companyId;
+                    }
+                    await _context.SaveChangesAsync();
+                }
+
+                return Ok(new { count = orphans.Count });
+            }
+            catch (System.Exception ex)
+            {
+                return StatusCode(500, $"Error interno: {ex.Message}");
+            }
         }
 
         private bool TrailerExists(int id)

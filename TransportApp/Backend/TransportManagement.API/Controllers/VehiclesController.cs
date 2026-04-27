@@ -96,20 +96,24 @@ namespace TransportManagement.API.Controllers
             try 
             {
                 var companyId = targetCompanyId ?? _context.CurrentCompanyId;
-                if (companyId == 0) return BadRequest("No se detectó una empresa válida.");
-
-                // We must use IgnoreQueryFilters to see the orphans
+                
+                // We must use IgnoreQueryFilters to see the orphans (CompanyId = 0)
+                // If the target company is also 0, this doesn't change anything, 
+                // but we should still allow it to complete successfully.
                 var orphans = await _context.Vehicles
                     .IgnoreQueryFilters()
                     .Where(v => v.CompanyId == 0)
                     .ToListAsync();
 
-                foreach (var vehicle in orphans)
+                if (companyId != 0)
                 {
-                    vehicle.CompanyId = companyId;
+                    foreach (var vehicle in orphans)
+                    {
+                        vehicle.CompanyId = companyId;
+                    }
+                    await _context.SaveChangesAsync();
                 }
 
-                await _context.SaveChangesAsync();
                 return Ok(new { count = orphans.Count });
             }
             catch (System.Exception ex)
