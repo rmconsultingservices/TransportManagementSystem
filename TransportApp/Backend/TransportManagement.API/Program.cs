@@ -18,6 +18,13 @@ builder.Services.AddScoped<IUnitsOfMeasureService, UnitsOfMeasureService>();
 
 builder.Services.AddCors(options =>
 {
+    options.AddPolicy("DevPolicy", policy =>
+    {
+        policy.WithOrigins("http://localhost:5173", "http://localhost:5174", "http://localhost:3000")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
     options.AddPolicy("AllowCloudflare", policy =>
     {
         policy.WithOrigins("https://transportmanagementsystem.pages.dev") // Sin el "/" al final
@@ -59,8 +66,36 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 var app = builder.Build();
 
+// Auto-heal database schema for missing columns (TrailerId and ServiceRequestId in MaintenanceOrders)
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    try
+    {
+        context.Database.ExecuteSqlRaw(@"
+            IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('MaintenanceOrders') AND name = 'TrailerId')
+            ALTER TABLE MaintenanceOrders ADD TrailerId INT NULL;
+            
+            IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('MaintenanceOrders') AND name = 'ServiceRequestId')
+            ALTER TABLE MaintenanceOrders ADD ServiceRequestId INT NULL;
+        ");
+        Console.WriteLine("Base de datos verificada y actualizada correctamente.");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error al verificar la base de datos: {ex.Message}");
+    }
+}
+
 // 1. Siempre primero
-app.UseCors("AllowCloudflare");
+if (app.Environment.IsDevelopment())
+{
+    app.UseCors("DevPolicy");
+}
+else
+{
+    app.UseCors("AllowCloudflare");
+}
 
 // 2. Después la redirección (o coméntala si sigues con problemas)
 // app.UseHttpsRedirection();

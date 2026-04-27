@@ -110,9 +110,9 @@ export default function Fleet() {
       console.log('Selected Company Data:', selectedCompany);
       
       // Try to find the ID in any possible property name
-      const companyId = selectedCompany?.id || (selectedCompany as any)?.Id || (selectedCompany as any)?.companyId;
+      const companyId = selectedCompany?.id ?? (selectedCompany as any)?.Id ?? (selectedCompany as any)?.companyId;
 
-      if (!companyId) {
+      if (companyId === undefined || companyId === null) {
         const dataStr = JSON.stringify(selectedCompany);
         alert(`No hay una empresa seleccionada con ID válido. Datos actuales: ${dataStr}`);
         return;

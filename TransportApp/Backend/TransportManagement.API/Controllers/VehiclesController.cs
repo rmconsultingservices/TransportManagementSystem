@@ -28,9 +28,24 @@ namespace TransportManagement.API.Controllers
         {
             var vehicle = await _context.Vehicles.FirstOrDefaultAsync(v => v.Id == id);
 
-            if (vehicle == null || !vehicle.IsActive)
+            if (vehicle == null)
             {
-                return NotFound();
+                // Diagnóstico: ¿Existe pero en otra empresa?
+                var existsWithoutFilter = await _context.Vehicles
+                    .IgnoreQueryFilters()
+                    .FirstOrDefaultAsync(v => v.Id == id);
+
+                if (existsWithoutFilter != null)
+                {
+                    return NotFound(new { 
+                        message = $"El vehículo #{id} existe, pero está asignado a la Empresa ID: {existsWithoutFilter.CompanyId}. Tu sesión actual es Empresa ID: {_context.CurrentCompanyId}.",
+                        errorType = "CompanyMismatch",
+                        targetCompanyId = existsWithoutFilter.CompanyId,
+                        currentCompanyId = _context.CurrentCompanyId
+                    });
+                }
+
+                return NotFound(new { message = $"El vehículo #{id} no existe en la base de datos." });
             }
 
             return vehicle;
