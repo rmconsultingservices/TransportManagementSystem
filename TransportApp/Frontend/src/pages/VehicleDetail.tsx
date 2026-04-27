@@ -16,6 +16,7 @@ export default function VehicleDetail({ type }: VehicleDetailProps) {
   const [unit, setUnit] = useState<Vehicle | Trailer | null>(null);
   const [history, setHistory] = useState<MaintenanceOrder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchDetails = async () => {
@@ -35,8 +36,9 @@ export default function VehicleDetail({ type }: VehicleDetailProps) {
         const [unitData, historyData] = await Promise.all([unitPromise, historyPromise]);
         setUnit(unitData);
         setHistory(historyData);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error fetching unit details:', error);
+        setErrorMsg(error.response?.data?.message || error.response?.data || 'Error al conectar con el servidor');
       } finally {
         setLoading(false);
       }
@@ -49,7 +51,31 @@ export default function VehicleDetail({ type }: VehicleDetailProps) {
   }
 
   if (!unit) {
-    return <div className="p-8 text-center text-red-500">Unidad no encontrada.</div>;
+    return (
+      <div className="p-8 text-center animate-in fade-in duration-500">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 p-8 rounded-2xl max-w-md mx-auto">
+          <AlertTriangle size={48} className="text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Unidad no encontrada</h2>
+          <p className="text-gray-500 dark:text-gray-400 mb-6">
+            {errorMsg || `No se pudo encontrar el registro del ${type === 'vehicle' ? 'vehículo' : 'remolque'} con ID #${id}. Esto puede ocurrir si el registro fue eliminado o si pertenece a otra empresa.`}
+          </p>
+          <div className="flex flex-col gap-3">
+            <button 
+              onClick={() => window.location.reload()}
+              className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+            >
+              Reintentar carga
+            </button>
+            <button 
+              onClick={() => navigate('/fleet')}
+              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-sm"
+            >
+              Volver a la lista de flota
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const kmSinceLast = unit.currentMileage - (unit.lastMaintenanceMileage || unit.currentMileage);
