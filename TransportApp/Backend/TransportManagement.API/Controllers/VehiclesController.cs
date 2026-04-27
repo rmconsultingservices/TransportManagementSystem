@@ -93,22 +93,29 @@ namespace TransportManagement.API.Controllers
         [HttpPost("sync-orphaned")]
         public async Task<IActionResult> SyncOrphanedVehicles()
         {
-            var companyId = _context.CurrentCompanyId;
-            if (companyId == 0) return BadRequest("No se detectó una empresa válida en la sesión.");
-
-            // We must use IgnoreQueryFilters to see the orphans
-            var orphans = await _context.Vehicles
-                .IgnoreQueryFilters()
-                .Where(v => v.CompanyId == 0)
-                .ToListAsync();
-
-            foreach (var vehicle in orphans)
+            try 
             {
-                vehicle.CompanyId = companyId;
-            }
+                var companyId = _context.CurrentCompanyId;
+                if (companyId == 0) return BadRequest("No se detectó una empresa válida en el encabezado X-Company-Id.");
 
-            await _context.SaveChangesAsync();
-            return Ok(new { count = orphans.Count });
+                // We must use IgnoreQueryFilters to see the orphans
+                var orphans = await _context.Vehicles
+                    .IgnoreQueryFilters()
+                    .Where(v => v.CompanyId == 0)
+                    .ToListAsync();
+
+                foreach (var vehicle in orphans)
+                {
+                    vehicle.CompanyId = companyId;
+                }
+
+                await _context.SaveChangesAsync();
+                return Ok(new { count = orphans.Count });
+            }
+            catch (System.Exception ex)
+            {
+                return StatusCode(500, $"Error interno: {ex.Message}");
+            }
         }
 
         private bool VehicleExists(int id)

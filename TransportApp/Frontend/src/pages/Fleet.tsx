@@ -113,9 +113,10 @@ export default function Fleet() {
         alert(`Sincronizados ${res.count} remolques.`);
       }
       fetchData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error syncing units:', error);
-      alert('Error al sincronizar unidades.');
+      const msg = error.response?.data?.message || error.response?.data || 'Error desconocido';
+      alert(`Error al sincronizar unidades: ${msg}`);
     } finally {
       setLoading(false);
     }
