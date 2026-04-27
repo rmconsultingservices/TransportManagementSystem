@@ -28,7 +28,7 @@ function SparePartSelector({ value, onChange, spareParts }: { value: number, onC
   }, []);
 
   return (
-    <div className="relative spare-part-selector" ref={containerRef}>
+    <div className={`relative spare-part-selector ${isOpen ? 'z-50' : ''}`} ref={containerRef}>
       <div 
         onClick={() => setIsOpen(!isOpen)}
         className="w-full text-sm rounded-md border border-gray-300 dark:border-gray-600 px-2 py-1.5 focus:border-blue-500 outline-none bg-white dark:bg-gray-800 text-gray-900 dark:text-white cursor-pointer min-h-[34px] flex items-center justify-between"
@@ -236,7 +236,7 @@ export default function InventoryAdjustments() {
               </div>
            </div>
 
-           <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden mb-6 block w-full bg-white dark:bg-gray-800">
+           <div className="border border-gray-200 dark:border-gray-700 rounded-lg mb-6 block w-full bg-white dark:bg-gray-800">
               <table className="w-full text-left">
                  <thead className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 text-xs border-b border-gray-200 dark:border-gray-700">
                     <tr>
