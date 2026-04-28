@@ -47,7 +47,24 @@ namespace TransportManagement.API.Controllers
                 return BadRequest();
             }
 
-            _context.Entry(sparePart).State = EntityState.Modified;
+            var existingPart = await _context.SpareParts.FindAsync(id);
+            if (existingPart == null)
+            {
+                return NotFound();
+            }
+
+            // Update only allowed properties, preserving CompanyId and RegistrationDate
+            existingPart.Code = sparePart.Code;
+            existingPart.Name = sparePart.Name;
+            existingPart.UnitOfMeasureId = sparePart.UnitOfMeasureId;
+            existingPart.CategoryId = sparePart.CategoryId;
+            existingPart.EstimatedLifeSpanKm = sparePart.EstimatedLifeSpanKm;
+            existingPart.EstimatedLifeSpanMonths = sparePart.EstimatedLifeSpanMonths;
+            existingPart.StockQuantity = sparePart.StockQuantity;
+            existingPart.UnitCost = sparePart.UnitCost;
+            existingPart.WarehouseId = sparePart.WarehouseId;
+            existingPart.LocationId = sparePart.LocationId;
+            existingPart.IsActive = sparePart.IsActive;
 
             try
             {
