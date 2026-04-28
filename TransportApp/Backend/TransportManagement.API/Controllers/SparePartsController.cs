@@ -21,7 +21,13 @@ namespace TransportManagement.API.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<SparePart>>> GetSpareParts()
         {
-            return await _context.SpareParts.Where(s => s.IsActive).ToListAsync();
+            return await _context.SpareParts
+                .Include(s => s.Location)
+                .Include(s => s.Warehouse)
+                .Include(s => s.Category)
+                .Include(s => s.UnitOfMeasure)
+                .Where(s => s.IsActive)
+                .ToListAsync();
         }
 
         // GET: api/SpareParts/5
