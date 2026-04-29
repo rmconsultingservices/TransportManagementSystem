@@ -22,11 +22,13 @@ namespace TransportManagement.API.Controllers
         public async Task<ActionResult<IEnumerable<SparePart>>> GetSpareParts()
         {
             return await _context.SpareParts
+                .AsNoTracking()
                 .Include(s => s.Location)
                 .Include(s => s.Warehouse)
                 .Include(s => s.Category)
                 .Include(s => s.UnitOfMeasure)
                 .Where(s => s.IsActive)
+                .AsSplitQuery()
                 .ToListAsync();
         }
 
