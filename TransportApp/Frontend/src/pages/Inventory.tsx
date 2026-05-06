@@ -195,7 +195,7 @@ export default function Inventory() {
       setHistoryLoading(false);
     }
   };
-  const totalItems = spareParts.reduce((sum, part) => sum + (part.stockQuantity || 0), 0);
+  const totalItems = spareParts.length;
   const totalValue = spareParts.reduce((sum, part) => sum + ((part.stockQuantity || 0) * (part.unitCost || 0)), 0);
 
   const groupedParts = spareParts.reduce((acc, part) => {
@@ -548,7 +548,7 @@ export default function Inventory() {
     {/* Reporte de Impresión (Solo visible al imprimir) */}
     <div className="hidden print:block bg-white text-black p-8 font-sans">
       <div className="flex justify-between items-center mb-8 border-b pb-6">
-        <h1 className="text-4xl font-bold text-gray-900">Reporte de Inventario de Flota</h1>
+        <h1 className="text-4xl font-bold text-gray-900">Inventario Actual</h1>
         <div className="text-right">
           <p className="text-gray-500 font-medium">Fecha: {new Date().toLocaleDateString()}</p>
           <p className="text-gray-500 font-medium">Estado: <span className="text-emerald-600">VERIFICADO</span></p>
@@ -599,7 +599,7 @@ export default function Inventory() {
                 return (
                   <tr key={part.id}>
                     <td className="px-4 py-4 font-bold text-blue-500 text-sm">#{part.code}</td>
-                    <td className="px-4 py-4 font-bold text-gray-900 text-sm">{part.name}</td>
+                    <td className="px-4 py-4 font-bold text-gray-900 text-sm truncate max-w-[400px]">{part.name}</td>
                     <td className="px-4 py-4 text-center">
                        <span className={`inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-bold ${
                          part.stockQuantity > 10 ? 'bg-blue-100 text-blue-700' :
@@ -619,7 +619,7 @@ export default function Inventory() {
       ))}
       
       <div className="mt-12 pt-8 border-t border-gray-200 text-xs text-gray-400 flex justify-between font-medium">
-         <span>© 2026 PRECISION EDITORIAL FLEET SYSTEMS • DOCUMENT ID: INV-{new Date().getFullYear()}-{new Date().getMonth() + 1}-99</span>
+         <span>© 2026 TransportApp • Documento: INV2026-5-99</span>
          <div className="flex gap-4">
             <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-blue-600"></div> ESTADO: VERIFICADO</span>
             <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-gray-400"></div> SINCRONIZADO: {new Date().toLocaleTimeString()}</span>

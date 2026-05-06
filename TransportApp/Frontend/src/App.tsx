@@ -61,7 +61,7 @@ function Layout() {
       {/* Sidebar */}
       <aside className={`
         fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col transition-transform duration-300 ease-in-out
-        lg:static lg:translate-x-0
+        lg:static lg:translate-x-0 print:hidden
         ${isSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}
       `}>
         <div className="h-16 flex items-center justify-between px-4 lg:justify-center border-b border-gray-200 dark:border-gray-700">
@@ -123,7 +123,7 @@ function Layout() {
       
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-         <header className="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 sm:px-6 shrink-0 z-10">
+         <header className="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 sm:px-6 shrink-0 z-10 print:hidden">
            <div className="flex items-center gap-3">
              <button 
                onClick={toggleSidebar} 
