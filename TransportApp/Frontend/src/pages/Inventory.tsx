@@ -585,31 +585,31 @@ export default function Inventory() {
           </div>
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-gray-50 text-xs font-bold text-gray-500 uppercase tracking-wider">
-                <th className="px-4 py-3">Código de Artículo</th>
-                <th className="px-4 py-3">Nombre del Artículo</th>
-                <th className="px-4 py-3 text-center">Cantidad</th>
-                <th className="px-4 py-3 text-right">Costo Unitario</th>
-                <th className="px-4 py-3 text-right">Valor Total</th>
+              <tr className="bg-gray-50 text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                <th className="px-2 py-3 w-32">Código de Artículo</th>
+                <th className="px-2 py-3">Nombre del Artículo</th>
+                <th className="px-2 py-3 text-center w-20">Cantidad</th>
+                <th className="px-2 py-3 text-right w-24">Costo Unitario</th>
+                <th className="px-2 py-3 text-right w-28">Valor Total</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {parts.map(part => {
                 const total = (part.stockQuantity || 0) * (part.unitCost || 0);
                 return (
-                  <tr key={part.id}>
-                    <td className="px-4 py-4 font-bold text-blue-500 text-sm">#{part.code}</td>
-                    <td className="px-4 py-4 font-bold text-gray-900 text-sm truncate max-w-[400px]">{part.name}</td>
-                    <td className="px-4 py-4 text-center">
-                       <span className={`inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-bold ${
-                         part.stockQuantity > 10 ? 'bg-blue-100 text-blue-700' :
-                         part.stockQuantity > 0 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
+                  <tr key={part.id} className="border-b border-gray-50">
+                    <td className="px-2 py-3 font-bold text-blue-600 text-[11px]">#{part.code}</td>
+                    <td className="px-2 py-3 font-bold text-gray-900 text-[11px] leading-tight break-words">{part.name}</td>
+                    <td className="px-2 py-3 text-center">
+                       <span className={`inline-flex items-center justify-center min-w-[32px] px-2 py-0.5 rounded text-[10px] font-bold ${
+                         part.stockQuantity > 10 ? 'bg-blue-50 text-blue-700 border border-blue-100' :
+                         part.stockQuantity > 0 ? 'bg-amber-50 text-amber-700 border border-amber-100' : 'bg-red-50 text-red-700 border border-red-100'
                        }`}>
                          {part.stockQuantity}
                        </span>
                     </td>
-                    <td className="px-4 py-4 text-right font-medium text-gray-700 text-sm">${(part.unitCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                    <td className="px-4 py-4 text-right font-bold text-gray-900 text-sm">${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td className="px-2 py-3 text-right font-medium text-gray-600 text-[11px]">${(part.unitCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td className="px-2 py-3 text-right font-bold text-gray-900 text-[11px]">${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   </tr>
                 );
               })}
