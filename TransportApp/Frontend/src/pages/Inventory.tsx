@@ -555,22 +555,22 @@ export default function Inventory() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-6 mb-10">
-        <div className="bg-white border-2 border-gray-100 rounded-xl p-8 flex flex-col justify-center">
-          <p className="text-gray-500 font-medium text-lg mb-2">Total de Artículos</p>
-          <p className="text-6xl font-black text-gray-900">{totalItems.toLocaleString()}</p>
-          <div className="mt-4 flex items-center gap-2 text-blue-600 font-medium">
-             <TrendingUp size={16} /> +12% vs el mes pasado
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="bg-white border border-gray-200 rounded-lg p-5 flex flex-col justify-center">
+          <p className="text-gray-500 font-medium text-sm mb-1">Total de Artículos (SKUs)</p>
+          <p className="text-4xl font-black text-gray-900">{totalItems.toLocaleString()}</p>
+          <div className="mt-2 flex items-center gap-2 text-blue-600 font-bold text-xs uppercase tracking-tight">
+             <TrendingUp size={14} /> +12% vs el mes pasado
           </div>
         </div>
-        <div className="bg-blue-600 rounded-xl p-8 flex flex-col justify-center text-white relative overflow-hidden">
-          <div className="absolute right-0 bottom-0 opacity-10 transform translate-x-4 translate-y-4">
-             <Printer size={120} />
+        <div className="bg-blue-600 rounded-lg p-5 flex flex-col justify-center text-white relative overflow-hidden">
+          <div className="absolute right-0 bottom-0 opacity-10 transform translate-x-2 translate-y-2">
+             <Printer size={80} />
           </div>
-          <p className="text-blue-100 font-medium text-lg mb-2 relative z-10">Valor Total de Inventario</p>
-          <p className="text-6xl font-black relative z-10">${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-          <div className="mt-4 flex items-center gap-2 text-blue-100 font-medium relative z-10">
-             <FileClock size={16} /> Actualizado hace 2 horas
+          <p className="text-blue-100 font-medium text-sm mb-1 relative z-10">Valor Total de Inventario</p>
+          <p className="text-4xl font-black relative z-10">${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          <div className="mt-2 flex items-center gap-2 text-blue-100 font-bold text-xs uppercase tracking-tight relative z-10">
+             <FileClock size={14} /> Actualizado hace 2 horas
           </div>
         </div>
       </div>
