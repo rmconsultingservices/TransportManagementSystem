@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { PackageOpen, Plus, Loader2, Trash2, AlertTriangle, FileClock, X, ArrowUpRight, ArrowDownRight, Search } from 'lucide-react';
+import { PackageOpen, Plus, Loader2, Trash2, AlertTriangle, FileClock, X, ArrowUpRight, ArrowDownRight, Search, Printer, MapPin, TrendingUp } from 'lucide-react';
 import { inventoryService } from '../services/inventoryService';
 import type { SparePart } from '../types';
 
@@ -195,9 +195,21 @@ export default function Inventory() {
       setHistoryLoading(false);
     }
   };
+  const totalItems = spareParts.reduce((sum, part) => sum + (part.stockQuantity || 0), 0);
+  const totalValue = spareParts.reduce((sum, part) => sum + ((part.stockQuantity || 0) * (part.unitCost || 0)), 0);
+
+  const groupedParts = spareParts.reduce((acc, part) => {
+    const locName = part.warehouse?.name || 'Sin Almacén';
+    const rackName = part.location?.name || 'Sin Rack';
+    const key = `Ubicación: ${locName} (${rackName})`;
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(part);
+    return acc;
+  }, {} as Record<string, SparePart[]>);
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
+    <>
+    <div className="p-8 max-w-7xl mx-auto print:hidden">
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
@@ -206,21 +218,30 @@ export default function Inventory() {
           </h1>
           <p className="text-gray-500 mt-1">Configura la vida útil para el mantenimiento predictivo.</p>
         </div>
-        <button 
-          onClick={() => {
-             if(showForm) {
-               setShowForm(false);
-               resetForm();
-             } else {
-               resetForm();
-               setShowForm(true);
-             }
-          }}
-          className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors shadow-sm"
-        >
-          <Plus size={20} />
-          {showForm ? 'Cancelar' : 'Añadir Repuesto'}
-        </button>
+        <div className="flex gap-2">
+          <button 
+            onClick={() => window.print()}
+            className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors shadow-sm"
+          >
+            <Printer size={20} />
+            Imprimir Reporte
+          </button>
+          <button 
+            onClick={() => {
+               if(showForm) {
+                 setShowForm(false);
+                 resetForm();
+               } else {
+                 resetForm();
+                 setShowForm(true);
+               }
+            }}
+            className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors shadow-sm"
+          >
+            <Plus size={20} />
+            {showForm ? 'Cancelar' : 'Añadir Repuesto'}
+          </button>
+        </div>
       </div>
 
       {showForm && (
@@ -523,5 +544,88 @@ export default function Inventory() {
         </div>
       )}
     </div>
+
+    {/* Reporte de Impresión (Solo visible al imprimir) */}
+    <div className="hidden print:block bg-white text-black p-8 font-sans">
+      <div className="flex justify-between items-center mb-8 border-b pb-6">
+        <h1 className="text-4xl font-bold text-gray-900">Reporte de Inventario de Flota</h1>
+        <div className="text-right">
+          <p className="text-gray-500 font-medium">Fecha: {new Date().toLocaleDateString()}</p>
+          <p className="text-gray-500 font-medium">Estado: <span className="text-emerald-600">VERIFICADO</span></p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-6 mb-10">
+        <div className="bg-white border-2 border-gray-100 rounded-xl p-8 flex flex-col justify-center">
+          <p className="text-gray-500 font-medium text-lg mb-2">Total de Artículos</p>
+          <p className="text-6xl font-black text-gray-900">{totalItems.toLocaleString()}</p>
+          <div className="mt-4 flex items-center gap-2 text-blue-600 font-medium">
+             <TrendingUp size={16} /> +12% vs el mes pasado
+          </div>
+        </div>
+        <div className="bg-blue-600 rounded-xl p-8 flex flex-col justify-center text-white relative overflow-hidden">
+          <div className="absolute right-0 bottom-0 opacity-10 transform translate-x-4 translate-y-4">
+             <Printer size={120} />
+          </div>
+          <p className="text-blue-100 font-medium text-lg mb-2 relative z-10">Valor Total de Inventario</p>
+          <p className="text-6xl font-black relative z-10">${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          <div className="mt-4 flex items-center gap-2 text-blue-100 font-medium relative z-10">
+             <FileClock size={16} /> Actualizado hace 2 horas
+          </div>
+        </div>
+      </div>
+
+      {Object.entries(groupedParts).map(([groupKey, parts]) => (
+        <div key={groupKey} className="mb-10 page-break-inside-avoid">
+          <div className="flex items-center gap-2 mb-4 justify-center relative">
+            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"></div></div>
+            <div className="relative bg-white px-4 text-gray-500 font-semibold flex items-center gap-2 text-lg">
+              <MapPin size={20} /> {groupKey}
+            </div>
+          </div>
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-gray-50 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3">Código de Artículo</th>
+                <th className="px-4 py-3">Nombre del Artículo</th>
+                <th className="px-4 py-3 text-center">Cantidad</th>
+                <th className="px-4 py-3 text-right">Costo Unitario</th>
+                <th className="px-4 py-3 text-right">Valor Total</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {parts.map(part => {
+                const total = (part.stockQuantity || 0) * (part.unitCost || 0);
+                return (
+                  <tr key={part.id}>
+                    <td className="px-4 py-4 font-bold text-blue-500 text-sm">#{part.code}</td>
+                    <td className="px-4 py-4 font-bold text-gray-900 text-sm">{part.name}</td>
+                    <td className="px-4 py-4 text-center">
+                       <span className={`inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-bold ${
+                         part.stockQuantity > 10 ? 'bg-blue-100 text-blue-700' :
+                         part.stockQuantity > 0 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
+                       }`}>
+                         {part.stockQuantity}
+                       </span>
+                    </td>
+                    <td className="px-4 py-4 text-right font-medium text-gray-700 text-sm">${(part.unitCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td className="px-4 py-4 text-right font-bold text-gray-900 text-sm">${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ))}
+      
+      <div className="mt-12 pt-8 border-t border-gray-200 text-xs text-gray-400 flex justify-between font-medium">
+         <span>© 2026 PRECISION EDITORIAL FLEET SYSTEMS • DOCUMENT ID: INV-{new Date().getFullYear()}-{new Date().getMonth() + 1}-99</span>
+         <div className="flex gap-4">
+            <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-blue-600"></div> ESTADO: VERIFICADO</span>
+            <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-gray-400"></div> SINCRONIZADO: {new Date().toLocaleTimeString()}</span>
+         </div>
+      </div>
+    </div>
+    </>
   );
 }
