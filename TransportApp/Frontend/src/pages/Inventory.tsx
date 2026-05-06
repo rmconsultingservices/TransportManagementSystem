@@ -33,6 +33,14 @@ export default function Inventory() {
   const [historyPart, setHistoryPart] = useState<SparePart | null>(null);
   const [historyData, setHistoryData] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [showPrintModal, setShowPrintModal] = useState(false);
+  const [printFilters, setPrintFilters] = useState({
+    warehouseFrom: '',
+    warehouseTo: '',
+    rackFrom: '',
+    rackTo: '',
+    stockFilter: 'all'
+  });
 
   const filteredParts = spareParts.filter(part => {
     const search = searchTerm.toLowerCase();
@@ -195,10 +203,28 @@ export default function Inventory() {
       setHistoryLoading(false);
     }
   };
-  const totalItems = spareParts.length;
-  const totalValue = spareParts.reduce((sum, part) => sum + ((part.stockQuantity || 0) * (part.unitCost || 0)), 0);
+  const printableParts = spareParts.filter(part => {
+    const warehouse = part.warehouse?.name || 'Sin Almacén';
+    const rack = part.location?.name || 'Sin Rack';
+    const stock = part.stockQuantity || 0;
 
-  const groupedParts = spareParts.reduce((acc, part) => {
+    const matchesWarehouse = (!printFilters.warehouseFrom || warehouse >= printFilters.warehouseFrom) &&
+                             (!printFilters.warehouseTo || warehouse <= printFilters.warehouseTo);
+    
+    const matchesRack = (!printFilters.rackFrom || rack >= printFilters.rackFrom) &&
+                        (!printFilters.rackTo || rack <= printFilters.rackTo);
+
+    const matchesStock = printFilters.stockFilter === 'all' ? true :
+                         printFilters.stockFilter === 'greater' ? stock > 0 :
+                         printFilters.stockFilter === 'equal' ? stock === 0 : true;
+
+    return matchesWarehouse && matchesRack && matchesStock;
+  });
+
+  const totalItemsPrint = printableParts.length;
+  const totalValuePrint = printableParts.reduce((sum, part) => sum + ((part.stockQuantity || 0) * (part.unitCost || 0)), 0);
+
+  const groupedParts = printableParts.reduce((acc, part) => {
     const locName = part.warehouse?.name || 'Sin Almacén';
     const rackName = part.location?.name || 'Sin Rack';
     const key = `Ubicación: ${locName} (${rackName})`;
@@ -206,6 +232,9 @@ export default function Inventory() {
     acc[key].push(part);
     return acc;
   }, {} as Record<string, SparePart[]>);
+
+  const uniqueWarehouses = Array.from(new Set(spareParts.map(p => p.warehouse?.name || 'Sin Almacén'))).sort();
+  const uniqueRacks = Array.from(new Set(spareParts.map(p => p.location?.name || 'Sin Rack'))).sort();
 
   return (
     <>
@@ -220,7 +249,7 @@ export default function Inventory() {
         </div>
         <div className="flex gap-2">
           <button 
-            onClick={() => window.print()}
+            onClick={() => setShowPrintModal(true)}
             className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors shadow-sm"
           >
             <Printer size={20} />
@@ -537,9 +566,116 @@ export default function Inventory() {
                          </tbody>
                       </table>
                    </div>
-                )}
+               )}
              </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Filtros para Impresión */}
+      {showPrintModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <Printer className="text-amber-500" size={24} /> Opciones de Reporte
+              </h3>
+              <button onClick={() => setShowPrintModal(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+                <X size={24} />
+              </button>
+            </div>
+            <div className="p-6 space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Almacén (Desde)</label>
+                  <select 
+                    value={printFilters.warehouseFrom}
+                    onChange={(e) => setPrintFilters({...printFilters, warehouseFrom: e.target.value})}
+                    className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm"
+                  >
+                    <option value="">Cualquiera</option>
+                    {uniqueWarehouses.map(w => <option key={w} value={w}>{w}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Almacén (Hasta)</label>
+                  <select 
+                    value={printFilters.warehouseTo}
+                    onChange={(e) => setPrintFilters({...printFilters, warehouseTo: e.target.value})}
+                    className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm"
+                  >
+                    <option value="">Cualquiera</option>
+                    {uniqueWarehouses.map(w => <option key={w} value={w}>{w}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Rack (Desde)</label>
+                  <select 
+                    value={printFilters.rackFrom}
+                    onChange={(e) => setPrintFilters({...printFilters, rackFrom: e.target.value})}
+                    className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm"
+                  >
+                    <option value="">Cualquiera</option>
+                    {uniqueRacks.map(r => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Rack (Hasta)</label>
+                  <select 
+                    value={printFilters.rackTo}
+                    onChange={(e) => setPrintFilters({...printFilters, rackTo: e.target.value})}
+                    className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm"
+                  >
+                    <option value="">Cualquiera</option>
+                    {uniqueRacks.map(r => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Existencia</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'all', label: 'Todos' },
+                    { id: 'greater', label: '> 0' },
+                    { id: 'equal', label: '= 0' }
+                  ].map((opt) => (
+                    <button
+                      key={opt.id}
+                      onClick={() => setPrintFilters({...printFilters, stockFilter: opt.id})}
+                      className={`px-3 py-2 text-xs font-bold rounded-lg border transition-all ${
+                        printFilters.stockFilter === opt.id 
+                        ? 'bg-amber-500 border-amber-500 text-white shadow-md' 
+                        : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="p-6 bg-gray-50 dark:bg-gray-700/30 border-t border-gray-100 dark:border-gray-700 flex gap-3">
+              <button 
+                onClick={() => setShowPrintModal(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 font-bold text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                Cerrar
+              </button>
+              <button 
+                onClick={() => {
+                  setShowPrintModal(false);
+                  setTimeout(() => window.print(), 100);
+                }}
+                className="flex-1 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-bold text-sm shadow-lg shadow-amber-500/20 transition-all flex items-center justify-center gap-2"
+              >
+                <Printer size={18} /> Generar Reporte
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -558,7 +694,7 @@ export default function Inventory() {
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div className="bg-white border border-gray-200 rounded-lg p-5 flex flex-col justify-center">
           <p className="text-gray-500 font-medium text-sm mb-1">Total de Artículos (SKUs)</p>
-          <p className="text-4xl font-black text-gray-900">{totalItems.toLocaleString()}</p>
+          <p className="text-4xl font-black text-gray-900">{totalItemsPrint.toLocaleString()}</p>
           <div className="mt-2 flex items-center gap-2 text-blue-600 font-bold text-xs uppercase tracking-tight">
              <TrendingUp size={14} /> +12% vs el mes pasado
           </div>
@@ -568,7 +704,7 @@ export default function Inventory() {
              <Printer size={80} />
           </div>
           <p className="text-blue-100 font-medium text-sm mb-1 relative z-10">Valor Total de Inventario</p>
-          <p className="text-4xl font-black relative z-10">${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          <p className="text-4xl font-black relative z-10">${totalValuePrint.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           <div className="mt-2 flex items-center gap-2 text-blue-100 font-bold text-xs uppercase tracking-tight relative z-10">
              <FileClock size={14} /> Actualizado hace 2 horas
           </div>

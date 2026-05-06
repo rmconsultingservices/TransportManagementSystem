@@ -49,7 +49,7 @@ function Layout() {
   const toggleInventory = () => setIsInventoryExpanded(!isInventoryExpanded);
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 font-sans overflow-hidden">
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 font-sans overflow-hidden print:block print:h-auto print:overflow-visible">
       {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (
         <div 
@@ -122,7 +122,7 @@ function Layout() {
       </aside>
       
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden print:block print:h-auto print:overflow-visible">
          <header className="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 sm:px-6 shrink-0 z-10 print:hidden">
            <div className="flex items-center gap-3">
              <button 
@@ -146,7 +146,7 @@ function Layout() {
              <LogOut size={18} /> <span className="hidden sm:inline">Salir</span>
            </button>
          </header>
-         <div className="flex-1 overflow-y-auto">
+         <div className="flex-1 overflow-y-auto print:block print:h-auto print:overflow-visible">
            <Outlet />
          </div>
       </main>
