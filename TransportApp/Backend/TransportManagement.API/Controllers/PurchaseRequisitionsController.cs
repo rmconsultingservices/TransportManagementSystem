@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TransportManagement.API.Data;
 using TransportManagement.API.Models;
@@ -64,10 +64,15 @@ namespace TransportManagement.API.Controllers
 
             foreach (var q in req.Quotations)
             {
-                q.IsSelected = (q.Id == quoteId);
+                if (q.Id == quoteId)
+                {
+                    q.IsSelected = !q.IsSelected; // Toggle selection
+                }
             }
 
-            req.Status = "Comprada";
+            var anySelected = req.Quotations.Any(q => q.IsSelected);
+            req.Status = anySelected ? "Comprada" : "Cotizando";
+
             await _context.SaveChangesAsync();
 
             return NoContent();

@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TransportManagement.API.Data;
 using TransportManagement.API.Models;
@@ -101,14 +101,16 @@ namespace TransportManagement.API.Controllers
 
                 if (selectedQuote == null) continue; // Skip if no quote from this supplier
 
+                var qtyToOrder = selectedQuote.Quantity > 0 ? selectedQuote.Quantity : req.Quantity;
+
                 po.Details.Add(new PurchaseOrderDetail
                 {
                     PurchaseRequisitionId = req.Id,
-                    QuantityOrdered = req.Quantity,
+                    QuantityOrdered = qtyToOrder,
                     UnitPrice = selectedQuote.UnitPrice
                 });
 
-                total += (req.Quantity * selectedQuote.UnitPrice);
+                total += (qtyToOrder * selectedQuote.UnitPrice);
                 req.Status = "Comprada"; 
             }
 

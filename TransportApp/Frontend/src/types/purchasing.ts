@@ -1,4 +1,4 @@
-export interface Supplier {
+﻿export interface Supplier {
   id: number;
   name: string;
   taxId?: string;
@@ -16,6 +16,7 @@ export interface Quotation {
   supplierId: number;
   supplier?: Supplier;
   unitPrice: number;
+  quantity: number;
   dateReceived: string;
   notes?: string;
   isSelected: boolean;

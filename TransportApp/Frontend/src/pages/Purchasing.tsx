@@ -49,6 +49,7 @@ export default function Purchasing() {
   const [quotingReqId, setQuotingReqId] = useState<number | null>(null);
   const [quoteSupplierId, setQuoteSupplierId] = useState<number | ''>('');
   const [quotePrice, setQuotePrice] = useState<number | ''>('');
+  const [quoteQuantity, setQuoteQuantity] = useState<number | ''>('');
   const [quoteNotes, setQuoteNotes] = useState('');
 
   const fetchData = async () => {
@@ -174,17 +175,26 @@ export default function Purchasing() {
     }
   };
 
+  // Open quote entry form and set default split quantity
+  const handleOpenQuotingForm = (req: PurchaseRequisition) => {
+    setQuotingReqId(req.id);
+    const alreadyQuotedQty = req.quotations?.reduce((acc, q) => acc + (q.quantity || 0), 0) || 0;
+    const remaining = Math.max(1, req.quantity - alreadyQuotedQty);
+    setQuoteQuantity(remaining);
+  };
+
   const handleAddQuote = async (e: React.FormEvent, reqId: number) => {
     e.preventDefault();
-    if (quoteSupplierId === '' || quotePrice === '') return;
+    if (quoteSupplierId === '' || quotePrice === '' || quoteQuantity === '') return;
     try {
       await purchasingService.addQuotation(reqId, {
         supplierId: Number(quoteSupplierId),
         unitPrice: Number(quotePrice),
+        quantity: Number(quoteQuantity),
         notes: quoteNotes || undefined
       });
       setQuotingReqId(null);
-      setQuoteSupplierId(''); setQuotePrice(''); setQuoteNotes('');
+      setQuoteSupplierId(''); setQuotePrice(''); setQuoteQuantity(''); setQuoteNotes('');
       fetchData();
     } catch (error) {
       console.error('Error adding quote:', error);
@@ -194,7 +204,7 @@ export default function Purchasing() {
   const handleSelectQuote = async (reqId: number, quoteId: number) => {
     try {
       await purchasingService.selectQuotation(reqId, quoteId);
-      alert('Cotización Aprobada. Queda lista para ser agrupada en la próxima Orden de Compra de ese proveedor.');
+      alert('Selección de cotización actualizada para esta requisición.');
       fetchData();
     } catch (error) {
        console.error('Error selecting quote:', error);
@@ -204,7 +214,7 @@ export default function Purchasing() {
   const handleGeneratePO = async (supplierId: number) => {
     const pendingReqsForSupplier = requisitions.filter(r => 
       r.status === 'Comprada' && 
-      !purchaseOrders.some(po => po.details?.some(d => d.purchaseRequisitionId === r.id)) &&
+      !purchaseOrders.some(po => po.supplierId === supplierId && po.details?.some(d => d.purchaseRequisitionId === r.id)) &&
       r.quotations?.some(q => q.supplierId === supplierId && q.isSelected)
     );
 
@@ -642,7 +652,7 @@ export default function Purchasing() {
           {suppliers.map(sup => {
             const pendingReqs = requisitions.filter(r => 
               r.status === 'Comprada' && 
-              !purchaseOrders.some(po => po.details?.some(d => d.purchaseRequisitionId === r.id)) &&
+              !purchaseOrders.some(po => po.supplierId === sup.id && po.details?.some(d => d.purchaseRequisitionId === r.id)) &&
               r.quotations?.some(q => q.supplierId === sup.id && q.isSelected)
             );
             
@@ -741,7 +751,7 @@ export default function Purchasing() {
                                 <span className="text-xs text-gray-500 block">Req #{r.id.toString().padStart(4, '0')} • Solicitado por: {r.serviceRequest?.vehicle?.licensePlate || 'Taller'}</span>
                               </div>
                               <div className="text-right">
-                                <span className="font-bold text-gray-900 dark:text-white">Cant: {r.quantity}</span>
+                                <span className="font-bold text-gray-900 dark:text-white">Cant: {po.details?.find(d => d.purchaseRequisitionId === r.id)?.quantityOrdered || r.quantity}</span>
                                 <span className="text-xs text-gray-500 block">PU: ${(po.details?.find(d => d.purchaseRequisitionId === r.id)?.unitPrice || 0).toFixed(2)}</span>
                               </div>
                             </div>
@@ -761,123 +771,132 @@ export default function Purchasing() {
             <div className="py-12 text-center text-gray-500">No hay requisiciones de taller pendientes.</div>
           ) : (
             <div className="grid grid-cols-1 gap-6">
-              {requisitions.map(req => (
-                <div key={req.id} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden flex flex-col justify-between hover:shadow-md transition-shadow">
-                  <div className="p-6 flex flex-col md:flex-row justify-between items-start gap-4 border-b border-gray-100 dark:border-gray-700">
-                    <div>
-                      <div className="flex items-center gap-3 mb-1">
-                        <span className="font-bold text-gray-900 dark:text-white text-lg">Requisición #{req.id.toString().padStart(4, '0')}</span>
-                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase border ${
-                           req.status === 'Pendiente' ? 'bg-amber-100 text-amber-800 border-amber-200' :
-                           req.status === 'Cotizando' ? 'bg-blue-100 text-blue-800 border-blue-200' :
-                           req.status === 'Comprada' ? 'bg-green-100 text-green-800 border-green-200' :
-                           'bg-gray-100 text-gray-800'
-                        }`}>
-                          {req.status}
-                        </span>
-                      </div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                        Repuesto: <strong className="text-indigo-600 dark:text-indigo-400 text-base">{req.partNameOrDescription}</strong> (Cant: {req.quantity})
-                      </div>
-                      
-                      {req.serviceRequest && (
-                        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md p-3 mb-2 shadow-sm">
-                          <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1 flex items-center gap-1.5">
-                            Motivo de la Solicitud (OT #{req.serviceRequestId})
-                            <span className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-350 px-1.5 py-0.5 rounded text-[10px]">{req.serviceRequest.repairType}</span>
-                          </div>
-                          <p className="text-sm text-gray-700 dark:text-gray-355 italic">"{req.serviceRequest.description}"</p>
-                        </div>
-                      )}
-
-                      <div className="text-xs text-gray-500 mt-1">
-                        Vehículo: {req.serviceRequest?.vehicle?.licensePlate || req.serviceRequest?.trailer?.licensePlate || 'Unidad de Flota'} • Solicitado el {new Date(req.dateRequested).toLocaleDateString()}
-                      </div>
-                    </div>
-                    {req.status !== 'Comprada' && quotingReqId !== req.id && (
-                      <button 
-                        onClick={() => setQuotingReqId(req.id)}
-                        className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-650 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 px-4 py-2 rounded-md font-medium text-sm transition-colors shadow-sm whitespace-nowrap"
-                      >
-                        + Ingresar Cotización
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Quotations Form */}
-                  {quotingReqId === req.id && (
-                    <div className="p-5 bg-blue-50/50 dark:bg-blue-950/20 border-b border-gray-100 dark:border-gray-800">
-                      <h4 className="text-sm font-semibold mb-3 flex items-center gap-2 text-blue-800 dark:text-blue-400"><DollarSign size={16}/> Nueva Cotización</h4>
-                      <form onSubmit={(e) => handleAddQuote(e, req.id)} className="flex flex-wrap gap-4 items-end">
-                        <div className="flex-1 min-w-[200px]">
-                          <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Proveedor</label>
-                          <select required value={quoteSupplierId} onChange={e => setQuoteSupplierId(e.target.value === '' ? '' : Number(e.target.value))} className="w-full text-sm rounded border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
-                            <option value="" disabled className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">Seleccione proveedor...</option>
-                            {suppliers.filter(s => s.isActive).map(s => <option key={s.id} value={s.id} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">{s.name}</option>)}
-                          </select>
-                        </div>
-                        <div className="w-32">
-                          <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Precio Unit. ($)</label>
-                          <input type="number" step="0.01" required value={quotePrice} onChange={e => setQuotePrice(e.target.value === '' ? '' : Number(e.target.value))} className="w-full text-sm rounded border border-gray-300 dark:border-gray-605 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white" placeholder="0.00"/>
-                        </div>
-                        <div className="flex-1 min-w-[200px]">
-                          <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Notas (Opcional)</label>
-                          <input type="text" value={quoteNotes} onChange={e => setQuoteNotes(e.target.value)} className="w-full text-sm rounded border border-gray-300 dark:border-gray-605 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white" placeholder="Ej. Original GM, Entrega 3 días..."/>
-                        </div>
-                        <div className="flex gap-2">
-                          <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium">Registrar Cotización</button>
-                          <button type="button" onClick={() => setQuotingReqId(null)} className="text-gray-500 text-sm px-2">Cancelar</button>
-                        </div>
-                      </form>
-                    </div>
-                  )}
-
-                  {/* Quotes List */}
-                  {req.quotations && req.quotations.length > 0 && (
-                    <div className="p-5">
-                      <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3 uppercase tracking-wider">Cuadro Comparativo de Presupuestos ({req.quotations.length})</h4>
-                      <div className="space-y-2">
-                        {req.quotations.map(quote => (
-                          <div key={quote.id} className={`flex justify-between items-center p-3 rounded-lg border ${
-                            quote.isSelected 
-                             ? 'bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-900' 
-                             : req.status === 'Comprada' ? 'bg-gray-50 border-gray-100 dark:bg-gray-900 dark:border-gray-800 opacity-60' : 'bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700'
+              {requisitions.map(req => {
+                const totalSelectedQty = req.quotations?.filter(q => q.isSelected).reduce((acc, q) => acc + (q.quantity || 0), 0) || 0;
+                
+                return (
+                  <div key={req.id} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden flex flex-col justify-between hover:shadow-md transition-shadow">
+                    <div className="p-6 flex flex-col md:flex-row justify-between items-start gap-4 border-b border-gray-100 dark:border-gray-700">
+                      <div>
+                        <div className="flex items-center gap-3 mb-1">
+                          <span className="font-bold text-gray-900 dark:text-white text-lg">Requisición #{req.id.toString().padStart(4, '0')}</span>
+                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase border ${
+                             req.status === 'Pendiente' ? 'bg-amber-100 text-amber-800 border-amber-200' :
+                             req.status === 'Cotizando' ? 'bg-blue-100 text-blue-800 border-blue-200' :
+                             req.status === 'Comprada' ? 'bg-green-100 text-green-800 border-green-200' :
+                             'bg-gray-100 text-gray-800'
                           }`}>
-                            <div className="flex-1">
-                              <div className="font-semibold text-gray-900 dark:text-white">{quote.supplier?.name || `Prov #${quote.supplierId}`}</div>
-                              {quote.notes && <div className="text-xs text-gray-500 italic mt-0.5">{quote.notes}</div>}
+                            {req.status}
+                          </span>
+                        </div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                          Repuesto: <strong className="text-indigo-600 dark:text-indigo-400 text-base">{req.partNameOrDescription}</strong> (Cant Solicitada: {req.quantity}) 
+                          {totalSelectedQty > 0 && <span className="text-emerald-600 font-bold ml-2">(Cant Aprobada: {totalSelectedQty}/{req.quantity})</span>}
+                        </div>
+                        
+                        {req.serviceRequest && (
+                          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md p-3 mb-2 shadow-sm">
+                            <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1 flex items-center gap-1.5">
+                              Motivo de la Solicitud (OT #{req.serviceRequestId})
+                              <span className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-350 px-1.5 py-0.5 rounded text-[10px]">{req.serviceRequest.repairType}</span>
                             </div>
-                            <div className="text-right flex items-center gap-4">
-                              <div className="text-lg font-bold text-gray-900 dark:text-white">
-                                ${quote.unitPrice.toFixed(2)}
-                                <span className="block text-[10px] text-gray-500 font-normal uppercase mt-0.5">Precio Unidad</span>
+                            <p className="text-sm text-gray-700 dark:text-gray-355 italic">"{req.serviceRequest.description}"</p>
+                          </div>
+                        )}
+
+                        <div className="text-xs text-gray-500 mt-1">
+                          Vehículo: {req.serviceRequest?.vehicle?.licensePlate || req.serviceRequest?.trailer?.licensePlate || 'Unidad de Flota'} • Solicitado el {new Date(req.dateRequested).toLocaleDateString()}
+                        </div>
+                      </div>
+                      {quotingReqId !== req.id && (
+                        <button 
+                          onClick={() => handleOpenQuotingForm(req)}
+                          className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-650 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 px-4 py-2 rounded-md font-medium text-sm transition-colors shadow-sm whitespace-nowrap"
+                        >
+                          + Ingresar Cotización
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Quotations Form */}
+                    {quotingReqId === req.id && (
+                      <div className="p-5 bg-blue-50/50 dark:bg-blue-950/20 border-b border-gray-100 dark:border-gray-800">
+                        <h4 className="text-sm font-semibold mb-3 flex items-center gap-2 text-blue-800 dark:text-blue-400"><DollarSign size={16}/> Nueva Cotización</h4>
+                        <form onSubmit={(e) => handleAddQuote(e, req.id)} className="flex flex-wrap gap-4 items-end">
+                          <div className="flex-1 min-w-[200px]">
+                            <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Proveedor</label>
+                            <select required value={quoteSupplierId} onChange={e => setQuoteSupplierId(e.target.value === '' ? '' : Number(e.target.value))} className="w-full text-sm rounded border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+                              <option value="" disabled className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">Seleccione proveedor...</option>
+                              {suppliers.filter(s => s.isActive).map(s => <option key={s.id} value={s.id} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">{s.name}</option>)}
+                            </select>
+                          </div>
+                          <div className="w-24">
+                            <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Cantidad</label>
+                            <input type="number" min="1" max={req.quantity} required value={quoteQuantity} onChange={e => setQuoteQuantity(e.target.value === '' ? '' : Number(e.target.value))} className="w-full text-sm rounded border border-gray-300 dark:border-gray-605 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white" placeholder="1"/>
+                          </div>
+                          <div className="w-32">
+                            <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Precio Unit. ($)</label>
+                            <input type="number" step="0.01" required value={quotePrice} onChange={e => setQuotePrice(e.target.value === '' ? '' : Number(e.target.value))} className="w-full text-sm rounded border border-gray-300 dark:border-gray-605 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white" placeholder="0.00"/>
+                          </div>
+                          <div className="flex-1 min-w-[200px]">
+                            <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Notas (Opcional)</label>
+                            <input type="text" value={quoteNotes} onChange={e => setQuoteNotes(e.target.value)} className="w-full text-sm rounded border border-gray-300 dark:border-gray-605 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white" placeholder="Ej. Original GM, Entrega 3 días..."/>
+                          </div>
+                          <div className="flex gap-2">
+                            <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium">Registrar Cotización</button>
+                            <button type="button" onClick={() => setQuotingReqId(null)} className="text-gray-500 text-sm px-2">Cancelar</button>
+                          </div>
+                        </form>
+                      </div>
+                    )}
+
+                    {/* Quotes List */}
+                    {req.quotations && req.quotations.length > 0 && (
+                      <div className="p-5">
+                        <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3 uppercase tracking-wider">Cuadro Comparativo de Presupuestos ({req.quotations.length})</h4>
+                        <div className="space-y-2">
+                          {req.quotations.map(quote => (
+                            <div key={quote.id} className={`flex justify-between items-center p-3 rounded-lg border ${
+                              quote.isSelected 
+                               ? 'bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-900' 
+                               : 'bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700'
+                            }`}>
+                              <div className="flex-1">
+                                <div className="font-semibold text-gray-900 dark:text-white">{quote.supplier?.name || `Prov #${quote.supplierId}`}</div>
+                                {quote.notes && <div className="text-xs text-gray-500 italic mt-0.5">{quote.notes}</div>}
                               </div>
-                              <div className="text-xl font-bold text-emerald-600">
-                                ${(quote.unitPrice * req.quantity).toFixed(2)}
-                                <span className="block text-[10px] text-gray-500 font-normal uppercase mt-0.5">Costo Total</span>
-                              </div>
-                              
-                              {req.status !== 'Comprada' && (
+                              <div className="text-right flex items-center gap-4">
+                                <div className="text-xs text-gray-500 font-semibold dark:text-gray-400">
+                                  Cant: <span className="font-bold text-gray-900 dark:text-white">{quote.quantity || 1}</span> und.
+                                </div>
+                                <div className="text-lg font-bold text-gray-900 dark:text-white">
+                                  ${quote.unitPrice.toFixed(2)}
+                                  <span className="block text-[10px] text-gray-500 font-normal uppercase mt-0.5">Precio Unidad</span>
+                                </div>
+                                <div className="text-xl font-bold text-emerald-600">
+                                  ${(quote.unitPrice * (quote.quantity || 1)).toFixed(2)}
+                                  <span className="block text-[10px] text-gray-500 font-normal uppercase mt-0.5">Costo Total</span>
+                                </div>
+                                
                                 <button 
                                   onClick={() => handleSelectQuote(req.id, quote.id)}
-                                  className="ml-4 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 px-3 py-1.5 rounded text-sm font-medium transition-colors border border-emerald-300"
+                                  className={`ml-4 px-3 py-1.5 rounded text-sm font-medium transition-colors border ${
+                                    quote.isSelected
+                                      ? 'bg-red-50 hover:bg-red-100 text-red-700 border-red-200'
+                                      : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-700 border-emerald-300'
+                                  }`}
                                 >
-                                  Elegir y Comprar
+                                  {quote.isSelected ? 'Deseleccionar' : 'Elegir y Comprar'}
                                 </button>
-                              )}
-                              {quote.isSelected && (
-                                <div className="ml-4 flex items-center gap-1 text-green-700 text-sm font-bold bg-green-200 px-3 py-1.5 rounded">
-                                  <CheckCircle2 size={16}/> Compra Aprobada
-                                </div>
-                              )}
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
-              ))}
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -917,7 +936,7 @@ export default function Purchasing() {
                   type="text" 
                   value={editRif} 
                   onChange={e => setEditRif(e.target.value)} 
-                  className="w-full rounded border border-gray-300 dark:border-gray-650 px-3 py-2 bg-transparent dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium" 
+                  className="w-full rounded border border-gray-300 dark:border-gray-655 px-3 py-2 bg-transparent dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium" 
                   placeholder="Ej. J-12345678-9" 
                 />
               </div>

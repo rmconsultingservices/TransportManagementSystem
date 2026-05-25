@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
@@ -20,6 +20,8 @@ namespace TransportManagement.API.Models
 
         [Required]
         public decimal UnitPrice { get; set; }
+
+        public int Quantity { get; set; } = 1;
 
         public DateTime DateReceived { get; set; } = DateTime.UtcNow;
 
