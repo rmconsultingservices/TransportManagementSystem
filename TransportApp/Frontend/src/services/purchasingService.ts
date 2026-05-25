@@ -1,4 +1,4 @@
-import api from '../lib/api';
+﻿import api from '../lib/api';
 import type { PurchaseRequisition, Supplier, Quotation, PurchaseOrder, PurchaseInvoice } from '../types';
 
 export const purchasingService = {
@@ -10,6 +10,12 @@ export const purchasingService = {
   createSupplier: async (supplier: Partial<Supplier>): Promise<Supplier> => {
     const response = await api.post<Supplier>('/suppliers', supplier);
     return response.data;
+  },
+  updateSupplier: async (id: number, supplier: Supplier): Promise<void> => {
+    await api.put(`/suppliers/${id}`, supplier);
+  },
+  deleteSupplier: async (id: number): Promise<void> => {
+    await api.delete(`/suppliers/${id}`);
   },
 
   // Requisitions & Quotations

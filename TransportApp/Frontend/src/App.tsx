@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, Outlet, Navigate, useNavigate } from 'react-router-dom';
-import { Truck, Home, PackageOpen, Wrench, Users, ShoppingCart, FileText, LogOut, Menu, X, ChevronDown, ChevronRight, List, SlidersHorizontal, Tags, Scale, MapPin } from 'lucide-react';
+import { Truck, Home, PackageOpen, Wrench, Users, ShoppingCart, FileText, LogOut, Menu, X, ChevronDown, ChevronRight, List, SlidersHorizontal, Tags, Scale, MapPin, FileBarChart } from 'lucide-react';
 import { useAuthStore } from './store/authStore';
 
 import Fleet from './pages/Fleet';
@@ -22,6 +22,7 @@ import InventoryCategories from './pages/InventoryCategories';
 import UnitsOfMeasure from './pages/UnitsOfMeasure';
 import Warehouses from './pages/Warehouses';
 import Locations from './pages/Locations';
+import Reports from './pages/Reports';
 import { Shield, Building2, History } from 'lucide-react';
 import Dashboard from './pages/Dashboard';
 import VehicleDetail from './pages/VehicleDetail';
@@ -75,6 +76,7 @@ function Layout() {
         <nav className="flex-1 overflow-y-auto py-4">
           <ul className="space-y-1 px-3">
             <li><Link onClick={closeSidebar} to="/" className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"><Home size={20} className="text-gray-500" /> Inicio</Link></li>
+            <li><Link onClick={closeSidebar} to="/reports" className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"><FileBarChart size={20} className="text-gray-500" /> Reportes</Link></li>
             <li><Link onClick={closeSidebar} to="/fleet" className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"><Truck size={20} className="text-gray-500" /> Flota</Link></li>
             
             {/* Inventory Accordion Menu */}
@@ -164,6 +166,7 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route element={<Layout />}>
             <Route path="/" element={<Dashboard />} />
+            <Route path="/reports" element={<Reports />} />
             <Route path="/fleet" element={<Fleet />} />
             <Route path="/fleet/vehicle/:id" element={<VehicleDetail type="vehicle" />} />
             <Route path="/fleet/trailer/:id" element={<VehicleDetail type="trailer" />} />

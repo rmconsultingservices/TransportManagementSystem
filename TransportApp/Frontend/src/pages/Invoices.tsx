@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { FileText, Plus, Loader2, Save, X } from 'lucide-react';
 import { purchasingService } from '../services/purchasingService';
 import { inventoryService } from '../services/inventoryService';
+import SparePartSelector from '../components/SparePartSelector';
 import type { PurchaseInvoice, PurchaseInvoiceDetail, Supplier, SparePart } from '../types';
 
 export default function Invoices() {
@@ -78,6 +79,13 @@ export default function Invoices() {
         return;
     }
 
+    // Validation: make sure all lines have a valid spare part selected (not 0)
+    const hasInvalidLine = details.some(d => !d.sparePartId || d.sparePartId === 0);
+    if (hasInvalidLine) {
+        alert('Por favor seleccione un artículo válido en cada renglón.');
+        return;
+    }
+
     try {
       await purchasingService.createPurchaseInvoice({
         supplierId: Number(supplierId),
@@ -124,7 +132,7 @@ export default function Invoices() {
       </div>
 
       {showForm ? (
-        <form onSubmit={handleSave} className="bg-white dark:bg-gray-800 rounded-xl shadow border border-gray-200 dark:border-gray-700 overflow-hidden mb-8 animate-in fade-in slide-in-from-top-4 relative">
+        <form onSubmit={handleSave} className="bg-white dark:bg-gray-800 rounded-xl shadow border border-gray-200 dark:border-gray-700 overflow-visible mb-8 animate-in fade-in slide-in-from-top-4 relative">
           
           {/* Header Section (Master) */}
           <div className="p-6 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
@@ -137,7 +145,7 @@ export default function Invoices() {
                  <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">Proveedor</label>
                  <select required value={supplierId} onChange={e => setSupplierId(e.target.value === '' ? '' : Number(e.target.value))} className="w-full text-sm rounded border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
                     <option value="" disabled className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">Seleccione...</option>
-                    {suppliers.map(s => <option key={s.id} value={s.id} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">{s.name}</option>)}
+                    {suppliers.filter(s => s.isActive).map(s => <option key={s.id} value={s.id} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">{s.name}</option>)}
                  </select>
                </div>
                <div>
@@ -149,19 +157,19 @@ export default function Invoices() {
                  <input type="text" required value={invoiceNumber} onChange={e => setInvoiceNumber(e.target.value)} className="w-full text-sm rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-800" placeholder="Ej. 0001423"/>
                </div>
                <div>
-                 <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">Nº Control</label>
+                 <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">Nro. Control</label>
                  <input type="text" value={controlNumber} onChange={e => setControlNumber(e.target.value)} className="w-full text-sm rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-800" placeholder="Ej. 00-01235"/>
                </div>
              </div>
           </div>
 
           {/* Details Section (Grid) */}
-          <div className="p-0 overflow-x-auto">
+          <div className="p-0 overflow-visible">
              <table className="w-full text-sm text-left whitespace-nowrap">
                <thead className="text-xs text-gray-500 bg-gray-100 dark:bg-gray-800 uppercase font-semibold">
                  <tr>
                    <th className="px-4 py-3 w-10">Reng.</th>
-                   <th className="px-4 py-3 min-w-[250px]">Artículo / Repuesto destino</th>
+                   <th className="px-4 py-3 min-w-[280px]">Artículo / Repuesto destino</th>
                    <th className="px-4 py-3 w-32">Cantidad</th>
                    <th className="px-4 py-3 w-40">Costo Unit. ($)</th>
                    <th className="px-4 py-3 w-24">% IVA</th>
@@ -175,20 +183,22 @@ export default function Invoices() {
                     return (
                      <tr key={index} className="bg-white dark:bg-gray-900 group">
                        <td className="px-4 py-2 font-mono text-gray-400">{index + 1}</td>
-                       <td className="px-4 py-2">
-                          <select required value={d.sparePartId} onChange={e => updateLine(index, 'sparePartId', Number(e.target.value))} className="w-full bg-transparent border-0 border-b border-dashed border-gray-300 focus:border-blue-500 focus:ring-0 px-0 py-1 text-sm text-blue-800 font-medium dark:text-blue-400">
-                            <option value={0} disabled className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">-- Buscar Artículo en Inventario --</option>
-                            {parts.map(p => <option key={p.id} value={p.id} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">{p.code ? `[${p.code}] ` : ''}{p.name}</option>)}
-                          </select>
+                       <td className="px-4 py-2 min-w-[280px]">
+                          <SparePartSelector
+                            value={d.sparePartId || ''}
+                            onChange={id => updateLine(index, 'sparePartId', id)}
+                            spareParts={parts}
+                            placeholder="-- Buscar Artículo en Inventario --"
+                          />
                        </td>
                        <td className="px-4 py-2">
-                         <input type="number" step="0.01" min="0.01" required value={d.quantityReceived} onChange={e => updateLine(index, 'quantityReceived', Number(e.target.value))} className="w-full bg-transparent border-0 border-b border-gray-300 focus:border-blue-500 focus:ring-0 px-0 py-1 text-sm"/>
+                         <input type="number" step="0.01" min="0.01" required value={d.quantityReceived} onChange={e => updateLine(index, 'quantityReceived', Number(e.target.value))} className="w-full bg-transparent border-0 border-b border-gray-300 dark:border-gray-650 focus:border-blue-500 focus:ring-0 px-0 py-1 text-sm dark:text-white"/>
                        </td>
                        <td className="px-4 py-2">
-                         <input type="number" step="0.01" min="0" required value={d.unitCost} onChange={e => updateLine(index, 'unitCost', Number(e.target.value))} className="w-full bg-transparent border-0 border-b border-gray-300 focus:border-blue-500 focus:ring-0 px-0 py-1 text-sm"/>
+                         <input type="number" step="0.01" min="0" required value={d.unitCost} onChange={e => updateLine(index, 'unitCost', Number(e.target.value))} className="w-full bg-transparent border-0 border-b border-gray-300 dark:border-gray-650 focus:border-blue-500 focus:ring-0 px-0 py-1 text-sm dark:text-white"/>
                        </td>
                        <td className="px-4 py-2">
-                         <select value={d.taxPercentage} onChange={e => updateLine(index, 'taxPercentage', Number(e.target.value))} className="w-full bg-transparent border-0 border-b border-gray-300 focus:border-blue-500 focus:ring-0 px-0 py-1 text-sm text-gray-500 dark:text-gray-300">
+                         <select value={d.taxPercentage} onChange={e => updateLine(index, 'taxPercentage', Number(e.target.value))} className="w-full bg-transparent border-0 border-b border-gray-300 dark:border-gray-650 focus:border-blue-500 focus:ring-0 px-0 py-1 text-sm text-gray-500 dark:text-gray-300">
                            <option value={16} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">16.00</option>
                            <option value={8} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">8.00</option>
                            <option value={0} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">0.00 (E)</option>
