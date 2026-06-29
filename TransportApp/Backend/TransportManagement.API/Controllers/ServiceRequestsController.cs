@@ -26,6 +26,8 @@ namespace TransportManagement.API.Controllers
         public async Task<ActionResult<IEnumerable<ServiceRequest>>> GetServiceRequests()
         {
             return await _context.ServiceRequests
+                .AsNoTracking()
+                .AsSplitQuery()
                 .Include(s => s.Vehicle)
                 .Include(s => s.Trailer)
                 .Include(s => s.Driver)

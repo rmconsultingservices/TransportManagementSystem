@@ -24,7 +24,7 @@ namespace TransportManagement.API.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<MaintenanceOrder>>> GetMaintenanceOrders([FromQuery] int? vehicleId, [FromQuery] int? trailerId)
         {
-            var query = _context.MaintenanceOrders.AsQueryable();
+            var query = _context.MaintenanceOrders.AsNoTracking().AsQueryable();
 
             if (vehicleId.HasValue)
                 query = query.Where(m => m.VehicleId == vehicleId);
