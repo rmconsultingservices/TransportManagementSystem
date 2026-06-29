@@ -1,4 +1,4 @@
-﻿export interface Supplier {
+export interface Supplier {
   id: number;
   name: string;
   taxId?: string;
@@ -54,6 +54,8 @@ export interface PurchaseInvoice {
   subTotal: number;
   taxAmount: number;
   totalAmount: number;
+  attachmentUrl?: string;
+  isCancelled?: boolean;
   details?: PurchaseInvoiceDetail[];
 }
 

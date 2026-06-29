@@ -20,13 +20,13 @@ namespace TransportManagement.API.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Vehicle>>> GetVehicles()
         {
-            return await _context.Vehicles.Where(v => v.IsActive).ToListAsync();
+            return await _context.Vehicles.Include(v => v.FleetOwner).Where(v => v.IsActive).ToListAsync();
         }
 
         [HttpGet("{id}")]
         public async Task<ActionResult<Vehicle>> GetVehicle(int id)
         {
-            var vehicle = await _context.Vehicles.FirstOrDefaultAsync(v => v.Id == id);
+            var vehicle = await _context.Vehicles.Include(v => v.FleetOwner).FirstOrDefaultAsync(v => v.Id == id);
 
             if (vehicle == null)
             {

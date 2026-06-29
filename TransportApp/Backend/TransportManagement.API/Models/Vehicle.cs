@@ -15,6 +15,8 @@ namespace TransportManagement.API.Models
         public double CurrentMileage { get; set; }
         public double LastMaintenanceMileage { get; set; }
         public double MaintenanceInterval { get; set; } = 10000; // Default 10k km
+        public int? FleetOwnerId { get; set; }
+        public FleetOwner? FleetOwner { get; set; }
         public bool IsActive { get; set; } = true;
     }
 }

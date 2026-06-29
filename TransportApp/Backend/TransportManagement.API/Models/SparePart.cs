@@ -21,6 +21,7 @@ namespace TransportManagement.API.Models
 
         public int StockQuantity { get; set; } = 0;
         public decimal UnitCost { get; set; } = 0;
+        public string? ImageUrl { get; set; }
         
         public int? WarehouseId { get; set; }
         public Warehouse? Warehouse { get; set; }

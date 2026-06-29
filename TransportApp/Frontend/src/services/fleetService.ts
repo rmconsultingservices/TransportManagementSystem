@@ -1,7 +1,26 @@
 import api from '../lib/api';
-import type { Vehicle, Trailer } from '../types';
+import type { Vehicle, Trailer, FleetOwner } from '../types';
 
 export const fleetService = {
+  // Fleet Owners
+  getFleetOwners: async (): Promise<FleetOwner[]> => {
+    const response = await api.get<FleetOwner[]>('/fleetowners');
+    return response.data;
+  },
+  
+  createFleetOwner: async (owner: Omit<FleetOwner, 'id' | 'isActive'>): Promise<FleetOwner> => {
+    const response = await api.post<FleetOwner>('/fleetowners', owner);
+    return response.data;
+  },
+
+  updateFleetOwner: async (id: number, owner: FleetOwner): Promise<void> => {
+    await api.put(`/fleetowners/${id}`, owner);
+  },
+
+  deleteFleetOwner: async (id: number): Promise<void> => {
+    await api.delete(`/fleetowners/${id}`);
+  },
+
   // Vehicles
   getVehicles: async (): Promise<Vehicle[]> => {
     const response = await api.get<Vehicle[]>('/vehicles');

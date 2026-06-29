@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TransportManagement.API.Data;
 
@@ -11,9 +12,11 @@ using TransportManagement.API.Data;
 namespace TransportManagement.API.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260622160925_AddOwnerCompanyToFleet")]
+    partial class AddOwnerCompanyToFleet
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -133,35 +136,6 @@ namespace TransportManagement.API.Migrations
                     b.HasIndex("CompanyId");
 
                     b.ToTable("Drivers");
-                });
-
-            modelBuilder.Entity("TransportManagement.API.Models.FleetOwner", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("CompanyId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CompanyId");
-
-                    b.ToTable("FleetOwners");
                 });
 
             modelBuilder.Entity("TransportManagement.API.Models.InventoryAdjustment", b =>
@@ -341,86 +315,6 @@ namespace TransportManagement.API.Migrations
                     b.HasIndex("CompanyId");
 
                     b.ToTable("Mechanics");
-                });
-
-            modelBuilder.Entity("TransportManagement.API.Models.PhysicalInventory", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("CompanyId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("DateProcessed")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("DateStarted")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int?>("LocationId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Number")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<int>("WarehouseId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CompanyId");
-
-                    b.HasIndex("LocationId");
-
-                    b.HasIndex("WarehouseId");
-
-                    b.ToTable("PhysicalInventories");
-                });
-
-            modelBuilder.Entity("TransportManagement.API.Models.PhysicalInventoryDetail", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("PhysicalInventoryId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("RealStock")
-                        .HasColumnType("int");
-
-                    b.Property<int>("SparePartId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("TheoreticalStock")
-                        .HasColumnType("int");
-
-                    b.Property<decimal>("UnitCost")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PhysicalInventoryId");
-
-                    b.HasIndex("SparePartId");
-
-                    b.ToTable("PhysicalInventoryDetails");
                 });
 
             modelBuilder.Entity("TransportManagement.API.Models.PurchaseInvoice", b =>
@@ -873,9 +767,6 @@ namespace TransportManagement.API.Migrations
                     b.Property<int?>("EstimatedLifeSpanMonths")
                         .HasColumnType("int");
 
-                    b.Property<string>("ImageUrl")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
@@ -1007,9 +898,6 @@ namespace TransportManagement.API.Migrations
                     b.Property<double>("CurrentMileage")
                         .HasColumnType("float");
 
-                    b.Property<int?>("FleetOwnerId")
-                        .HasColumnType("int");
-
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
@@ -1023,6 +911,9 @@ namespace TransportManagement.API.Migrations
                     b.Property<double>("MaintenanceInterval")
                         .HasColumnType("float");
 
+                    b.Property<string>("OwnerCompany")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Type")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -1030,8 +921,6 @@ namespace TransportManagement.API.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CompanyId");
-
-                    b.HasIndex("FleetOwnerId");
 
                     b.ToTable("Trailers");
                 });
@@ -1131,9 +1020,6 @@ namespace TransportManagement.API.Migrations
                     b.Property<double>("CurrentMileage")
                         .HasColumnType("float");
 
-                    b.Property<int?>("FleetOwnerId")
-                        .HasColumnType("int");
-
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
@@ -1151,14 +1037,15 @@ namespace TransportManagement.API.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("OwnerCompany")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int>("Year")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
 
                     b.HasIndex("CompanyId");
-
-                    b.HasIndex("FleetOwnerId");
 
                     b.ToTable("Vehicles");
                 });
@@ -1192,17 +1079,6 @@ namespace TransportManagement.API.Migrations
                 });
 
             modelBuilder.Entity("TransportManagement.API.Models.Driver", b =>
-                {
-                    b.HasOne("TransportManagement.API.Models.Company", "Company")
-                        .WithMany()
-                        .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Company");
-                });
-
-            modelBuilder.Entity("TransportManagement.API.Models.FleetOwner", b =>
                 {
                     b.HasOne("TransportManagement.API.Models.Company", "Company")
                         .WithMany()
@@ -1294,50 +1170,6 @@ namespace TransportManagement.API.Migrations
                         .IsRequired();
 
                     b.Navigation("Company");
-                });
-
-            modelBuilder.Entity("TransportManagement.API.Models.PhysicalInventory", b =>
-                {
-                    b.HasOne("TransportManagement.API.Models.Company", "Company")
-                        .WithMany()
-                        .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("TransportManagement.API.Models.Location", "Location")
-                        .WithMany()
-                        .HasForeignKey("LocationId");
-
-                    b.HasOne("TransportManagement.API.Models.Warehouse", "Warehouse")
-                        .WithMany()
-                        .HasForeignKey("WarehouseId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Company");
-
-                    b.Navigation("Location");
-
-                    b.Navigation("Warehouse");
-                });
-
-            modelBuilder.Entity("TransportManagement.API.Models.PhysicalInventoryDetail", b =>
-                {
-                    b.HasOne("TransportManagement.API.Models.PhysicalInventory", "PhysicalInventory")
-                        .WithMany("Details")
-                        .HasForeignKey("PhysicalInventoryId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("TransportManagement.API.Models.SparePart", "SparePart")
-                        .WithMany()
-                        .HasForeignKey("SparePartId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("PhysicalInventory");
-
-                    b.Navigation("SparePart");
                 });
 
             modelBuilder.Entity("TransportManagement.API.Models.PurchaseInvoice", b =>
@@ -1662,13 +1494,7 @@ namespace TransportManagement.API.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("TransportManagement.API.Models.FleetOwner", "FleetOwner")
-                        .WithMany()
-                        .HasForeignKey("FleetOwnerId");
-
                     b.Navigation("Company");
-
-                    b.Navigation("FleetOwner");
                 });
 
             modelBuilder.Entity("TransportManagement.API.Models.UnitOfMeasure", b =>
@@ -1709,13 +1535,7 @@ namespace TransportManagement.API.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("TransportManagement.API.Models.FleetOwner", "FleetOwner")
-                        .WithMany()
-                        .HasForeignKey("FleetOwnerId");
-
                     b.Navigation("Company");
-
-                    b.Navigation("FleetOwner");
                 });
 
             modelBuilder.Entity("TransportManagement.API.Models.Warehouse", b =>
@@ -1735,11 +1555,6 @@ namespace TransportManagement.API.Migrations
                 });
 
             modelBuilder.Entity("TransportManagement.API.Models.InventoryAdjustment", b =>
-                {
-                    b.Navigation("Details");
-                });
-
-            modelBuilder.Entity("TransportManagement.API.Models.PhysicalInventory", b =>
                 {
                     b.Navigation("Details");
                 });

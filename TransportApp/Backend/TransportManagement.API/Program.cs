@@ -87,6 +87,14 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
+// Ensure uploads directory exists
+var uploadsPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "invoices");
+if (!Directory.Exists(uploadsPath))
+{
+    Directory.CreateDirectory(uploadsPath);
+}
+app.UseStaticFiles();
+
 // 1. Siempre primero
 if (app.Environment.IsDevelopment())
 {

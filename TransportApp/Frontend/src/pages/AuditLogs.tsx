@@ -3,6 +3,58 @@ import { History, Search } from 'lucide-react';
 import { adminService } from '../services/adminService';
 import type { AuditLog } from '../services/adminService';
 
+const keyTranslations: Record<string, string> = {
+  Id: 'ID',
+  CompanyId: 'ID Empresa',
+  ControlNumber: 'Número de Control',
+  AttachmentUrl: 'URL del Adjunto',
+  Name: 'Nombre',
+  Code: 'Código',
+  Description: 'Descripción',
+  IsActive: 'Activo',
+  RegistrationDate: 'Fecha de Registro',
+  StockQuantity: 'Cantidad en Stock',
+  UnitCost: 'Costo Unitario',
+  CategoryId: 'ID Categoría',
+  UnitOfMeasureId: 'ID Unidad de Medida',
+  WarehouseId: 'ID Almacén',
+  LocationId: 'ID Ubicación',
+  EstimatedLifeSpanKm: 'Vida Útil Est. (Km)',
+  EstimatedLifeSpanMonths: 'Vida Útil Est. (Meses)',
+  Remarks: 'Observaciones',
+  Status: 'Estado',
+  Date: 'Fecha',
+  Quantity: 'Cantidad',
+  TotalCost: 'Costo Total',
+  VehicleId: 'ID Vehículo',
+  DriverId: 'ID Conductor',
+  LicensePlate: 'Placa',
+  Brand: 'Marca',
+  Model: 'Modelo',
+  Year: 'Año'
+};
+
+const JsonViewer = ({ jsonString }: { jsonString: string }) => {
+  if (!jsonString || jsonString === '{}') return <span className="text-gray-400">-</span>;
+  try {
+    const obj = JSON.parse(jsonString);
+    return (
+      <div className="max-h-32 w-56 overflow-y-auto text-xs space-y-1 pr-1 custom-scrollbar">
+        {Object.entries(obj).map(([key, val]) => (
+          val !== null && val !== '' && (
+            <div key={key} className="border-b border-gray-100 dark:border-gray-800 pb-1 mb-1 last:border-0">
+              <span className="font-semibold text-gray-600 dark:text-gray-400 mr-1">{keyTranslations[key] || key}:</span>
+              <span className="text-gray-900 dark:text-gray-200 break-all">{String(val)}</span>
+            </div>
+          )
+        ))}
+      </div>
+    );
+  } catch (e) {
+    return <div className="text-xs break-all text-gray-500 w-56 max-h-32 overflow-y-auto">{jsonString}</div>;
+  }
+};
+
 export default function AuditLogs() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -87,13 +139,11 @@ export default function AuditLogs() {
                      <span className="text-[10px] text-gray-400">{log.windowsUsername}</span>
                   </div>
                 </td>
-                <td className="px-4 py-3">
-                  {log.oldValues == "{}" ? <span className="text-gray-400">-</span> : 
-                   <textarea readOnly className="w-40 text-xs bg-gray-100 dark:bg-gray-900 p-1 border-none rounded" value={log.oldValues} rows={3}></textarea>}
+                <td className="px-4 py-3 align-top">
+                  <JsonViewer jsonString={log.oldValues} />
                 </td>
-                <td className="px-4 py-3">
-                   {log.newValues == "{}" ? <span className="text-gray-400">-</span> : 
-                   <textarea readOnly className="w-40 text-xs bg-gray-100 dark:bg-gray-900 p-1 border-none rounded" value={log.newValues} rows={3}></textarea>}
+                <td className="px-4 py-3 align-top">
+                   <JsonViewer jsonString={log.newValues} />
                 </td>
               </tr>
             ))}

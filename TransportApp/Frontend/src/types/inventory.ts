@@ -28,6 +28,7 @@ export interface SparePart {
   warehouse?: { id: number; name: string };
   locationId?: number;
   location?: { id: number; name: string };
+  imageUrl?: string;
   registrationDate?: string;
   isActive: boolean;
 }
@@ -48,4 +49,28 @@ export interface InventoryAdjustment {
   remarks: string;
   createdBy?: string;
   details: InventoryAdjustmentDetail[];
+}
+
+export interface PhysicalInventoryDetail {
+  id?: number;
+  physicalInventoryId?: number;
+  sparePartId: number;
+  sparePart?: SparePart;
+  theoreticalStock: number;
+  realStock?: number;
+  unitCost: number;
+}
+
+export interface PhysicalInventory {
+  id?: number;
+  number: string;
+  description: string;
+  warehouseId: number;
+  warehouse?: { id: number; name: string };
+  locationId?: number;
+  location?: { id: number; name: string };
+  dateStarted: string;
+  dateProcessed?: string;
+  status: 'INITIATED' | 'PROCESSED' | 'CANCELLED';
+  details: PhysicalInventoryDetail[];
 }

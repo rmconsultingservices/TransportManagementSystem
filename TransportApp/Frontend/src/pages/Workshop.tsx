@@ -4,11 +4,12 @@ import { Wrench, Plus, Loader2, PenTool, CheckCircle2, Clock, UserCheck, Trash2,
 import { workshopService } from '../services/workshopService';
 import { fleetService } from '../services/fleetService';
 import { staffService } from '../services/staffService';
-import type { ServiceRequest, Vehicle, Driver, Mechanic } from '../types';
+import type { ServiceRequest, Vehicle, Driver, Mechanic, Trailer } from '../types';
 
 export default function Workshop() {
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [trailers, setTrailers] = useState<Trailer[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [mechanics, setMechanics] = useState<Mechanic[]>([]);
   const [loading, setLoading] = useState(true);
@@ -19,7 +20,7 @@ export default function Workshop() {
   const [selectedMechanicId, setSelectedMechanicId] = useState<number | ''>('');
 
   // Form state
-  const [vehicleId, setVehicleId] = useState<number | ''>('');
+  const [affectedUnit, setAffectedUnit] = useState<string>('');
   const [driverId, setDriverId] = useState<number | ''>('');
   const [repairType, setRepairType] = useState('Preventiva');
   const [description, setDescription] = useState('');
@@ -28,14 +29,16 @@ export default function Workshop() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [reqData, vehData, drvData, mechData] = await Promise.all([
+      const [reqData, vehData, trlData, drvData, mechData] = await Promise.all([
         workshopService.getRequests(),
         fleetService.getVehicles(),
+        fleetService.getTrailers(),
         staffService.getDrivers(),
         staffService.getMechanics()
       ]);
       setRequests(reqData);
       setVehicles(vehData);
+      setTrailers(trlData);
       setDrivers(drvData.filter(d => d.isActive));
       setMechanics(mechData.filter(m => m.isActive));
     } catch (error) {
@@ -51,9 +54,15 @@ export default function Workshop() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    let vId: number | undefined;
+    let tId: number | undefined;
+    if (affectedUnit.startsWith('v-')) vId = parseInt(affectedUnit.substring(2));
+    if (affectedUnit.startsWith('t-')) tId = parseInt(affectedUnit.substring(2));
+
     try {
       await workshopService.createRequest({
-        vehicleId: vehicleId === '' ? undefined : Number(vehicleId),
+        vehicleId: vId,
+        trailerId: tId,
         driverId: driverId === '' ? undefined : Number(driverId),
         repairType,
         description,
@@ -80,7 +89,7 @@ export default function Workshop() {
   };
 
   const resetForm = () => {
-    setVehicleId('');
+    setAffectedUnit('');
     setDriverId('');
     setRepairType('Preventiva');
     setDescription('');
@@ -142,16 +151,23 @@ export default function Workshop() {
           </h2>
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Vehículo Afectado</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Unidad Afectada</label>
               <select 
                 required
-                value={vehicleId} onChange={e => setVehicleId(e.target.value === '' ? '' : parseInt(e.target.value))}
+                value={affectedUnit} onChange={e => setAffectedUnit(e.target.value)}
                 className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
               >
-                <option value="" disabled className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">Seleccione un vehículo activo...</option>
-                {vehicles.map(v => (
-                  <option key={v.id} value={v.id} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">{v.licensePlate} - {v.brand} {v.model}</option>
-                ))}
+                <option value="" disabled className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">Seleccione una unidad activa...</option>
+                <optgroup label="Vehículos" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-semibold">
+                  {vehicles.map(v => (
+                    <option key={`v-${v.id}`} value={`v-${v.id}`} className="font-normal">{v.licensePlate} - {v.brand} {v.model}</option>
+                  ))}
+                </optgroup>
+                <optgroup label="Remolques" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-semibold">
+                  {trailers.map(t => (
+                    <option key={`t-${t.id}`} value={`t-${t.id}`} className="font-normal">{t.licensePlate} - {t.type} ({t.axlesCount} Ejes)</option>
+                  ))}
+                </optgroup>
               </select>
             </div>
             <div>
@@ -264,7 +280,7 @@ export default function Workshop() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="font-bold text-gray-900 dark:text-white uppercase">
-                        {req.vehicle?.licensePlate || 'N/A'}
+                        {req.vehicle ? req.vehicle.licensePlate : (req.trailer ? req.trailer.licensePlate : 'N/A')}
                       </div>
                       <div className="text-xs text-gray-600">{req.driver?.name || 'Chofer Desconocido'}</div>
                     </td>

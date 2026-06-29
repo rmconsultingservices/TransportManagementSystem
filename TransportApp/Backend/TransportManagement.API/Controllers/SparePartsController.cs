@@ -1,3 +1,5 @@
+using System.IO;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TransportManagement.API.Data;
@@ -179,6 +181,32 @@ namespace TransportManagement.API.Controllers
                 .ToList();
 
             return Ok(combinedHistory);
+        }
+
+        [HttpPost("{id}/image")]
+        public async Task<IActionResult> UploadImage(int id, IFormFile file)
+        {
+            if (file == null || file.Length == 0) return BadRequest("No se ha enviado ningún archivo.");
+
+            var sparePart = await _context.SpareParts.FindAsync(id);
+            if (sparePart == null) return NotFound();
+
+            var uploadsPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "spareparts");
+            if (!Directory.Exists(uploadsPath)) Directory.CreateDirectory(uploadsPath);
+
+            var fileExtension = Path.GetExtension(file.FileName);
+            var uniqueFileName = $"part_{id}_{Guid.NewGuid()}{fileExtension}";
+            var filePath = Path.Combine(uploadsPath, uniqueFileName);
+
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            sparePart.ImageUrl = $"/uploads/spareparts/{uniqueFileName}";
+            await _context.SaveChangesAsync();
+
+            return Ok(new { ImageUrl = sparePart.ImageUrl });
         }
 
         private bool SparePartExists(int id)

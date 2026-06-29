@@ -24,6 +24,7 @@ namespace TransportManagement.API.Data
         public DbSet<User> Users => Set<User>();
         public DbSet<UserCompany> UserCompanies => Set<UserCompany>();
         public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+        public DbSet<FleetOwner> FleetOwners => Set<FleetOwner>();
 
         public DbSet<Vehicle> Vehicles => Set<Vehicle>();
         public DbSet<Trailer> Trailers => Set<Trailer>();
@@ -36,6 +37,8 @@ namespace TransportManagement.API.Data
         public DbSet<Location> Locations => Set<Location>();
         public DbSet<InventoryAdjustment> InventoryAdjustments => Set<InventoryAdjustment>();
         public DbSet<InventoryAdjustmentDetail> InventoryAdjustmentDetails => Set<InventoryAdjustmentDetail>();
+        public DbSet<PhysicalInventory> PhysicalInventories => Set<PhysicalInventory>();
+        public DbSet<PhysicalInventoryDetail> PhysicalInventoryDetails => Set<PhysicalInventoryDetail>();
         public DbSet<MaintenanceOrder> MaintenanceOrders => Set<MaintenanceOrder>();
 
         // Service & Workshop Flow

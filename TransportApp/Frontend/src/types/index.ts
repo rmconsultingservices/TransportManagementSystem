@@ -1,3 +1,11 @@
+export interface FleetOwner {
+  id: number;
+  companyId: number;
+  name: string;
+  description: string;
+  isActive: boolean;
+}
+
 export interface Vehicle {
   id: number;
   licensePlate: string;
@@ -7,6 +15,8 @@ export interface Vehicle {
   currentMileage: number;
   lastMaintenanceMileage: number;
   maintenanceInterval: number;
+  fleetOwnerId?: number;
+  fleetOwner?: FleetOwner;
   isActive: boolean;
 }
 
@@ -18,6 +28,8 @@ export interface Trailer {
   currentMileage: number;
   lastMaintenanceMileage: number;
   maintenanceInterval: number;
+  fleetOwnerId?: number;
+  fleetOwner?: FleetOwner;
   isActive: boolean;
 }
 

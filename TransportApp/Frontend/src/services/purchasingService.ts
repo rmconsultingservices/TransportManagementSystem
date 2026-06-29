@@ -1,4 +1,4 @@
-﻿import api from '../lib/api';
+import api from '../lib/api';
 import type { PurchaseRequisition, Supplier, Quotation, PurchaseOrder, PurchaseInvoice } from '../types';
 
 export const purchasingService = {
@@ -48,6 +48,23 @@ export const purchasingService = {
   },
   createPurchaseInvoice: async (invoice: Partial<PurchaseInvoice>): Promise<PurchaseInvoice> => {
     const response = await api.post<PurchaseInvoice>('/purchaseinvoices', invoice);
+    return response.data;
+  },
+  updatePurchaseInvoice: async (id: number, invoice: PurchaseInvoice): Promise<void> => {
+    await api.put(`/purchaseinvoices/${id}`, invoice);
+  },
+  cancelPurchaseInvoice: async (id: number): Promise<void> => {
+    await api.post(`/purchaseinvoices/${id}/cancel`);
+  },
+  reactivatePurchaseInvoice: async (id: number): Promise<void> => {
+    await api.post(`/purchaseinvoices/${id}/reactivate`);
+  },
+  uploadInvoiceAttachment: async (id: number, file: File): Promise<{ attachmentUrl: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post<{ attachmentUrl: string }>(`/purchaseinvoices/${id}/attachment`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
     return response.data;
   }
 };

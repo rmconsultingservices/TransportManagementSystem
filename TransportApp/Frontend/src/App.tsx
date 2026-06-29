@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, Outlet, Navigate, useNavigate } from 'react-router-dom';
-import { Truck, Home, PackageOpen, Wrench, Users, ShoppingCart, FileText, LogOut, Menu, X, ChevronDown, ChevronRight, List, SlidersHorizontal, Tags, Scale, MapPin, FileBarChart } from 'lucide-react';
+import { Truck, Home, PackageOpen, Wrench, Users, ShoppingCart, FileText, LogOut, Menu, X, ChevronDown, ChevronRight, List, SlidersHorizontal, Tags, Scale, MapPin, FileBarChart, ClipboardList } from 'lucide-react';
 import { useAuthStore } from './store/authStore';
+import { Toaster } from 'react-hot-toast';
 
 import Fleet from './pages/Fleet';
 import Inventory from './pages/Inventory';
@@ -9,7 +10,6 @@ import Workshop from './pages/Workshop';
 import ServiceExecutionDetail from './pages/ServiceExecutionDetail';
 import Staff from './pages/Staff';
 import Purchasing from './pages/Purchasing';
-import Invoices from './pages/Invoices';
 import Login from './pages/Login';
 import CompanySelect from './pages/CompanySelect';
 import Companies from './pages/Companies';
@@ -22,6 +22,8 @@ import InventoryCategories from './pages/InventoryCategories';
 import UnitsOfMeasure from './pages/UnitsOfMeasure';
 import Warehouses from './pages/Warehouses';
 import Locations from './pages/Locations';
+import PhysicalInventories from './pages/PhysicalInventories';
+import PhysicalInventoryResults from './pages/PhysicalInventoryResults';
 import Reports from './pages/Reports';
 import { Shield, Building2, History } from 'lucide-react';
 import Dashboard from './pages/Dashboard';
@@ -95,6 +97,7 @@ function Layout() {
               {isInventoryExpanded && (
                 <ul className="mt-1 space-y-1 pl-9 pr-3 pb-2 animate-in slide-in-from-top-2 duration-200">
                   <li><Link onClick={closeSidebar} to="/inventory" className="flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"><List size={16} className="text-gray-400" /> Catálogo</Link></li>
+                  <li><Link onClick={closeSidebar} to="/inventory/physical" className="flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"><ClipboardList size={16} className="text-gray-400" /> Toma Física</Link></li>
                   <li><Link onClick={closeSidebar} to="/inventory/adjustments" className="flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"><SlidersHorizontal size={16} className="text-gray-400" /> Ajustes</Link></li>
                   <li><Link onClick={closeSidebar} to="/inventory/categories" className="flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"><Tags size={16} className="text-gray-400" /> Categorías</Link></li>
                   <li><Link onClick={closeSidebar} to="/inventory/units" className="flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"><Scale size={16} className="text-gray-400" /> Unidades</Link></li>
@@ -106,8 +109,7 @@ function Layout() {
 
             <li><Link onClick={closeSidebar} to="/workshop" className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"><Wrench size={20} className="text-gray-500" /> Taller</Link></li>
             <li><Link onClick={closeSidebar} to="/staff" className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"><Users size={20} className="text-gray-500" /> Personal</Link></li>
-            <li><Link onClick={closeSidebar} to="/purchasing" className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"><ShoppingCart size={20} className="text-gray-500" /> Compras</Link></li>
-            <li><Link onClick={closeSidebar} to="/invoices" className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"><FileText size={20} className="text-gray-500" /> C. x P.</Link></li>
+            <li><Link onClick={closeSidebar} to="/purchasing" className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"><ShoppingCart size={20} className="text-gray-500" /> Compras y CxP</Link></li>
             
             {user?.isSuperAdmin && (
               <>
@@ -152,6 +154,7 @@ function Layout() {
            <Outlet />
          </div>
       </main>
+      <Toaster position="top-right" />
     </div>
   );
 }
@@ -172,6 +175,8 @@ function App() {
             <Route path="/fleet/trailer/:id" element={<VehicleDetail type="trailer" />} />
 
             <Route path="/inventory" element={<Inventory />} />
+            <Route path="/inventory/physical" element={<PhysicalInventories />} />
+            <Route path="/inventory/physical/:id" element={<PhysicalInventoryResults />} />
             <Route path="/inventory/adjustments" element={<InventoryAdjustments />} />
             <Route path="/inventory/categories" element={<InventoryCategories />} />
             <Route path="/inventory/units" element={<UnitsOfMeasure />} />
@@ -181,7 +186,6 @@ function App() {
             <Route path="/workshop/:id" element={<ServiceExecutionDetail />} />
             <Route path="/staff" element={<Staff />} />
             <Route path="/purchasing" element={<Purchasing />} />
-            <Route path="/invoices" element={<Invoices />} />
             
             <Route path="/admin/companies" element={<Companies />} />
             <Route path="/admin/users" element={<UsersAdmin />} />

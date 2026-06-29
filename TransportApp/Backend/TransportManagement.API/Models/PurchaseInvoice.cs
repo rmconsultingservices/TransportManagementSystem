@@ -27,6 +27,9 @@ namespace TransportManagement.API.Models
         public decimal TaxAmount { get; set; }
         public decimal TotalAmount { get; set; }
 
+        public string? AttachmentUrl { get; set; }
+        public bool IsCancelled { get; set; } = false;
+
         public ICollection<PurchaseInvoiceDetail> Details { get; set; } = new List<PurchaseInvoiceDetail>();
     }
 }

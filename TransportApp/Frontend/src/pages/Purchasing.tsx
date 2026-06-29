@@ -7,9 +7,10 @@ import {
 import { Link } from 'react-router-dom';
 import { purchasingService } from '../services/purchasingService';
 import type { PurchaseRequisition, Supplier, PurchaseOrder } from '../types';
+import InvoicesTab from '../components/InvoicesTab';
 
 export default function Purchasing() {
-  const [activeTab, setActiveTab] = useState<'requisitions' | 'orders' | 'suppliers'>('requisitions');
+  const [activeTab, setActiveTab] = useState<'requisitions' | 'orders' | 'invoices' | 'suppliers'>('requisitions');
   const [requisitions, setRequisitions] = useState<PurchaseRequisition[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
@@ -363,6 +364,14 @@ export default function Purchasing() {
           onClick={() => { setActiveTab('orders'); setShowSupplierForm(false); }}
         >
           Órdenes de Compra
+        </button>
+        <button
+          className={`px-6 py-3 transition-colors border-b-2 flex items-center gap-2 ${
+            activeTab === 'invoices' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-900'
+          }`}
+          onClick={() => { setActiveTab('invoices'); setShowSupplierForm(false); }}
+        >
+          Facturas de Compra
         </button>
         <button
           className={`px-6 py-3 transition-colors border-b-2 flex items-center gap-2 ${
@@ -765,6 +774,8 @@ export default function Purchasing() {
             )}
           </div>
         </div>
+      ) : activeTab === 'invoices' ? (
+        <InvoicesTab />
       ) : (
         <div className="space-y-6">
           {requisitions.length === 0 ? (

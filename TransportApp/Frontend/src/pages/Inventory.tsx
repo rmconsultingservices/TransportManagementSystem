@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { PackageOpen, Plus, Loader2, Trash2, AlertTriangle, FileClock, X, ArrowUpRight, ArrowDownRight, Search, Printer, MapPin, TrendingUp } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { inventoryService } from '../services/inventoryService';
 import type { SparePart } from '../types';
 
@@ -10,8 +11,9 @@ export default function Inventory() {
   const [searchTerm, setSearchTerm] = useState('');
   
   // Form state
-// ... existing state ...
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [unitOfMeasureId, setUnitOfMeasureId] = useState<number>(0);
@@ -53,7 +55,6 @@ export default function Inventory() {
   });
 
   const fetchSparePartsAndCategories = async () => {
-// ... existing code ...
     try {
       setLoading(true);
       const [partsData, catData, unitsData, whData] = await Promise.all([
@@ -80,7 +81,6 @@ export default function Inventory() {
   };
 
   const fetchLocations = async (wId: number) => {
-// ... existing code ...
     try {
       const locData = await import('../services/locationService').then(m => m.locationService.getLocations(wId));
       setLocations(locData);
@@ -102,7 +102,6 @@ export default function Inventory() {
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
-// ... existing code ...
     e.preventDefault();
     try {
       const payload: any = {
@@ -129,32 +128,41 @@ export default function Inventory() {
       } else {
          payload.stockQuantity = 0;
          payload.unitCost = 0;
-         await inventoryService.createSparePart(payload);
+         const created = await inventoryService.createSparePart(payload);
+         payload.id = created.id;
       }
 
+      if (imageFile && payload.id) {
+         await inventoryService.uploadImage(payload.id, imageFile);
+      }
+
+      toast.success(editingId ? 'Componente actualizado' : 'Componente registrado');
       setShowForm(false);
       resetForm();
       fetchSparePartsAndCategories();
-    } catch (error) {
-      console.error('Error creating spare part:', error);
+    } catch (error: any) {
+      console.error('Error saving item:', error);
+      alert('Error al guardar el componente: ' + (error.response?.data?.message || error.response?.data || error.message));
     }
   };
 
   const handleDelete = async (id: number) => {
-// ... existing code ...
     if (confirm('¿Estás seguro de que deseas eliminar este repuesto?')) {
       try {
         await inventoryService.deleteSparePart(id);
+        toast.success('Componente eliminado');
         fetchSparePartsAndCategories();
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error al eliminar repuesto:', error);
+        alert('Error al eliminar: ' + (error.response?.data?.message || error.message));
       }
     }
   };
 
   const resetForm = () => {
-// ... existing code ...
     setEditingId(null);
+    setImageFile(null);
+    setPreviewUrl(null);
     setCode('');
     setName('');
     if (units.length > 0) setUnitOfMeasureId(units[0].id);
@@ -171,7 +179,6 @@ export default function Inventory() {
   };
 
   const handleEdit = (part: SparePart) => {
-// ... existing code ...
      setEditingId(part.id);
      setCode(part.code);
      setName(part.name);
@@ -181,16 +188,14 @@ export default function Inventory() {
      setLocationId(part.locationId || 0);
      setLifeSpanKm(part.estimatedLifeSpanKm ?? '');
      setLifeSpanMonths(part.estimatedLifeSpanMonths ?? '');
-     if (part.registrationDate) {
-        setRegistrationDate(new Date(part.registrationDate).toISOString().split('T')[0]);
-     } else {
-        setRegistrationDate(new Date().toISOString().split('T')[0]);
-     }
+     const dateStr = part.registrationDate ? new Date(part.registrationDate).toISOString().split('T')[0] : '';
+     setRegistrationDate(dateStr && !dateStr.startsWith('0001') ? dateStr : new Date().toISOString().split('T')[0]);
+     setImageFile(null);
+     setPreviewUrl(part.imageUrl ? `http://localhost:5024${part.imageUrl}` : null);
      setShowForm(true);
   };
 
   const loadHistory = async (part: SparePart) => {
-// ... existing code ...
     setHistoryPart(part);
     setShowHistoryModal(true);
     setHistoryLoading(true);
@@ -273,12 +278,10 @@ export default function Inventory() {
         </div>
       </div>
 
-      {showForm && (
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md border border-gray-100 dark:border-gray-700 mb-8 animate-in fade-in slide-in-from-top-4">
-// ... existing form content ...
-          <h2 className="text-xl font-semibold mb-6 text-amber-600 dark:text-amber-500 flex items-center gap-2">
-            Registrar Nuevo Componente
-          </h2>
+      {showForm && <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md border border-gray-100 dark:border-gray-700 mb-8 animate-in fade-in slide-in-from-top-4">
+            <h2 className="text-xl font-semibold mb-6 text-amber-600 dark:text-amber-500 flex items-center gap-2">
+              {editingId ? 'Editar Componente' : 'Registrar Nuevo Componente'}
+            </h2>
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Código SSR</label>
@@ -312,45 +315,49 @@ export default function Inventory() {
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Unidad de Medida</label>
               <select 
-                value={unitOfMeasureId} onChange={e => setUnitOfMeasureId(Number(e.target.value))}
-                className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-500 outline-none"
-              >
-                {units.length === 0 && <option value="0" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">Sin Unidades</option>}
-                {units.map(u => <option key={u.id} value={u.id} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">{u.name} ({u.abbreviation})</option>)}
-              </select>
+                  value={unitOfMeasureId} onChange={e => setUnitOfMeasureId(Number(e.target.value))} required
+                  className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-500 outline-none"
+                >
+                  <option value={0} disabled>Seleccione una unidad</option>
+                  {units.length === 0 && <option value="0" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">Sin Unidades</option>}
+                  {units.map(u => <option key={u.id} value={u.id} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">{u.name} ({u.abbreviation})</option>)}
+                </select>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Categoría</label>
               <select 
-                value={categoryId} onChange={e => setCategoryId(Number(e.target.value))}
-                className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-500 outline-none"
-              >
-                {categories.length === 0 && <option value="0" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">Sin Categorías</option>}
-                {categories.map(c => <option key={c.id} value={c.id} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">{c.name}</option>)}
-              </select>
+                  value={categoryId} onChange={e => setCategoryId(Number(e.target.value))} required
+                  className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-500 outline-none"
+                >
+                  <option value={0} disabled>Seleccione una categoría</option>
+                  {categories.length === 0 && <option value="0" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">Sin Categorías</option>}
+                  {categories.map(c => <option key={c.id} value={c.id} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">{c.name}</option>)}
+                </select>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Almacén</label>
               <select 
-                value={warehouseId} onChange={e => setWarehouseId(Number(e.target.value))}
-                className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-500 outline-none"
-              >
-                {warehouses.length === 0 && <option value="0" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">Sin Almacenes</option>}
-                {warehouses.map(w => <option key={w.id} value={w.id} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">{w.name}</option>)}
-              </select>
+                  value={warehouseId} onChange={e => setWarehouseId(Number(e.target.value))}
+                  className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-500 outline-none"
+                >
+                  <option value={0} disabled>Seleccione un almacén</option>
+                  {warehouses.length === 0 && <option value="0" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">Sin Almacenes</option>}
+                  {warehouses.map(w => <option key={w.id} value={w.id} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">{w.name}</option>)}
+                </select>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ubicación (Rack/Estante)</label>
               <select 
-                value={locationId} onChange={e => setLocationId(Number(e.target.value))}
-                className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-500 outline-none"
-              >
-                {locations.length === 0 && <option value="0" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">Sin Ubicaciones</option>}
-                {locations.map(l => <option key={l.id} value={l.id} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">{l.name}</option>)}
-              </select>
+                  value={locationId} onChange={e => setLocationId(Number(e.target.value))}
+                  className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-500 outline-none"
+                >
+                  <option value={0} disabled>Seleccione una ubicación</option>
+                  {locations.length === 0 && <option value="0" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">Sin Ubicaciones</option>}
+                  {locations.map(l => <option key={l.id} value={l.id} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">{l.name}</option>)}
+                </select>
             </div>
             
             {/* Predictive Maintenance Fields */}
@@ -380,6 +387,25 @@ export default function Inventory() {
                <p className="text-xs text-amber-600 dark:text-amber-500 mt-2">Desechable por tiempo caducado.</p>
             </div>
 
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700/50 relative">
+               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Imagen Referencial</label>
+               {previewUrl && (
+                  <div className="mb-3">
+                     <img src={previewUrl} alt="Preview" className="h-32 w-32 object-cover rounded-md border border-gray-300" />
+                  </div>
+               )}
+               <input 
+                 type="file" accept="image/*"
+                 onChange={e => {
+                    if (e.target.files && e.target.files[0]) {
+                       setImageFile(e.target.files[0]);
+                       setPreviewUrl(URL.createObjectURL(e.target.files[0]));
+                    }
+                 }}
+                 className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100"
+               />
+            </div>
+
             <div className="lg:col-span-3 flex justify-end mt-2">
               <button 
                 type="submit"
@@ -390,7 +416,7 @@ export default function Inventory() {
             </div>
           </form>
         </div>
-      )}
+      }
 
       <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
         <div className="relative w-full md:w-96">
@@ -413,6 +439,7 @@ export default function Inventory() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4">Imagen</th>
                 <th className="px-6 py-4">Código / Nombre</th>
                 <th className="px-6 py-4">Stock Físico (Pzas)</th>
                 <th className="px-6 py-4">Costo Prom. Unit</th>
@@ -435,8 +462,16 @@ export default function Inventory() {
                 </tr>
               ) : (
                 filteredParts.map((part) => (
-// ... existing table row ...
                   <tr key={part.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer group" onClick={() => loadHistory(part)}>
+                    <td className="px-6 py-4">
+                      {part.imageUrl ? (
+                        <img src={`http://localhost:5024${part.imageUrl}`} alt={part.name} className="w-12 h-12 object-cover rounded-lg border border-gray-200" />
+                      ) : (
+                        <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-600">
+                          <PackageOpen className="text-gray-400" size={24} />
+                        </div>
+                      )}
+                    </td>
                     <td className="px-6 py-4">
                       <div className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
                         {part.code} 
