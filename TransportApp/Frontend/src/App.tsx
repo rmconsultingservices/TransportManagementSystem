@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, Outlet, Navigate, useNavigate } from 'react-router-dom';
-import { Truck, Home, PackageOpen, Wrench, Users, ShoppingCart, FileText, LogOut, Menu, X, ChevronDown, ChevronRight, List, SlidersHorizontal, Tags, Scale, MapPin, FileBarChart, ClipboardList } from 'lucide-react';
+import { Truck, Home, PackageOpen, Wrench, Users, ShoppingCart, FileText, LogOut, Menu, X, ChevronDown, ChevronRight, List, SlidersHorizontal, Tags, Scale, MapPin, FileBarChart, ClipboardList, Key } from 'lucide-react';
 import { useAuthStore } from './store/authStore';
-import { Toaster } from 'react-hot-toast';
+import { Toaster, toast } from 'react-hot-toast';
+import { authService } from './services/authService';
 
 import Fleet from './pages/Fleet';
 import Inventory from './pages/Inventory';
@@ -41,6 +42,11 @@ function Layout() {
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isInventoryExpanded, setIsInventoryExpanded] = useState(false);
+  
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [isChanging, setIsChanging] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -50,6 +56,26 @@ function Layout() {
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
   const closeSidebar = () => setIsSidebarOpen(false);
   const toggleInventory = () => setIsInventoryExpanded(!isInventoryExpanded);
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if(newPassword.length < 6) {
+        toast.error('La nueva contraseña debe tener al menos 6 caracteres');
+        return;
+    }
+    setIsChanging(true);
+    try {
+        await authService.changePassword(currentPassword, newPassword);
+        toast.success('Contraseña actualizada exitosamente');
+        setIsChangePasswordOpen(false);
+        setCurrentPassword('');
+        setNewPassword('');
+    } catch(err: any) {
+        toast.error(err.response?.data?.message || 'Error al cambiar contraseña');
+    } finally {
+        setIsChanging(false);
+    }
+  };
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 font-sans overflow-hidden print:block print:h-auto print:overflow-visible">
@@ -88,10 +114,10 @@ function Layout() {
                 className="w-full flex items-center justify-between px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <PackageOpen size={20} className="text-gray-500" />
+                  <PackageOpen size={20} className="text-gray-500" /> 
                   <span>Inventario</span>
                 </div>
-                {isInventoryExpanded ? <ChevronDown size={16} className="text-gray-500" /> : <ChevronRight size={16} className="text-gray-500" />}
+                {isInventoryExpanded ? <ChevronDown size={16} className="text-gray-400"/> : <ChevronRight size={16} className="text-gray-400"/>}
               </button>
               
               {isInventoryExpanded && (
@@ -146,14 +172,46 @@ function Layout() {
                <span className="hidden sm:inline">👤 {user?.fullName}</span>
              </div>
            </div>
-           <button onClick={handleLogout} className="text-gray-500 hover:text-red-500 transition flex items-center gap-1 sm:gap-2 text-sm sm:text-base">
-             <LogOut size={18} /> <span className="hidden sm:inline">Salir</span>
-           </button>
+           
+           <div className="flex items-center gap-4">
+             <button onClick={() => setIsChangePasswordOpen(true)} className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 transition flex items-center gap-1 sm:gap-2 text-sm sm:text-base">
+               <Key size={18} /> <span className="hidden sm:inline">Cambiar Clave</span>
+             </button>
+             <button onClick={handleLogout} className="text-gray-500 hover:text-red-500 transition flex items-center gap-1 sm:gap-2 text-sm sm:text-base">
+               <LogOut size={18} /> <span className="hidden sm:inline">Salir</span>
+             </button>
+           </div>
          </header>
          <div className="flex-1 overflow-y-auto print:block print:h-auto print:overflow-visible">
            <Outlet />
          </div>
       </main>
+
+      {/* Change Password Modal */}
+      {isChangePasswordOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl w-96 shadow-2xl">
+            <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white flex items-center gap-2"><Key size={24} className="text-indigo-600"/> Cambiar Contraseña</h2>
+            <form onSubmit={handleChangePassword}>
+                <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Contraseña Actual</label>
+                    <input type="password" required value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} className="w-full border p-2 rounded bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                </div>
+                <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nueva Contraseña</label>
+                    <input type="password" required value={newPassword} onChange={e => setNewPassword(e.target.value)} className="w-full border p-2 rounded bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                </div>
+                <div className="flex justify-end gap-3">
+                    <button type="button" onClick={() => setIsChangePasswordOpen(false)} className="px-4 py-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors">Cancelar</button>
+                    <button type="submit" disabled={isChanging} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded transition-colors disabled:opacity-50">
+                        {isChanging ? 'Guardando...' : 'Cambiar Clave'}
+                    </button>
+                </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       <Toaster position="top-right" />
     </div>
   );

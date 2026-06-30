@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
@@ -69,6 +69,57 @@ namespace TransportManagement.API.Controllers
                 },
                 Companies = activeCompanies
             });
+        }
+
+        [HttpPost("change-password")]
+        [Microsoft.AspNetCore.Authorization.Authorize]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+        {
+            var username = User.Identity?.Name;
+            if (string.IsNullOrEmpty(username))
+            {
+                return Unauthorized(new { message = "Usuario no autenticado." });
+            }
+
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
+            if (user == null)
+            {
+                return NotFound(new { message = "Usuario no encontrado." });
+            }
+
+            if (!VerifyPassword(request.CurrentPassword, user.PasswordHash))
+            {
+                return BadRequest(new { message = "La contraseña actual es incorrecta." });
+            }
+
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Contraseña actualizada exitosamente." });
+        }
+
+        [HttpPost("admin-change-password/{userId}")]
+        [Microsoft.AspNetCore.Authorization.Authorize]
+        public async Task<IActionResult> AdminChangePassword(int userId, [FromBody] AdminChangePasswordRequest request)
+        {
+            var isSuperAdminClaim = User.FindFirst("IsSuperAdmin")?.Value;
+            bool isSuperAdmin = isSuperAdminClaim == "true";
+
+            if (!isSuperAdmin)
+            {
+                return StatusCode(403, new { message = "No tienes permisos de administrador para realizar esta acción." });
+            }
+
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+            if (user == null)
+            {
+                return NotFound(new { message = "Usuario no encontrado." });
+            }
+
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Contraseña del usuario actualizada exitosamente por el administrador." });
         }
 
         private string GenerateJwtToken(User user)
@@ -143,7 +194,7 @@ namespace TransportManagement.API.Controllers
             catch
             {
                 // Fallback for old plain text passwords during transition if needed, 
-                // but for security it's better to just return false or force a reset.
+                // but for security it is better to just return false or force a reset.
                 return inputPassword == storedHash;
             }
         }

@@ -1,6 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { Users, Plus, Shield } from 'lucide-react';
+﻿import React, { useEffect, useState } from 'react';
+import { Users, Plus, Shield, Key } from 'lucide-react';
 import { adminService } from '../services/adminService';
+import { authService } from '../services/authService';
+import toast from 'react-hot-toast';
 
 export default function UsersAdmin() {
   const [users, setUsers] = useState<any[]>([]);
@@ -16,6 +18,11 @@ export default function UsersAdmin() {
   // Assignment Modal
   const [assignUser, setAssignUser] = useState<any>(null);
   const [selectedCompanyId, setSelectedCompanyId] = useState<number>(0);
+
+  // Reset Password Modal
+  const [resetUser, setResetUser] = useState<any>(null);
+  const [newAdminPassword, setNewAdminPassword] = useState('');
+  const [isResetting, setIsResetting] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -43,6 +50,25 @@ export default function UsersAdmin() {
       console.error(e);
       alert('Error asignando la empresa: ' + (e.response?.data || e.message));
     }
+  };
+
+  const handleAdminReset = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!resetUser || newAdminPassword.length < 6) {
+          toast.error('La contraseña debe tener al menos 6 caracteres');
+          return;
+      }
+      setIsResetting(true);
+      try {
+          await authService.adminChangePassword(resetUser.id, newAdminPassword);
+          toast.success(`Contraseña de ${resetUser.username} restablecida con éxito`);
+          setResetUser(null);
+          setNewAdminPassword('');
+      } catch(err: any) {
+          toast.error(err.response?.data?.message || 'Error al restablecer contraseña');
+      } finally {
+          setIsResetting(false);
+      }
   };
 
   return (
@@ -86,6 +112,27 @@ export default function UsersAdmin() {
         </div>
       )}
 
+      {resetUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl w-96 shadow-2xl">
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><Key className="text-orange-600" size={24}/> Resetear Clave</h2>
+            <p className="text-sm text-gray-500 mb-4">Estableciendo nueva clave para <b>{resetUser.username}</b></p>
+            <form onSubmit={handleAdminReset}>
+                <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nueva Contraseña</label>
+                    <input type="password" required value={newAdminPassword} onChange={e => setNewAdminPassword(e.target.value)} className="w-full border p-2 rounded bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                </div>
+                <div className="flex justify-end gap-3">
+                    <button type="button" onClick={() => setResetUser(null)} className="px-4 py-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors">Cancelar</button>
+                    <button type="submit" disabled={isResetting} className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded transition-colors disabled:opacity-50">
+                        {isResetting ? 'Guardando...' : 'Restablecer'}
+                    </button>
+                </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       <div className="grid gap-4 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-xl overflow-hidden p-0">
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead className="bg-gray-50 dark:bg-gray-900/50">
@@ -110,8 +157,9 @@ export default function UsersAdmin() {
                     {u.companies?.map((c:any) => <span key={c.companyId} className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">{c.name}</span>)}
                   </div>
                 </td>
-                <td className="px-6 py-4">
+                <td className="px-6 py-4 flex items-center gap-3">
                   <button onClick={() => setAssignUser(u)} className="text-indigo-600 hover:underline">Dar Acceso</button>
+                  <button onClick={() => setResetUser(u)} className="text-orange-600 hover:underline flex items-center gap-1" title="Restablecer Contraseña"><Key size={16}/> Clave</button>
                 </td>
               </tr>
             ))}
