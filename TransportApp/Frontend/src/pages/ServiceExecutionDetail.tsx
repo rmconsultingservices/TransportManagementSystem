@@ -155,7 +155,7 @@ export default function ServiceExecutionDetail() {
           <div className="text-gray-500 mt-2 flex gap-4 text-sm">
             <span>📅 {new Date(request.dateRequested).toLocaleDateString()}</span>
             <span>🚛 {request.vehicle?.licensePlate} ({request.vehicle?.brand})</span>
-            <span>ðŸ‘¨â€ðŸ”§ Mecánico: {request.mechanic?.name || 'Varios'}</span>
+            <span><Wrench size={16} className="inline mr-1.5 text-gray-400" /> Mecánico: {request.mechanic?.name || 'Varios'}</span>
           </div>
         </div>
         
