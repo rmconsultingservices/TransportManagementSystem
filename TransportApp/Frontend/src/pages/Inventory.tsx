@@ -288,7 +288,7 @@ export default function Inventory() {
             </h2>
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo de ArtÃ­culo</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo de Artículo</label>
               <select 
                 value={itemType} onChange={e => setItemType(e.target.value)}
                 className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-amber-500 outline-none"
