@@ -286,14 +286,25 @@ export default function ServiceExecutionDetail() {
                       <div className="font-medium text-sm">{req.partNameOrDescription} <span className="text-gray-500 font-normal">x{req.quantity}</span></div>
                       <div className="text-xs text-gray-500">{new Date(req.dateRequested).toLocaleDateString()}</div>
                     </div>
-                    <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full ${
-                      req.status === 'Pendiente' ? 'bg-amber-100 text-amber-700' :
-                      req.status === 'Aprobada' ? 'bg-blue-100 text-blue-700' :
-                      req.status === 'Comprada' ? 'bg-green-100 text-green-700' :
-                      'bg-gray-100 text-gray-700'
-                    }`}>
-                      {req.status}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full ${
+                        req.status === 'Pendiente' ? 'bg-amber-100 text-amber-700' :
+                        req.status === 'Aprobada' ? 'bg-blue-100 text-blue-700' :
+                        req.status === 'Comprada' ? 'bg-green-100 text-green-700' :
+                        'bg-gray-100 text-gray-700'
+                      }`}>
+                        {req.status}
+                      </span>
+                      {req.status === 'Pendiente' && (
+                        <button 
+                          onClick={() => handleDeleteRequisition(req.id)}
+                          className="text-red-400 hover:text-red-600 transition-colors p-1"
+                          title="Eliminar requisición"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))
               )}
@@ -353,4 +364,5 @@ export default function ServiceExecutionDetail() {
     </div>
   );
 }
+
 
