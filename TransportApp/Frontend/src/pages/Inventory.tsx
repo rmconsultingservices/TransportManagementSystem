@@ -14,6 +14,7 @@ export default function Inventory() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [itemType, setItemType] = useState('Producto');
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [unitOfMeasureId, setUnitOfMeasureId] = useState<number>(0);
@@ -105,6 +106,7 @@ export default function Inventory() {
     e.preventDefault();
     try {
       const payload: any = {
+        itemType,
         code,
         name,
         estimatedLifeSpanKm: lifeSpanKm === '' ? undefined : Number(lifeSpanKm),
@@ -163,6 +165,7 @@ export default function Inventory() {
     setEditingId(null);
     setImageFile(null);
     setPreviewUrl(null);
+    setItemType('Producto');
     setCode('');
     setName('');
     if (units.length > 0) setUnitOfMeasureId(units[0].id);
@@ -180,6 +183,7 @@ export default function Inventory() {
 
   const handleEdit = (part: SparePart) => {
      setEditingId(part.id);
+     setItemType(part.itemType || 'Producto');
      setCode(part.code);
      setName(part.name);
      setUnitOfMeasureId(part.unitOfMeasureId || 0);
@@ -478,6 +482,9 @@ export default function Inventory() {
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
                            {part.category?.name || 'Varios'}
                         </span>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium ml-1 ${part.itemType === 'Servicio' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-300' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300'}`}>
+                           {part.itemType || 'Producto'}
+                        </span>
                       </div>
                       <div className="text-sm text-gray-600 dark:text-gray-300">{part.name}</div>
                       {(part.warehouse || part.location) && (
@@ -493,6 +500,9 @@ export default function Inventory() {
                           part.stockQuantity > 0 ? 'text-amber-500' : 'text-red-500'
                       }`}>
                          {part.stockQuantity} <span className="text-sm font-medium text-gray-500">{part.unitOfMeasure?.abbreviation || '-'}</span>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium ml-1 ${part.itemType === 'Servicio' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-300' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300'}`}>
+                           {part.itemType || 'Producto'}
+                        </span>
                       </div>
                     </td>
                     <td className="px-6 py-4">

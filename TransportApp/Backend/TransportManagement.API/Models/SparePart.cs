@@ -10,6 +10,7 @@ namespace TransportManagement.API.Models
         public int Id { get; set; }
         public string Code { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
+        public string ItemType { get; set; } = "Producto";
         
         public int? UnitOfMeasureId { get; set; }
         public UnitOfMeasure? UnitOfMeasure { get; set; }

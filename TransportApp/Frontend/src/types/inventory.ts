@@ -14,6 +14,7 @@ export interface UnitOfMeasure {
 
 export interface SparePart {
   id: number;
+  itemType?: string;
   code: string;
   name: string;
   categoryId?: number;

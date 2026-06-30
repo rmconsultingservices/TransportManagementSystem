@@ -148,7 +148,7 @@ namespace TransportManagement.API.Controllers
             var part = await _context.SpareParts.FindAsync(dto.SparePartId);
             if (part == null) return NotFound("Spare part not found.");
 
-            if (part.StockQuantity < dto.Quantity)
+            if (part.ItemType != "Servicio" && part.StockQuantity < dto.Quantity)
                 return BadRequest("Insufficient stock.");
 
             // Ensure execution exists
@@ -167,7 +167,10 @@ namespace TransportManagement.API.Controllers
             };
 
             // Deduct from stock
-            part.StockQuantity -= dto.Quantity;
+            if (part.ItemType != "Servicio")
+            {
+                part.StockQuantity -= dto.Quantity;
+            }
 
             _context.ServiceExecutionSpareParts.Add(usedPart);
             await _context.SaveChangesAsync();

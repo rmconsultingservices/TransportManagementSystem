@@ -66,6 +66,7 @@ namespace TransportManagement.API.Controllers
             // Update only allowed properties, preserving CompanyId and RegistrationDate
             existingPart.Code = sparePart.Code;
             existingPart.Name = sparePart.Name;
+            existingPart.ItemType = sparePart.ItemType;
             existingPart.UnitOfMeasureId = sparePart.UnitOfMeasureId;
             existingPart.CategoryId = sparePart.CategoryId;
             existingPart.EstimatedLifeSpanKm = sparePart.EstimatedLifeSpanKm;
