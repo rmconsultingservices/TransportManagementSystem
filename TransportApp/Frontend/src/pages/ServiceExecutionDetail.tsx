@@ -104,14 +104,14 @@ export default function ServiceExecutionDetail() {
     if (!mileageStr) return;
     const mileage = Number(mileageStr);
     
-    const finalObs = prompt('ConclusiÃ³n general del servicio prestado:');
+    const finalObs = prompt('Conclusión general del servicio prestado:');
 
     try {
       await workshopService.executeService(request.id, {
         finalObservations: finalObs || undefined,
         mileageAtService: isNaN(mileage) ? undefined : mileage
       });
-      alert('Ticket cerrado con Ã©xito.');
+      alert('Ticket cerrado con éxito.');
       navigate('/workshop');
     } catch (error) {
       console.error('Error closing ticket:', error);
@@ -128,7 +128,7 @@ export default function ServiceExecutionDetail() {
   }
 
   if (!request) {
-    return <div className="p-12 text-center text-red-500">No se encontrÃ³ la solicitud.</div>;
+    return <div className="p-12 text-center text-red-500">No se encontró la solicitud.</div>;
   }
 
   return (
@@ -153,9 +153,9 @@ export default function ServiceExecutionDetail() {
             )}
           </h1>
           <div className="text-gray-500 mt-2 flex gap-4 text-sm">
-            <span>ðŸ“… {new Date(request.dateRequested).toLocaleDateString()}</span>
-            <span>ðŸš› {request.vehicle?.licensePlate} ({request.vehicle?.brand})</span>
-            <span>ðŸ‘¨â€ðŸ”§ MecÃ¡nico: {request.mechanic?.name || 'Varios'}</span>
+            <span>📅 {new Date(request.dateRequested).toLocaleDateString()}</span>
+            <span>🚛 {request.vehicle?.licensePlate} ({request.vehicle?.brand})</span>
+            <span>ðŸ‘¨â€ðŸ”§ Mecánico: {request.mechanic?.name || 'Varios'}</span>
           </div>
         </div>
         
@@ -179,7 +179,7 @@ export default function ServiceExecutionDetail() {
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
               <h2 className="text-xl font-semibold mb-4 flex items-center gap-2 border-b border-gray-100 dark:border-gray-700 pb-3">
               <Text className="text-indigo-500" size={20}/>
-              BitÃ¡cora de Progreso y Repuestos Utilizados
+              Bitácora de Progreso y Repuestos Utilizados
             </h2>
             
             {/* Parts Consumed List */}
@@ -202,7 +202,7 @@ export default function ServiceExecutionDetail() {
             
             <div className="space-y-4 mb-6 relative before:absolute before:inset-0 before:-ml-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-gray-300 before:to-transparent">
               {(!request.logs || request.logs.length === 0) ? (
-                <div className="text-gray-500 italic text-sm text-center py-4 relative z-10 bg-white dark:bg-gray-800">No hay entradas registradas aÃºn.</div>
+                <div className="text-gray-500 italic text-sm text-center py-4 relative z-10 bg-white dark:bg-gray-800">No hay entradas registradas aún.</div>
               ) : (
                 request.logs.map(log => (
                   <div key={log.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
@@ -223,7 +223,7 @@ export default function ServiceExecutionDetail() {
                 <input 
                   type="text" required
                   value={newNote} onChange={e => setNewNote(e.target.value)}
-                  placeholder="Ej. Se bajÃ³ la caja de velocidades para revisiÃ³n..."
+                  placeholder="Ej. Se bajó la caja de velocidades para revisión..."
                   className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 px-4 py-2 bg-transparent focus:ring-2 focus:ring-indigo-500 outline-none"
                 />
                 <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md font-medium transition-colors">
@@ -264,7 +264,7 @@ export default function ServiceExecutionDetail() {
 
             {showReqForm && (
               <form onSubmit={handleAddRequisition} className="mb-4 bg-gray-50 dark:bg-gray-900 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre o NÃºmero de Parte</label>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre o Número de Parte</label>
                 <input 
                   type="text" required
                   value={reqDesc} onChange={e => setReqDesc(e.target.value)}
@@ -335,7 +335,7 @@ export default function ServiceExecutionDetail() {
                   onClick={() => setShowStockForm(true)}
                   className="text-xs font-medium text-emerald-600 hover:text-emerald-800 bg-emerald-50 px-2 py-1 rounded"
                 >
-                  + Usar de AlmacÃ©n
+                  + Usar de Almacén
                 </button>
               )}
             </div>
@@ -348,7 +348,7 @@ export default function ServiceExecutionDetail() {
                     value={selectedPartId} 
                     spareParts={spareParts} 
                     onChange={val => setSelectedPartId(val)} 
-                    placeholder="Escriba cÃ³digo o nombre..."
+                    placeholder="Escriba código o nombre..."
                   />
                 </div>
                 
