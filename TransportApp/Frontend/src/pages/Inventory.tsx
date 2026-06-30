@@ -496,13 +496,11 @@ export default function Inventory() {
                     </td>
                     <td className="px-6 py-4">
                       <div className={`text-2xl font-black ${
+                          part.itemType === 'Servicio' ? 'text-purple-500' :
                           part.stockQuantity > 5 ? 'text-emerald-600' : 
                           part.stockQuantity > 0 ? 'text-amber-500' : 'text-red-500'
                       }`}>
-                         {part.stockQuantity} <span className="text-sm font-medium text-gray-500">{part.unitOfMeasure?.abbreviation || '-'}</span>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium ml-1 ${part.itemType === 'Servicio' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-300' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300'}`}>
-                           {part.itemType || 'Producto'}
-                        </span>
+                         {part.itemType === 'Servicio' ? 'N/A' : part.stockQuantity} <span className="text-sm font-medium text-gray-500">{part.itemType === 'Servicio' ? 'Servicios' : (part.unitOfMeasure?.abbreviation || '-')}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
