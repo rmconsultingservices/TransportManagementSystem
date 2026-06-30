@@ -2,7 +2,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { workshopService } from '../services/workshopService';
 import { inventoryService } from '../services/inventoryService';
-import { ArrowLeft, Loader2, CheckCircle2, Clock, AlertCircle, ShoppingCart, Text, Box, Plus, Minus, X , Trash2} from 'lucide-react';
+import { ArrowLeft, Loader2, CheckCircle2, Clock, AlertCircle, ShoppingCart, Text, Box, Plus, Minus, X , Trash2, Wrench} from 'lucide-react';
 import type { ServiceRequest, SparePart } from '../types';
 import SparePartSelector from '../components/SparePartSelector';
 
