@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Truck, Plus, Loader2, Trash2, History, AlertTriangle, CheckCircle2, Container, UserPlus, Search, Calendar as CalendarIcon, Edit, Building2 } from 'lucide-react';
 import { fleetService } from '../services/fleetService';
@@ -156,7 +156,7 @@ export default function Fleet() {
   };
 
   const handleDelete = async (id: number) => {
-    if (confirm(`¿Estás seguro de que deseas eliminar este registro?`)) {
+    if (confirm(`Â¿EstÃ¡s seguro de que deseas eliminar este registro?`)) {
       try {
         if (activeTab === 'vehicles') await fleetService.deleteVehicle(id);
         else if (activeTab === 'trailers') await fleetService.deleteTrailer(id);
@@ -179,12 +179,12 @@ export default function Fleet() {
       };
     } else if (remaining < 2000) {
       return { 
-        label: 'Próximo', color: 'text-amber-600 bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400',
+        label: 'PrÃ³ximo', color: 'text-amber-600 bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400',
         icon: <AlertTriangle size={14} />, detail: `En ${remaining.toLocaleString()} km`
       };
     }
     return { 
-      label: 'Al día', color: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400',
+      label: 'Al dÃ­a', color: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400',
       icon: <CheckCircle2 size={14} />, detail: `Faltan ${remaining.toLocaleString()} km`
     };
   };
@@ -216,7 +216,7 @@ export default function Fleet() {
             <Truck className="text-blue-600" size={32} />
             Flota de Transporte
           </h1>
-          <p className="text-gray-500 mt-1">Gestión de vehículos, remolques y mantenimientos.</p>
+          <p className="text-gray-500 mt-1">GestiÃ³n de vehÃ­culos, remolques y mantenimientos.</p>
         </div>
         <div className="flex gap-3">
           {activeTab !== 'owners' && activeTab !== 'expedientes' && (
@@ -232,7 +232,7 @@ export default function Fleet() {
               title="Vincular unidades sin empresa"
             >
               <UserPlus size={20} />
-              Vincular Huérfanos
+              Vincular HuÃ©rfanos
             </button>
           )}
           
@@ -245,7 +245,7 @@ export default function Fleet() {
               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors shadow-sm"
             >
               <Plus size={20} />
-              {showForm ? 'Cancelar' : (activeTab === 'vehicles' ? 'Nuevo Vehículo' : activeTab === 'trailers' ? 'Nuevo Remolque' : 'Nueva Empresa')}
+              {showForm ? 'Cancelar' : (activeTab === 'vehicles' ? 'Nuevo VehÃ­culo' : activeTab === 'trailers' ? 'Nuevo Remolque' : 'Nueva Empresa')}
             </button>
           )}
         </div>
@@ -256,7 +256,7 @@ export default function Fleet() {
           onClick={() => { setActiveTab('vehicles'); setShowForm(false); setFilterUnit(''); }}
           className={`flex items-center gap-2 py-4 px-6 font-medium text-sm border-b-2 transition-colors ${activeTab === 'vehicles' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
         >
-          <Truck size={18} /> Vehículos ({vehicles.length})
+          <Truck size={18} /> VehÃ­culos ({vehicles.length})
         </button>
         <button
           onClick={() => { setActiveTab('trailers'); setShowForm(false); setMaintenanceInterval(15000); setFilterUnit(''); }}
@@ -310,7 +310,7 @@ export default function Fleet() {
                 <tr className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-500 uppercase tracking-wider">
                   <th className="px-6 py-4">Nro. Expediente</th>
                   <th className="px-6 py-4">Fecha</th>
-                  <th className="px-6 py-4">Vehículo</th>
+                  <th className="px-6 py-4">VehÃ­culo</th>
                   <th className="px-6 py-4">Detalles</th>
                 </tr>
               </thead>
@@ -339,7 +339,7 @@ export default function Fleet() {
                         ) : (<div className="text-gray-500 italic">Desconocido</div>)}
                       </td>
                       <td className="px-6 py-4">
-                        <div className="text-sm text-gray-700 dark:text-gray-300 font-medium"><span className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-xs mr-2 uppercase">{exp.type}</span>Mecánico: {exp.mechanicAssigned || '-'}</div>
+                        <div className="text-sm text-gray-700 dark:text-gray-300 font-medium"><span className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-xs mr-2 uppercase">{exp.type}</span>MecÃ¡nico: {exp.mechanicAssigned || '-'}</div>
                         <div className="text-xs text-gray-500 mt-1 truncate max-w-xs">{exp.notes}</div>
                       </td>
                     </tr>
@@ -360,7 +360,7 @@ export default function Fleet() {
                   <input type="text" required value={ownerName} onChange={e => setOwnerName(e.target.value)} className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 bg-transparent focus:ring-2 focus:ring-indigo-500 outline-none" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descripción / Detalles (Opcional)</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">DescripciÃ³n / Detalles (Opcional)</label>
                   <input type="text" value={ownerDescription} onChange={e => setOwnerDescription(e.target.value)} className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 bg-transparent focus:ring-2 focus:ring-indigo-500 outline-none" />
                 </div>
                 <div className="md:col-span-2 flex justify-end">
@@ -375,7 +375,7 @@ export default function Fleet() {
                 <thead>
                   <tr className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-500 uppercase tracking-wider">
                     <th className="px-6 py-4">Empresa</th>
-                    <th className="px-6 py-4">Descripción</th>
+                    <th className="px-6 py-4">DescripciÃ³n</th>
                     <th className="px-6 py-4 text-right">Acciones</th>
                   </tr>
                 </thead>
@@ -409,7 +409,7 @@ export default function Fleet() {
             <div className="relative w-full max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
               <input 
-                type="text" placeholder={`Buscar ${activeTab === 'vehicles' ? 'vehículos' : 'remolques'} por placa, marca o empresa...`} 
+                type="text" placeholder={`Buscar ${activeTab === 'vehicles' ? 'vehÃ­culos' : 'remolques'} por placa, marca o empresa...`} 
                 value={filterUnit} onChange={e => setFilterUnit(e.target.value)}
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm"
               />
@@ -418,10 +418,10 @@ export default function Fleet() {
 
           {showForm && (
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md border border-gray-100 dark:border-gray-700 mb-8 animate-in fade-in slide-in-from-top-4">
-              <h2 className="text-xl font-semibold mb-6">{editingUnitId ? 'Editar' : 'Registrar Nuevo'} {activeTab === 'vehicles' ? 'Vehículo' : 'Remolque'}</h2>
+              <h2 className="text-xl font-semibold mb-6">{editingUnitId ? 'Editar' : 'Registrar Nuevo'} {activeTab === 'vehicles' ? 'VehÃ­culo' : 'Remolque'}</h2>
               <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Placa / Matrícula</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Placa / MatrÃ­cula</label>
               <input 
                 type="text" required value={licensePlate} onChange={e => setLicensePlate(e.target.value)}
                 className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 bg-transparent focus:ring-2 focus:ring-indigo-500 outline-none"
@@ -451,7 +451,7 @@ export default function Fleet() {
                   <input type="text" required value={model} onChange={e => setModel(e.target.value)} className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 bg-transparent focus:ring-2 focus:ring-indigo-500 outline-none" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Año</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">AÃ±o</label>
                   <input type="number" required min="1950" max={new Date().getFullYear() + 1} value={year} onChange={e => setYear(parseInt(e.target.value))} className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 bg-transparent focus:ring-2 focus:ring-indigo-500 outline-none" />
                 </div>
               </>
@@ -463,7 +463,7 @@ export default function Fleet() {
                     <option value="">Seleccione tipo...</option>
                     <option value="Cisterna">Cisterna</option>
                     <option value="Plataforma">Plataforma</option>
-                    <option value="Furgón">Furgón</option>
+                    <option value="FurgÃ³n">FurgÃ³n</option>
                     <option value="Refrigerado">Refrigerado</option>
                   </select>
                 </div>
@@ -496,7 +496,7 @@ export default function Fleet() {
               <tr className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-500 uppercase tracking-wider">
                 <th className="px-6 py-4">Unidad</th>
                 <th className="px-6 py-4">Kilometraje</th>
-                <th className="px-6 py-4">Salud Mecánica</th>
+                <th className="px-6 py-4">Salud MecÃ¡nica</th>
                 <th className="px-6 py-4 text-right">Acciones</th>
               </tr>
             </thead>
@@ -557,3 +557,5 @@ export default function Fleet() {
     </div>
   );
 }
+
+

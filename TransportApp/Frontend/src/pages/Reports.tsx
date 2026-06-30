@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { FileBarChart, PieChart, ClipboardList, Truck, Package, ShoppingCart, AlertCircle, Download, Printer, Search } from 'lucide-react';
 import { fleetService } from '../services/fleetService';
 import { inventoryService } from '../services/inventoryService';
@@ -26,9 +26,9 @@ export default function Reports() {
           workshopService.getRequests()
         ]);
 
-        const lowStock = spareParts.filter(p => p.currentStock <= p.minStock).length;
+        const lowStock = spareParts.filter(p => p.stockQuantity <= 0).length;
         const pending = requests.filter(r => r.status !== 'Completado').length;
-        const stockValue = spareParts.reduce((acc, p) => acc + (p.currentStock * (p.unitPrice || 0)), 0);
+        const stockValue = spareParts.reduce((acc, p) => acc + (p.stockQuantity * (p.unitCost || 0)), 0);
 
         setStats({
           totalVehicles: vehicles.length,
@@ -55,8 +55,8 @@ export default function Reports() {
       action: 'Ver Detalle'
     },
     {
-      title: 'Inventario Crítico',
-      description: 'Artículos con stock por debajo del mínimo y necesidades de reposición.',
+      title: 'Inventario CrÃ­tico',
+      description: 'ArtÃ­culos con stock por debajo del mÃ­nimo y necesidades de reposiciÃ³n.',
       icon: <Package size={24} className="text-amber-500" />,
       link: '/inventory',
       action: 'Ver Stock'
@@ -69,8 +69,8 @@ export default function Reports() {
       action: 'Ver Tickets'
     },
     {
-      title: 'Gestión de Compras',
-      description: 'Análisis de órdenes de compra, proveedores y facturación pendiente.',
+      title: 'GestiÃ³n de Compras',
+      description: 'AnÃ¡lisis de Ã³rdenes de compra, proveedores y facturaciÃ³n pendiente.',
       icon: <ShoppingCart size={24} className="text-emerald-500" />,
       link: '/purchasing',
       action: 'Ver Compras'
@@ -85,7 +85,7 @@ export default function Reports() {
             <FileBarChart className="text-indigo-600 dark:text-indigo-400" size={32} />
             Centro de Reportes
           </h1>
-          <p className="text-gray-500 mt-1">Análisis operativo y financiero detallado de la empresa.</p>
+          <p className="text-gray-500 mt-1">AnÃ¡lisis operativo y financiero detallado de la empresa.</p>
         </div>
         <div className="flex gap-2">
            <button className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-gray-50 transition-colors">
@@ -108,7 +108,7 @@ export default function Reports() {
           <div className="flex items-end justify-between mt-2">
             <h3 className="text-3xl font-bold text-gray-900 dark:text-white">{stats.lowStockItems}</h3>
             <span className={`text-xs font-bold px-2 py-1 rounded-full ${stats.lowStockItems > 0 ? 'text-red-600 bg-red-50 dark:bg-red-900/30 dark:text-red-400' : 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400'}`}>
-              Bajo Mínimo
+              Bajo MÃ­nimo
             </span>
           </div>
         </div>
@@ -142,7 +142,7 @@ export default function Reports() {
               <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">{card.title}</h3>
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{card.description}</p>
               <Link to={card.link} className="inline-flex items-center gap-2 text-sm font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300">
-                {card.action} →
+                {card.action} â†’
               </Link>
             </div>
           </div>
@@ -154,10 +154,10 @@ export default function Reports() {
         <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-6">
           <div>
             <h2 className="text-2xl font-bold mb-2">Trazabilidad Total</h2>
-            <p className="text-indigo-100 max-w-md">Todos los movimientos del sistema son auditados en tiempo real. Puede consultar quién realizó cambios críticos en el log de auditoría.</p>
+            <p className="text-indigo-100 max-w-md">Todos los movimientos del sistema son auditados en tiempo real. Puede consultar quiÃ©n realizÃ³ cambios crÃ­ticos en el log de auditorÃ­a.</p>
           </div>
           <Link to="/admin/audit" className="bg-white text-indigo-600 px-6 py-3 rounded-xl font-bold shadow-lg shadow-indigo-900/20 hover:bg-indigo-50 transition-colors">
-            Ver Logs de Auditoría
+            Ver Logs de AuditorÃ­a
           </Link>
         </div>
         {/* Abstract background shapes */}
@@ -167,3 +167,5 @@ export default function Reports() {
     </div>
   );
 }
+
+
