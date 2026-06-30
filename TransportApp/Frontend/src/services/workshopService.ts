@@ -1,4 +1,4 @@
-import api from '../lib/api';
+﻿import api from '../lib/api';
 import type { ServiceRequest, ServiceExecution } from '../types/workshop';
 
 export const workshopService = {
@@ -33,7 +33,12 @@ export const workshopService = {
     await api.post(`/servicerequests/${id}/UsedParts`, { sparePartId, quantity });
   },
 
+  deleteRequisition: async (id: number): Promise<void> => {
+    await api.delete(/purchaserequisitions/${id});
+  },
+
   executeService: async (id: number, execution: Partial<ServiceExecution>): Promise<void> => {
     await api.post(`/servicerequests/${id}/Execute`, execution);
   }
 };
+

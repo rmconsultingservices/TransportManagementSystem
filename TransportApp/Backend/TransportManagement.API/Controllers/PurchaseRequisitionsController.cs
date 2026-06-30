@@ -77,5 +77,22 @@ namespace TransportManagement.API.Controllers
 
             return NoContent();
         }
+        // DELETE: api/PurchaseRequisitions/5
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteRequisition(int id)
+        {
+            var req = await _context.PurchaseRequisitions.FindAsync(id);
+            if (req == null) return NotFound();
+
+            if (req.Status != "Pendiente")
+            {
+                return BadRequest(new { message = "Solo se pueden eliminar requisiciones en estado Pendiente." });
+            }
+
+            _context.PurchaseRequisitions.Remove(req);
+            await _context.SaveChangesAsync();
+
+            return NoContent();
+        }
     }
 }
