@@ -2,7 +2,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { workshopService } from '../services/workshopService';
 import { inventoryService } from '../services/inventoryService';
-import { ArrowLeft, Loader2, CheckCircle2, Clock, AlertCircle, ShoppingCart, Trash2, Text, Box, Plus, Minus, X } from 'lucide-react';
+import { ArrowLeft, Loader2, CheckCircle2, Clock, AlertCircle, ShoppingCart, Text, Box, Plus, Minus, X , Trash2} from 'lucide-react';
 import type { ServiceRequest, SparePart } from '../types';
 import SparePartSelector from '../components/SparePartSelector';
 
@@ -68,6 +68,18 @@ export default function ServiceExecutionDetail() {
       fetchData();
     } catch (error) {
       console.error('Error adding req:', error);
+    }
+  };
+
+
+  const handleDeleteRequisition = async (reqId: number) => {
+    if (!confirm('¿Estás seguro de que deseas eliminar esta requisición?')) return;
+    try {
+      await workshopService.deleteRequisition(reqId);
+      fetchData();
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Error al eliminar la requisición.');
+      console.error('Error deleting req:', error);
     }
   };
 

@@ -25,7 +25,7 @@ export default function Fleet() {
   // Unit Form state
   const [editingUnitId, setEditingUnitId] = useState<number | null>(null);
   const [licensePlate, setLicensePlate] = useState('');
-  const [fleetOwnerId, setFleetOwnerId] = useState<number | ''>('');
+  const [fleetOwnerId, setFleetOwnerId] = useState<any>('');
   const [brand, setBrand] = useState('');
   const [model, setModel] = useState('');
   const [type, setType] = useState('');
