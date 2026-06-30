@@ -34,11 +34,12 @@ export const workshopService = {
   },
 
   deleteRequisition: async (id: number): Promise<void> => {
-    await api.delete(/purchaserequisitions/${id});
+    await api.delete(`/purchaserequisitions/${id}`);
   },
 
   executeService: async (id: number, execution: Partial<ServiceExecution>): Promise<void> => {
     await api.post(`/servicerequests/${id}/Execute`, execution);
   }
 };
+
 
