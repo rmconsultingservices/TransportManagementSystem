@@ -8,9 +8,11 @@ namespace TransportManagement.API.Models
         public int Id { get; set; }
         
         public int CompanyId { get; set; }
+        [System.Text.Json.Serialization.JsonIgnore]
         public Company? Company { get; set; }
 
         public int SparePartId { get; set; }
+        [System.Text.Json.Serialization.JsonIgnore]
         public SparePart? SparePart { get; set; }
 
         public int UnitOfMeasureId { get; set; }
@@ -24,3 +26,4 @@ namespace TransportManagement.API.Models
         public bool IsInverse { get; set; } = false;
     }
 }
+
