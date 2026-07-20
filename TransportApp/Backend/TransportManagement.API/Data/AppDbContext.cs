@@ -31,6 +31,7 @@ namespace TransportManagement.API.Data
         public DbSet<Driver> Drivers => Set<Driver>();
         public DbSet<Mechanic> Mechanics => Set<Mechanic>();
         public DbSet<SparePart> SpareParts => Set<SparePart>();
+        public DbSet<SparePartUnit> SparePartUnits => Set<SparePartUnit>();
         public DbSet<SparePartCategory> SparePartCategories => Set<SparePartCategory>();
         public DbSet<UnitOfMeasure> UnitsOfMeasure => Set<UnitOfMeasure>();
         public DbSet<Warehouse> Warehouses => Set<Warehouse>();
@@ -177,3 +178,4 @@ namespace TransportManagement.API.Data
         }
     }
 }
+

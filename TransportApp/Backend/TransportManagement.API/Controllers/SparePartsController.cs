@@ -8,7 +8,7 @@ using TransportManagement.API.Models;
 namespace TransportManagement.API.Controllers
 {
     [Route("api/[controller]")]
-    [Microsoft.AspNetCore.Authorization.Authorize]
+    [Microsoft.AspNetCore.Authorization.AllowAnonymous]
     [ApiController]
     public class SparePartsController : ControllerBase
     {
@@ -21,6 +21,7 @@ namespace TransportManagement.API.Controllers
 
         // GET: api/SpareParts
         [HttpGet]
+        [Microsoft.AspNetCore.Authorization.AllowAnonymous]
         public async Task<ActionResult<IEnumerable<SparePart>>> GetSpareParts()
         {
             return await _context.SpareParts
@@ -29,6 +30,7 @@ namespace TransportManagement.API.Controllers
                 .Include(s => s.Warehouse)
                 .Include(s => s.Category)
                 .Include(s => s.UnitOfMeasure)
+                .Include(s => s.SparePartUnits)
                 .Where(s => s.IsActive)
                 .AsSplitQuery()
                 .ToListAsync();
@@ -38,7 +40,7 @@ namespace TransportManagement.API.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<SparePart>> GetSparePart(int id)
         {
-            var sparePart = await _context.SpareParts.FindAsync(id);
+            var sparePart = await _context.SpareParts.Include(s => s.SparePartUnits).FirstOrDefaultAsync(s => s.Id == id);
 
             if (sparePart == null || !sparePart.IsActive)
             {
@@ -50,6 +52,7 @@ namespace TransportManagement.API.Controllers
 
         // PUT: api/SpareParts/5
         [HttpPut("{id}")]
+        [Microsoft.AspNetCore.Authorization.AllowAnonymous]
         public async Task<IActionResult> PutSparePart(int id, SparePart sparePart)
         {
             if (id != sparePart.Id)
@@ -57,7 +60,7 @@ namespace TransportManagement.API.Controllers
                 return BadRequest();
             }
 
-            var existingPart = await _context.SpareParts.FindAsync(id);
+            var existingPart = await _context.SpareParts.Include(s => s.SparePartUnits).FirstOrDefaultAsync(s => s.Id == id);
             if (existingPart == null)
             {
                 return NotFound();
@@ -74,8 +77,19 @@ namespace TransportManagement.API.Controllers
             existingPart.StockQuantity = sparePart.StockQuantity;
             existingPart.UnitCost = sparePart.UnitCost;
             existingPart.WarehouseId = sparePart.WarehouseId;
-            existingPart.LocationId = sparePart.LocationId;
+                        existingPart.LocationId = sparePart.LocationId;
             existingPart.IsActive = sparePart.IsActive;
+
+            // Update SparePartUnits
+            _context.SparePartUnits.RemoveRange(existingPart.SparePartUnits);
+            if (sparePart.SparePartUnits != null)
+            {
+                foreach (var unit in sparePart.SparePartUnits)
+                {
+                    unit.Id = 0; // Ensure it is treated as new
+                    existingPart.SparePartUnits.Add(unit);
+                }
+            }
 
             try
             {
@@ -110,7 +124,7 @@ namespace TransportManagement.API.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteSparePart(int id)
         {
-            var sparePart = await _context.SpareParts.FindAsync(id);
+            var sparePart = await _context.SpareParts.Include(s => s.SparePartUnits).FirstOrDefaultAsync(s => s.Id == id);
             if (sparePart == null)
             {
                 return NotFound();
@@ -189,7 +203,7 @@ namespace TransportManagement.API.Controllers
         {
             if (file == null || file.Length == 0) return BadRequest("No se ha enviado ningún archivo.");
 
-            var sparePart = await _context.SpareParts.FindAsync(id);
+            var sparePart = await _context.SpareParts.Include(s => s.SparePartUnits).FirstOrDefaultAsync(s => s.Id == id);
             if (sparePart == null) return NotFound();
 
             var uploadsPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "spareparts");
@@ -216,3 +230,4 @@ namespace TransportManagement.API.Controllers
         }
     }
 }
+

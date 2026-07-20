@@ -1,8 +1,18 @@
+export interface SparePartUnit {
+  id?: number;
+  sparePartId?: number;
+  unitOfMeasureId: number;
+  unitOfMeasure?: UnitOfMeasure;
+  isPrimary: boolean;
+  equivalence: number;
+  isInverse: boolean;
+}
 export interface SparePartCategory {
   id: number;
   name: string;
   description: string;
   isActive: boolean;
+  sparePartUnits?: SparePartUnit[];
 }
 
 export interface UnitOfMeasure {
@@ -10,6 +20,7 @@ export interface UnitOfMeasure {
   name: string;
   abbreviation: string;
   isActive: boolean;
+  sparePartUnits?: SparePartUnit[];
 }
 
 export interface SparePart {
@@ -32,6 +43,7 @@ export interface SparePart {
   imageUrl?: string;
   registrationDate?: string;
   isActive: boolean;
+  sparePartUnits?: SparePartUnit[];
 }
 
 export interface InventoryAdjustmentDetail {
@@ -75,3 +87,4 @@ export interface PhysicalInventory {
   status: 'INITIATED' | 'PROCESSED' | 'CANCELLED';
   details: PhysicalInventoryDetail[];
 }
+

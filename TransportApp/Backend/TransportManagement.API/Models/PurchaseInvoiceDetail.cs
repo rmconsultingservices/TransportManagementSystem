@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
 
 namespace TransportManagement.API.Models
@@ -19,10 +20,12 @@ namespace TransportManagement.API.Models
 
         public string? WarehouseCode { get; set; } // e.g. "001"
 
-        public int QuantityReceived { get; set; }
+        [Column(TypeName = "decimal(18,4)")]
+        public decimal QuantityReceived { get; set; }
 
         public decimal UnitCost { get; set; }
 
         public decimal TaxPercentage { get; set; } // e.g. 16 for 16% IVA
     }
 }
+

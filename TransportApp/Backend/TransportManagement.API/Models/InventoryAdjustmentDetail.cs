@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
@@ -19,10 +20,12 @@ namespace TransportManagement.API.Models
         [StringLength(20)]
         public string Type { get; set; } = "ENTRADA"; // ENTRADA / SALIDA
 
-        public int Quantity { get; set; }
+        [Column(TypeName = "decimal(18,4)")]
+        public decimal Quantity { get; set; }
 
         public decimal UnitCost { get; set; }
 
         public decimal TotalCost { get; set; }
     }
 }
+

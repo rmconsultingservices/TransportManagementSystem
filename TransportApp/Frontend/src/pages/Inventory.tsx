@@ -8,6 +8,14 @@ export default function Inventory() {
   const [spareParts, setSpareParts] = useState<SparePart[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+
+  const [sparePartUnits, setSparePartUnits] = useState<SparePartUnit[]>([]);
+  const [multiUnit, setMultiUnit] = useState(false);
+  const [newUnitId, setNewUnitId] = useState(0);
+  const [newUnitEquiv, setNewUnitEquiv] = useState('');
+  const [newUnitIsPrimary, setNewUnitIsPrimary] = useState(false);
+  const [newUnitIsInverse, setNewUnitIsInverse] = useState(false);
+
   const [searchTerm, setSearchTerm] = useState('');
   
   // Form state
@@ -112,7 +120,7 @@ export default function Inventory() {
         estimatedLifeSpanKm: lifeSpanKm === '' ? undefined : Number(lifeSpanKm),
         estimatedLifeSpanMonths: lifeSpanMonths === '' ? undefined : Number(lifeSpanMonths),
         registrationDate: new Date(registrationDate).toISOString(),
-        isActive: true
+        isActive: true, sparePartUnits: multiUnit ? sparePartUnits : []
       };
       if (categoryId > 0) payload.categoryId = categoryId;
       if (unitOfMeasureId > 0) payload.unitOfMeasureId = unitOfMeasureId;
@@ -179,6 +187,14 @@ export default function Inventory() {
     setLifeSpanKm('');
     setLifeSpanMonths('');
     setRegistrationDate(new Date().toISOString().split('T')[0]);
+
+    setSparePartUnits([]);
+    setMultiUnit(false);
+    setNewUnitId(0);
+    setNewUnitEquiv('');
+    setNewUnitIsPrimary(false);
+    setNewUnitIsInverse(false);
+
   };
 
   const handleEdit = (part: SparePart) => {
@@ -197,6 +213,10 @@ export default function Inventory() {
      setImageFile(null);
      setPreviewUrl(part.imageUrl ? `http://localhost:5024${part.imageUrl}` : null);
      setShowForm(true);
+
+     setSparePartUnits(part.sparePartUnits || []);
+     setMultiUnit((part.sparePartUnits && part.sparePartUnits.length > 0) ? true : false);
+
   };
 
   const loadHistory = async (part: SparePart) => {
@@ -272,6 +292,10 @@ export default function Inventory() {
                } else {
                  resetForm();
                  setShowForm(true);
+
+     setSparePartUnits(part.sparePartUnits || []);
+     setMultiUnit((part.sparePartUnits && part.sparePartUnits.length > 0) ? true : false);
+
                }
             }}
             className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors shadow-sm"
@@ -326,16 +350,127 @@ export default function Inventory() {
               />
             </div>
             
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Unidad de Medida</label>
-              <select 
-                  value={unitOfMeasureId} onChange={e => setUnitOfMeasureId(Number(e.target.value))} required
-                  className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-500 outline-none"
-                >
-                  <option value={0} disabled>Seleccione una unidad</option>
-                  {units.length === 0 && <option value="0" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">Sin Unidades</option>}
-                  {units.map(u => <option key={u.id} value={u.id} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">{u.name} ({u.abbreviation})</option>)}
-                </select>
+                        <div className="lg:col-span-3 border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800/50">
+              <div className="flex items-center gap-6 mb-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="multiUnit" checked={!multiUnit} onChange={() => setMultiUnit(false)} className="text-amber-500 focus:ring-amber-500" />
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Maneja Unidad Primaria</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="multiUnit" checked={multiUnit} onChange={() => setMultiUnit(true)} className="text-amber-500 focus:ring-amber-500" />
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Maneja Unidad Primaria y Alternas</span>
+                </label>
+              </div>
+
+              {!multiUnit ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Unidad de Medida Primaria</label>
+                  <select 
+                      value={unitOfMeasureId} onChange={e => setUnitOfMeasureId(Number(e.target.value))} required
+                      className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-500 outline-none max-w-sm"
+                    >
+                      <option value={0} disabled>Seleccione una unidad</option>
+                      {units.map(u => <option key={u.id} value={u.id}>{u.name} ({u.abbreviation})</option>)}
+                  </select>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden bg-white dark:bg-gray-900">
+                    <table className="w-full text-sm text-left">
+                       <thead className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
+                          <tr>
+                             <th className="px-3 py-2">Unidad</th>
+                             <th className="px-3 py-2">DescripciA3n</th>
+                             <th className="px-3 py-2 text-center">Primaria</th>
+                             <th className="px-3 py-2 text-center">Equivalencia</th>
+                             <th className="px-3 py-2 text-center">Inversa</th>
+                             <th className="px-3 py-2 text-center">AcciA3n</th>
+                          </tr>
+                       </thead>
+                       <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                          {sparePartUnits.map((su, idx) => {
+                             const uom = units.find(u => u.id === su.unitOfMeasureId);
+                             return (
+                               <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                                  <td className="px-3 py-2 font-medium">{uom?.abbreviation}</td>
+                                  <td className="px-3 py-2">{uom?.name}</td>
+                                  <td className="px-3 py-2 text-center">
+                                     <input type="checkbox" checked={su.isPrimary} readOnly className="rounded text-amber-500 focus:ring-amber-500 pointer-events-none"/>
+                                  </td>
+                                  <td className="px-3 py-2 text-center">{su.equivalence}</td>
+                                  <td className="px-3 py-2 text-center">
+                                     <input type="checkbox" checked={su.isInverse} readOnly className="rounded text-amber-500 focus:ring-amber-500 pointer-events-none"/>
+                                  </td>
+                                  <td className="px-3 py-2 text-center">
+                                     <button type="button" onClick={() => {
+                                        const newUnits = [...sparePartUnits];
+                                        newUnits.splice(idx, 1);
+                                        setSparePartUnits(newUnits);
+                                     }} className="text-red-500 hover:text-red-700">
+                                        <X size={16}/>
+                                     </button>
+                                  </td>
+                               </tr>
+                             );
+                          })}
+                          {sparePartUnits.length === 0 && (
+                            <tr><td colSpan={6} className="px-3 py-4 text-center text-gray-500">No hay unidades agregadas</td></tr>
+                          )}
+                       </tbody>
+                    </table>
+                  </div>
+
+                  <div className="bg-gray-100 dark:bg-gray-800 p-3 rounded-md border border-gray-200 dark:border-gray-700">
+                     <h4 className="text-sm font-semibold mb-3 text-gray-700 dark:text-gray-300">Agregar Unidad Alterna</h4>
+                     <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 items-end">
+                        <div className="sm:col-span-2">
+                           <label className="block text-xs font-medium text-gray-500 mb-1">Unidad</label>
+                           <select 
+                              value={newUnitId} onChange={e => setNewUnitId(Number(e.target.value))}
+                              className="w-full rounded border border-gray-300 dark:border-gray-600 px-2 py-1.5 text-sm bg-white dark:bg-gray-900 focus:ring-1 focus:ring-amber-500 outline-none"
+                            >
+                              <option value={0} disabled>Seleccione...</option>
+                              {units.map(u => <option key={u.id} value={u.id}>{u.name} ({u.abbreviation})</option>)}
+                           </select>
+                        </div>
+                        <div>
+                           <label className="block text-xs font-medium text-gray-500 mb-1">Equivalencia</label>
+                           <input type="number" min="0" step="0.01" value={newUnitEquiv} onChange={e => setNewUnitEquiv(e.target.value)}
+                              className="w-full rounded border border-gray-300 dark:border-gray-600 px-2 py-1.5 text-sm bg-white dark:bg-gray-900 focus:ring-1 focus:ring-amber-500 outline-none"
+                           />
+                        </div>
+                        <div className="flex flex-col gap-2 pb-1.5">
+                           <label className="flex items-center gap-1 cursor-pointer">
+                              <input type="checkbox" checked={newUnitIsPrimary} onChange={e => setNewUnitIsPrimary(e.target.checked)} className="rounded text-amber-500 focus:ring-amber-500"/>
+                              <span className="text-xs text-gray-700 dark:text-gray-300">Primaria</span>
+                           </label>
+                           <label className="flex items-center gap-1 cursor-pointer">
+                              <input type="checkbox" checked={newUnitIsInverse} onChange={e => setNewUnitIsInverse(e.target.checked)} className="rounded text-amber-500 focus:ring-amber-500"/>
+                              <span className="text-xs text-gray-700 dark:text-gray-300">Inversa</span>
+                           </label>
+                        </div>
+                        <div>
+                           <button type="button" onClick={() => {
+                              if (newUnitId > 0 && newUnitEquiv !== '') {
+                                 setSparePartUnits([...sparePartUnits, {
+                                    unitOfMeasureId: newUnitId,
+                                    equivalence: Number(newUnitEquiv),
+                                    isPrimary: newUnitIsPrimary,
+                                    isInverse: newUnitIsInverse
+                                 }]);
+                                 setNewUnitId(0);
+                                 setNewUnitEquiv('');
+                                 setNewUnitIsPrimary(false);
+                                 setNewUnitIsInverse(false);
+                              }
+                           }} className="w-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 py-1.5 rounded text-sm font-medium transition-colors">
+                              Agregar
+                           </button>
+                        </div>
+                     </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div>
@@ -818,3 +953,5 @@ export default function Inventory() {
     </>
   );
 }
+
+

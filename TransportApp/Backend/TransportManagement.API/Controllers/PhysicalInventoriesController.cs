@@ -197,7 +197,7 @@ namespace TransportManagement.API.Controllers
                 // If `ZeroUncounted` is FALSE, maybe we shouldn't adjust those. Let's just adjust whatever differences exist!
                 // We'll trust the user has saved the correct RealStock via PUT /results.
 
-                int diff = detail.RealStock - detail.TheoreticalStock;
+                decimal diff = detail.RealStock - detail.TheoreticalStock;
 
                 if (diff != 0)
                 {
@@ -235,3 +235,4 @@ namespace TransportManagement.API.Controllers
         }
     }
 }
+

@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
 
 namespace TransportManagement.API.Models
@@ -17,8 +18,10 @@ namespace TransportManagement.API.Models
         public int PurchaseRequisitionId { get; set; }
         public PurchaseRequisition? PurchaseRequisition { get; set; }
 
-        public int QuantityOrdered { get; set; }
+        [Column(TypeName = "decimal(18,4)")]
+        public decimal QuantityOrdered { get; set; }
 
         public decimal UnitPrice { get; set; }
     }
 }
+

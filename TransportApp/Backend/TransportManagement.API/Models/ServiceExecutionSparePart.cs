@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
 
 namespace TransportManagement.API.Models
@@ -15,6 +16,8 @@ namespace TransportManagement.API.Models
         public int SparePartId { get; set; }
         public SparePart? SparePart { get; set; }
 
-        public int Quantity { get; set; }
+        [Column(TypeName = "decimal(18,4)")]
+        public decimal Quantity { get; set; }
     }
 }
+

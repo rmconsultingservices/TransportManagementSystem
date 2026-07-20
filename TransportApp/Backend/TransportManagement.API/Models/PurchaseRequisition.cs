@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations.Schema;
 using System;
 using System.ComponentModel.DataAnnotations;
 
@@ -22,7 +23,8 @@ namespace TransportManagement.API.Models
         [Required]
         public string PartNameOrDescription { get; set; } = string.Empty;
         
-        public int Quantity { get; set; } = 1;
+        [Column(TypeName = "decimal(18,4)")]
+        public decimal Quantity { get; set; } = 1;
 
         // Pendiente, Cotizando, Aprobada, Rechazada, Comprada
         public string Status { get; set; } = "Pendiente";
@@ -30,3 +32,4 @@ namespace TransportManagement.API.Models
         public ICollection<Quotation> Quotations { get; set; } = new List<Quotation>();
     }
 }
+

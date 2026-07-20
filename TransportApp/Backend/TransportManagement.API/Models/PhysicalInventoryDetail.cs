@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
@@ -15,10 +16,13 @@ namespace TransportManagement.API.Models
         public int SparePartId { get; set; }
         public SparePart? SparePart { get; set; }
 
-        public int TheoreticalStock { get; set; }
+        [Column(TypeName = "decimal(18,4)")]
+        public decimal TheoreticalStock { get; set; }
 
-        public int RealStock { get; set; }
+        [Column(TypeName = "decimal(18,4)")]
+        public decimal RealStock { get; set; }
 
         public decimal UnitCost { get; set; }
     }
 }
+

@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace TransportManagement.API.Models
 {
@@ -20,7 +22,9 @@ namespace TransportManagement.API.Models
         public double? EstimatedLifeSpanKm { get; set; }
         public int? EstimatedLifeSpanMonths { get; set; }
 
-        public int StockQuantity { get; set; } = 0;
+        [Column(TypeName = "decimal(18,4)")]
+        public decimal StockQuantity { get; set; } = 0;
+        
         public decimal UnitCost { get; set; } = 0;
         public string? ImageUrl { get; set; }
         
@@ -33,5 +37,7 @@ namespace TransportManagement.API.Models
         public DateTime RegistrationDate { get; set; } = DateTime.UtcNow;
 
         public bool IsActive { get; set; } = true;
+
+        public ICollection<SparePartUnit> SparePartUnits { get; set; } = new List<SparePartUnit>();
     }
 }
