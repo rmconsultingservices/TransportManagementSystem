@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Plus, Search, MapPin, PackageOpen, ClipboardList, AlertCircle, Play, Eye, FileText, FileDown, Trash2 } from 'lucide-react';
 import type { PhysicalInventory } from '../types/inventory';
 import { physicalInventoryService } from '../services/physicalInventoryService';
@@ -34,7 +34,7 @@ export default function PhysicalInventories() {
     try {
       const data = await physicalInventoryService.getAll();
       setInventories(data);
-    } catch (error) {
+    } catch (error: any) {
       toast.error('Error al cargar tomas de inventario');
     } finally {
       setIsLoading(false);
@@ -45,7 +45,7 @@ export default function PhysicalInventories() {
     try {
       const data = await warehouseService.getWarehouses();
       setWarehouses(data);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
     }
   };
@@ -55,19 +55,19 @@ export default function PhysicalInventories() {
     try {
       const data = await locationService.getLocations(warehouseId);
       setLocations(data);
-    } catch (error) {
+    } catch (error: any) {
       setLocations([]);
     }
   };
 
   const handleDelete = async (id: number) => {
-    if (window.confirm('¿Está seguro de eliminar esta toma física? Esta acción no se puede deshacer.')) {
+    if (window.confirm('Â¿EstÃ¡ seguro de eliminar esta toma fÃ­sica? Esta acciÃ³n no se puede deshacer.')) {
       try {
         await physicalInventoryService.delete(id);
         fetchInventories();
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error deleting inventory:', error);
-        alert('Error al eliminar la toma física.');
+        alert('Error al eliminar la toma fÃ­sica.');
       }
     }
   };
@@ -85,10 +85,10 @@ export default function PhysicalInventories() {
         warehouseId: formData.warehouseId,
         locationId: formData.locationId === 0 ? undefined : formData.locationId
       });
-      toast.success('Toma de inventario iniciada con éxito');
+      toast.success('Toma de inventario iniciada con Ã©xito');
       setIsModalOpen(false);
       navigate(`/inventory/physical/${result.id}`);
-    } catch (error) {
+    } catch (error: any) {
       toast.error('Error al iniciar toma de inventario');
     }
   };
@@ -104,10 +104,10 @@ export default function PhysicalInventories() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
             <ClipboardList className="text-indigo-600 dark:text-indigo-400" />
-            Toma Física de Inventario
+            Toma FÃ­sica de Inventario
           </h1>
           <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
-            Gestiona los conteos físicos de almacenes y ubicaciones
+            Gestiona los conteos fÃ­sicos de almacenes y ubicaciones
           </p>
         </div>
         
@@ -116,7 +116,7 @@ export default function PhysicalInventories() {
           className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition flex items-center gap-2 shadow-sm"
         >
           <Plus size={20} />
-          <span>Nueva Toma Física</span>
+          <span>Nueva Toma FÃ­sica</span>
         </button>
       </div>
 
@@ -126,7 +126,7 @@ export default function PhysicalInventories() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
             <input
               type="text"
-              placeholder="Buscar por número o descripción..."
+              placeholder="Buscar por nÃºmero o descripciÃ³n..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500"
@@ -138,9 +138,9 @@ export default function PhysicalInventories() {
           <table className="w-full text-left">
             <thead className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
               <tr>
-                <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Número</th>
-                <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Descripción</th>
-                <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Almacén / Ubicación</th>
+                <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">NÃºmero</th>
+                <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">DescripciÃ³n</th>
+                <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">AlmacÃ©n / UbicaciÃ³n</th>
                 <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fecha Inicio</th>
                 <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Estado</th>
                 <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Acciones</th>
@@ -158,7 +158,7 @@ export default function PhysicalInventories() {
                   <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
                     <div className="flex flex-col items-center justify-center">
                       <ClipboardList size={48} className="text-gray-300 mb-2" />
-                      <p>No se encontraron registros de tomas físicas.</p>
+                      <p>No se encontraron registros de tomas fÃ­sicas.</p>
                     </div>
                   </td>
                 </tr>
@@ -231,7 +231,7 @@ export default function PhysicalInventories() {
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
                 <ClipboardList className="text-indigo-600" />
-                Iniciar Toma Física
+                Iniciar Toma FÃ­sica
               </h3>
               <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600">
                 <AlertCircle size={24} />
@@ -241,7 +241,7 @@ export default function PhysicalInventories() {
             <form onSubmit={handleStartInventory} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Descripción / Motivo <span className="text-red-500">*</span>
+                  DescripciÃ³n / Motivo <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -255,7 +255,7 @@ export default function PhysicalInventories() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Almacén <span className="text-red-500">*</span>
+                  AlmacÃ©n <span className="text-red-500">*</span>
                 </label>
                 <select
                   required
@@ -263,7 +263,7 @@ export default function PhysicalInventories() {
                   onChange={e => handleWarehouseChange(Number(e.target.value))}
                   className="w-full bg-gray-50 border border-gray-300 rounded-lg p-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
                 >
-                  <option value={0}>Seleccione un almacén...</option>
+                  <option value={0}>Seleccione un almacÃ©n...</option>
                   {warehouses.map(w => (
                     <option key={w.id} value={w.id}>{w.name}</option>
                   ))}
@@ -272,7 +272,7 @@ export default function PhysicalInventories() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Ubicación (Rack/Estante) <span className="text-gray-400 font-normal">(Opcional)</span>
+                  UbicaciÃ³n (Rack/Estante) <span className="text-gray-400 font-normal">(Opcional)</span>
                 </label>
                 <select
                   value={formData.locationId}
@@ -286,7 +286,7 @@ export default function PhysicalInventories() {
                   ))}
                 </select>
                 <p className="text-xs text-gray-500 mt-1">
-                  Si selecciona una ubicación, el inventario se limitará solo a los artículos en ella.
+                  Si selecciona una ubicaciÃ³n, el inventario se limitarÃ¡ solo a los artÃ­culos en ella.
                 </p>
               </div>
 
@@ -312,3 +312,4 @@ export default function PhysicalInventories() {
     </div>
   );
 }
+

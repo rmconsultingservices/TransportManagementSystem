@@ -1,42 +1,39 @@
-import requests
+﻿import urllib.request
 import json
+import urllib.error
 
-base_url = 'http://localhost:5025/api'
+# 1. Login
+login_data = json.dumps({"username": "admin", "password": "admin"}).encode('utf-8')
+req = urllib.request.Request('http://localhost:5024/api/Auth/login', data=login_data, headers={'Content-Type': 'application/json'})
 
-# Login
-login_data = {
-    'username': 'admin',
-    'password': 'password123'
-}
 try:
-    r = requests.post(f'{base_url}/Auth/login', json=login_data)
-    token = r.json()['token']
-except Exception as e:
-    print('Login failed', e)
-    exit(1)
+    with urllib.request.urlopen(req) as response:
+        res_data = json.loads(response.read().decode())
+        token = res_data.get('token')
+        print("Logged in")
+except urllib.error.URLError as e:
+    print("Login failed:", e)
+    token = None
 
-# Create invoice
-invoice_data = {
-    'supplierId': 1,
-    'invoiceNumber': 'TEST-001',
-    'dateIssued': '2026-07-20T00:00:00.000Z',
-    'paymentCondition': '001',
-    'details': [
-        {
-            'sparePartId': 7,
-            'quantityReceived': 1,
-            'unitCost': 100,
-            'taxPercentage': 16,
-            'unitOfMeasureId': 6
-        }
-    ]
-}
-
-headers = {
-    'Authorization': f'Bearer {token}',
-    'Content-Type': 'application/json'
-}
-
-r2 = requests.post(f'{base_url}/PurchaseInvoices', json=invoice_data, headers=headers)
-print('Status:', r2.status_code)
-print('Body:', r2.text)
+# 2. Get inventories
+if token:
+    req = urllib.request.Request('http://localhost:5024/api/PhysicalInventories', headers={'Authorization': f'Bearer {token}'})
+    try:
+        with urllib.request.urlopen(req) as response:
+            inventories = json.loads(response.read().decode())
+            print(f"Got {len(inventories)} inventories")
+            # 3. Delete the first INITIATED inventory
+            initiated = [i for i in inventories if i['status'] == 'INITIATED']
+            if initiated:
+                target = initiated[0]
+                print(f"Deleting inventory {target['id']}")
+                req = urllib.request.Request(f"http://localhost:5024/api/PhysicalInventories/{target['id']}", method='DELETE', headers={'Authorization': f'Bearer {token}'})
+                try:
+                    with urllib.request.urlopen(req) as response:
+                        print("Deleted:", response.status)
+                except urllib.error.HTTPError as e:
+                    print("Delete failed:", e.code, e.read().decode())
+            else:
+                print("No INITIATED inventories found")
+    except urllib.error.URLError as e:
+        print("Get failed:", e)

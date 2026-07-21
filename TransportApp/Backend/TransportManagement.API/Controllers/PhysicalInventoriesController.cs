@@ -247,28 +247,36 @@ namespace TransportManagement.API.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeletePhysicalInventory(int id)
         {
-            var inventory = await _context.PhysicalInventories
-                .Include(i => i.Details)
-                .FirstOrDefaultAsync(i => i.Id == id);
-
-            if (inventory == null)
+            try
             {
-                return NotFound();
-            }
+                var inventory = await _context.PhysicalInventories
+                    .Include(i => i.Details)
+                    .FirstOrDefaultAsync(i => i.Id == id);
 
-            if (inventory.Status == "PROCESSED")
+                if (inventory == null)
+                {
+                    return NotFound();
+                }
+
+                if (inventory.Status == "PROCESSED")
+                {
+                    return BadRequest("No se puede eliminar una toma fisica que ya ha sido procesada.");
+                }
+
+                _context.PhysicalInventoryDetails.RemoveRange(inventory.Details);
+                _context.PhysicalInventories.Remove(inventory);
+                
+                await _context.SaveChangesAsync();
+
+                return NoContent();
+            }
+            catch (Exception ex)
             {
-                return BadRequest("No se puede eliminar una toma fisica que ya ha sido procesada.");
+                return BadRequest(new { message = ex.Message, inner = ex.InnerException?.Message });
             }
-
-            _context.PhysicalInventoryDetails.RemoveRange(inventory.Details);
-            _context.PhysicalInventories.Remove(inventory);
-            
-            await _context.SaveChangesAsync();
-
-            return NoContent();
         }}
 }
+
 
 
 
