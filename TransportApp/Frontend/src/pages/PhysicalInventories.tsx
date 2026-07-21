@@ -64,7 +64,7 @@ export default function PhysicalInventories() {
     if (window.confirm('Â¿Está seguro de eliminar esta toma física? Esta acción no se puede deshacer.')) {
       try {
         await physicalInventoryService.delete(id);
-        fetchInventories();
+        loadInventories();
       } catch (error: any) {
         console.error('Error deleting inventory:', error);
         alert('Error al eliminar la toma física. Si el error persiste, por favor REINICIA TU BACKEND (Ctrl+C y dotnet run). Detalles: ' + (error.response?.data?.message || error.message));
