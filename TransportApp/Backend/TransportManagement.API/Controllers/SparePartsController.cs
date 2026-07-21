@@ -30,7 +30,7 @@ namespace TransportManagement.API.Controllers
                 .Include(s => s.Warehouse)
                 .Include(s => s.Category)
                 .Include(s => s.UnitOfMeasure)
-                .Include(s => s.SparePartUnits)
+                .Include(s => s.SparePartUnits).ThenInclude(u => u.UnitOfMeasure)
                 .Where(s => s.IsActive)
                 .AsSplitQuery()
                 .ToListAsync();
@@ -40,7 +40,7 @@ namespace TransportManagement.API.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<SparePart>> GetSparePart(int id)
         {
-            var sparePart = await _context.SpareParts.Include(s => s.SparePartUnits).FirstOrDefaultAsync(s => s.Id == id);
+            var sparePart = await _context.SpareParts.Include(s => s.SparePartUnits).ThenInclude(u => u.UnitOfMeasure).FirstOrDefaultAsync(s => s.Id == id);
 
             if (sparePart == null || !sparePart.IsActive)
             {
@@ -60,7 +60,7 @@ namespace TransportManagement.API.Controllers
                 return BadRequest();
             }
 
-            var existingPart = await _context.SpareParts.Include(s => s.SparePartUnits).FirstOrDefaultAsync(s => s.Id == id);
+            var existingPart = await _context.SpareParts.Include(s => s.SparePartUnits).ThenInclude(u => u.UnitOfMeasure).FirstOrDefaultAsync(s => s.Id == id);
             if (existingPart == null)
             {
                 return NotFound();
@@ -124,7 +124,7 @@ namespace TransportManagement.API.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteSparePart(int id)
         {
-            var sparePart = await _context.SpareParts.Include(s => s.SparePartUnits).FirstOrDefaultAsync(s => s.Id == id);
+            var sparePart = await _context.SpareParts.Include(s => s.SparePartUnits).ThenInclude(u => u.UnitOfMeasure).FirstOrDefaultAsync(s => s.Id == id);
             if (sparePart == null)
             {
                 return NotFound();
@@ -203,7 +203,7 @@ namespace TransportManagement.API.Controllers
         {
             if (file == null || file.Length == 0) return BadRequest("No se ha enviado ningún archivo.");
 
-            var sparePart = await _context.SpareParts.Include(s => s.SparePartUnits).FirstOrDefaultAsync(s => s.Id == id);
+            var sparePart = await _context.SpareParts.Include(s => s.SparePartUnits).ThenInclude(u => u.UnitOfMeasure).FirstOrDefaultAsync(s => s.Id == id);
             if (sparePart == null) return NotFound();
 
             var uploadsPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "spareparts");
@@ -230,4 +230,5 @@ namespace TransportManagement.API.Controllers
         }
     }
 }
+
 
