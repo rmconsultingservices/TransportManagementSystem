@@ -64,8 +64,10 @@ export interface PurchaseInvoiceDetail {
   purchaseInvoiceId: number;
   sparePartId: number;
   sparePart?: any; // Inventory Part Back ref
+  unitOfMeasureId?: number;
   warehouseCode?: string;
   quantityReceived: number;
   unitCost: number;
   taxPercentage: number;
 }
+

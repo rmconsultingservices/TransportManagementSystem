@@ -16,6 +16,7 @@ export default function PhysicalInventoryResults() {
   const [isCanceling, setIsCanceling] = useState(false);
   const [zeroUncounted, setZeroUncounted] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [multiUnitInputs, setMultiUnitInputs] = useState<Record<number, Record<number, string>>>({});
 
   useEffect(() => {
     if (id) {
@@ -44,6 +45,41 @@ export default function PhysicalInventoryResults() {
         ? { ...d, realStock: val } 
         : d
     ));
+  };
+
+  const handleMultiStockChange = (sparePartId: number, unitId: number, value: string, sparePartUnits: any[]) => {
+    setMultiUnitInputs(prev => {
+      const currentInputs = prev[sparePartId] || {};
+      const newInputs = { ...currentInputs, [unitId]: value };
+      
+      let total = 0;
+      let hasInput = false;
+      
+      Object.entries(newInputs).forEach(([uIdStr, val]) => {
+        if (val === '') return;
+        const uId = Number(uIdStr);
+        const qty = Number(val) || 0;
+        hasInput = true;
+        
+        if (uId === 0) {
+          total += qty;
+        } else {
+          const unitDef = sparePartUnits.find(u => u.unitOfMeasureId === uId);
+          if (unitDef) {
+            const mult = unitDef.isInverse ? (1 / (unitDef.equivalence || 1)) : unitDef.equivalence;
+            total += qty * mult;
+          }
+        }
+      });
+      
+      setDetails(prevDetails => prevDetails.map(d => 
+        d.sparePartId === sparePartId 
+          ? { ...d, realStock: hasInput ? total : undefined } 
+          : d
+      ));
+      
+      return { ...prev, [sparePartId]: newInputs };
+    });
   };
 
   const handleSaveProgress = async () => {
@@ -295,14 +331,48 @@ export default function PhysicalInventoryResults() {
                           {detail.realStock !== undefined ? detail.realStock : (zeroUncounted ? 0 : detail.theoreticalStock)}
                         </span>
                       ) : (
-                        <input
-                          type="number"
-                          min="0"
-                          value={detail.realStock === undefined ? '' : detail.realStock}
-                          onChange={(e) => handleStockChange(detail.sparePartId, e.target.value)}
-                          className="w-24 text-right bg-white dark:bg-gray-800 border-2 border-indigo-200 dark:border-indigo-800 rounded-md p-1 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none font-bold text-indigo-700 dark:text-indigo-300"
-                          placeholder="-"
-                        />
+                        <div className="flex flex-col gap-1 items-end">
+                          {detail.sparePart?.sparePartUnits && detail.sparePart.sparePartUnits.length > 0 ? (
+                            <>
+                              {detail.sparePart.sparePartUnits.map(u => (
+                                <div key={u.unitOfMeasureId} className="flex items-center gap-2">
+                                  <span className="text-xs text-gray-500 font-medium">{u.unitOfMeasure?.abbreviation}:</span>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={multiUnitInputs[detail.sparePartId]?.[u.unitOfMeasureId] ?? ''}
+                                    onChange={(e) => handleMultiStockChange(detail.sparePartId, u.unitOfMeasureId, e.target.value, detail.sparePart!.sparePartUnits!)}
+                                    className="w-20 text-right bg-white dark:bg-gray-800 border border-indigo-200 dark:border-indigo-800 rounded p-1 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-sm text-indigo-700 dark:text-indigo-300"
+                                    placeholder="-"
+                                  />
+                                </div>
+                              ))}
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-gray-500 font-medium">{detail.sparePart?.unitOfMeasure?.abbreviation || 'UND'}:</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={multiUnitInputs[detail.sparePartId]?.[0] ?? ''}
+                                  onChange={(e) => handleMultiStockChange(detail.sparePartId, 0, e.target.value, detail.sparePart!.sparePartUnits!)}
+                                  className="w-20 text-right bg-white dark:bg-gray-800 border border-indigo-200 dark:border-indigo-800 rounded p-1 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-sm text-indigo-700 dark:text-indigo-300"
+                                  placeholder="-"
+                                />
+                              </div>
+                              <div className="text-xs font-semibold text-indigo-800 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/40 px-2 py-1 rounded mt-1 border border-indigo-100 dark:border-indigo-800">
+                                Total: {detail.realStock !== undefined ? detail.realStock : '-'} {detail.sparePart?.unitOfMeasure?.abbreviation || 'UND'}
+                              </div>
+                            </>
+                          ) : (
+                            <input
+                              type="number"
+                              min="0"
+                              value={detail.realStock === undefined ? '' : detail.realStock}
+                              onChange={(e) => handleStockChange(detail.sparePartId, e.target.value)}
+                              className="w-24 text-right bg-white dark:bg-gray-800 border-2 border-indigo-200 dark:border-indigo-800 rounded-md p-1 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none font-bold text-indigo-700 dark:text-indigo-300"
+                              placeholder="-"
+                            />
+                          )}
+                        </div>
                       )}
                     </td>
                     <td className="px-6 py-3 whitespace-nowrap text-sm text-right font-medium">

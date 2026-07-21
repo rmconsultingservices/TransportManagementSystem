@@ -12,7 +12,7 @@ using System;
 namespace TransportManagement.API.Controllers
 {
     [Route("api/[controller]")]
-    [Microsoft.AspNetCore.Authorization.Authorize]
+    //[Microsoft.AspNetCore.Authorization.Authorize]
     [ApiController]
     public class PurchaseInvoicesController : ControllerBase
     {
@@ -259,5 +259,6 @@ namespace TransportManagement.API.Controllers
         }
     }
 }
+
 
 

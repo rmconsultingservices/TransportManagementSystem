@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { PackageOpen, Plus, Loader2, Trash2, AlertTriangle, FileClock, X, ArrowUpRight, ArrowDownRight, Search, Printer, MapPin, TrendingUp } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { inventoryService } from '../services/inventoryService';
-import type { SparePart } from '../types';
+import type { SparePart, SparePartUnit } from '../types/inventory';
 
 export default function Inventory() {
   const [spareParts, setSpareParts] = useState<SparePart[]>([]);
@@ -213,10 +213,6 @@ export default function Inventory() {
      setImageFile(null);
      setPreviewUrl(part.imageUrl ? `http://localhost:5024${part.imageUrl}` : null);
      setShowForm(true);
-
-     setSparePartUnits(part.sparePartUnits || []);
-     setMultiUnit((part.sparePartUnits && part.sparePartUnits.length > 0) ? true : false);
-
   };
 
   const loadHistory = async (part: SparePart) => {
@@ -292,10 +288,6 @@ export default function Inventory() {
                } else {
                  resetForm();
                  setShowForm(true);
-
-     setSparePartUnits(part.sparePartUnits || []);
-     setMultiUnit((part.sparePartUnits && part.sparePartUnits.length > 0) ? true : false);
-
                }
             }}
             className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors shadow-sm"
@@ -953,5 +945,7 @@ export default function Inventory() {
     </>
   );
 }
+
+
 
 
