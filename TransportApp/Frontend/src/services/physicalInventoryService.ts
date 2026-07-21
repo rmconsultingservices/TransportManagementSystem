@@ -28,7 +28,7 @@ export const physicalInventoryService = {
   },
 
   delete: async (id: number) => {
-    const response = await api.delete(/PhysicalInventories/);
+    const response = await api.delete(`/PhysicalInventories/${id}`);
     return response.data;
   },
 
