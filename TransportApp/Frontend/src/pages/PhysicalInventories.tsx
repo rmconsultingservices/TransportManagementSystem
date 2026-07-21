@@ -60,6 +60,18 @@ export default function PhysicalInventories() {
     }
   };
 
+  const handleDelete = async (id: number) => {
+    if (window.confirm('¿Está seguro de eliminar esta toma física? Esta acción no se puede deshacer.')) {
+      try {
+        await api.delete(/api/PhysicalInventories/);
+        fetchInventories();
+      } catch (error) {
+        console.error('Error deleting inventory:', error);
+        alert('Error al eliminar la toma física.');
+      }
+    }
+  };
+
   const handleStartInventory = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.description || formData.warehouseId === 0) {
@@ -289,3 +301,4 @@ export default function PhysicalInventories() {
     </div>
   );
 }
+

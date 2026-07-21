@@ -242,8 +242,29 @@ namespace TransportManagement.API.Controllers
 
             return Ok(new { message = "Inventario procesado correctamente.", hasDifferences, adjustmentId = adjustment.Id });
         }
-    }
+    
+        // DELETE: api/PhysicalInventories/5
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeletePhysicalInventory(int id)
+        {
+            var inventory = await _context.PhysicalInventories.FindAsync(id);
+            if (inventory == null)
+            {
+                return NotFound();
+            }
+
+            if (inventory.Status == "PROCESSED")
+            {
+                return BadRequest("No se puede eliminar una toma fisica que ya ha sido procesada.");
+            }
+
+            _context.PhysicalInventories.Remove(inventory);
+            await _context.SaveChangesAsync();
+
+            return NoContent();
+        }}
 }
+
 
 
 
