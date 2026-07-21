@@ -28,6 +28,9 @@ export interface SparePart {
   itemType?: string;
   code: string;
   name: string;
+  brand?: string;
+  model?: string;
+  presentation?: string;
   categoryId?: number;
   category?: SparePartCategory;
   estimatedLifeSpanKm?: number;

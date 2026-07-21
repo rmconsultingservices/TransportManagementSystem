@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -13,6 +13,10 @@ namespace TransportManagement.API.Models
         public string Code { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
         public string ItemType { get; set; } = "Producto";
+        
+        public string? Brand { get; set; }
+        public string? Model { get; set; }
+        public string? Presentation { get; set; }
         
         public int? UnitOfMeasureId { get; set; }
         public UnitOfMeasure? UnitOfMeasure { get; set; }

@@ -207,7 +207,7 @@ export default function PhysicalInventories() {
                         </button>
                         {inv.status !== 'PROCESSED' && (
                           <button
-                            onClick={() => handleDelete(inv.id)}
+                            onClick={() => handleDelete(inv.id!)}
                             className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 flex items-center"
                             title="Eliminar"
                           >

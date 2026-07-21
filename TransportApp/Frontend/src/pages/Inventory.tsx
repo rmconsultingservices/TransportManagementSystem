@@ -25,6 +25,9 @@ export default function Inventory() {
   const [itemType, setItemType] = useState('Producto');
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
+  const [brand, setBrand] = useState('');
+  const [model, setModel] = useState('');
+  const [presentation, setPresentation] = useState('');
   const [unitOfMeasureId, setUnitOfMeasureId] = useState<number>(0);
   const [categoryId, setCategoryId] = useState<number>(0);
   const [lifeSpanKm, setLifeSpanKm] = useState<number | ''>('');
@@ -117,6 +120,9 @@ export default function Inventory() {
         itemType,
         code,
         name,
+        brand,
+        model,
+        presentation,
         estimatedLifeSpanKm: lifeSpanKm === '' ? undefined : Number(lifeSpanKm),
         estimatedLifeSpanMonths: lifeSpanMonths === '' ? undefined : Number(lifeSpanMonths),
         registrationDate: new Date(registrationDate).toISOString(),
@@ -176,6 +182,9 @@ export default function Inventory() {
     setItemType('Producto');
     setCode('');
     setName('');
+    setBrand('');
+    setModel('');
+    setPresentation('');
     if (units.length > 0) setUnitOfMeasureId(units[0].id);
     else setUnitOfMeasureId(0);
     if (categories.length > 0) setCategoryId(categories[0].id);
@@ -202,6 +211,9 @@ export default function Inventory() {
      setItemType(part.itemType || 'Producto');
      setCode(part.code);
      setName(part.name);
+    setBrand(part.brand || '');
+    setModel(part.model || '');
+    setPresentation(part.presentation || '');
      setUnitOfMeasureId(part.unitOfMeasureId || 0);
      setCategoryId(part.categoryId || 0);
      setWarehouseId(part.warehouseId || 0);
@@ -341,6 +353,33 @@ export default function Inventory() {
                 placeholder="ej. Filtro de Aceite Sintético Avanzado"
               />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Marca <span className="text-gray-400 font-normal text-xs">(Opcional)</span></label>
+              <input 
+                type="text" value={brand} onChange={e => setBrand(e.target.value)}
+                className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-500 outline-none"
+                placeholder="Ej. Caterpillar, Bosch..."
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Modelo <span className="text-gray-400 font-normal text-xs">(Opcional)</span></label>
+              <input 
+                type="text" value={model} onChange={e => setModel(e.target.value)}
+                className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-500 outline-none"
+                placeholder="Ej. F-150, T680..."
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Presentación <span className="text-gray-400 font-normal text-xs">(Opcional)</span></label>
+              <input 
+                type="text" value={presentation} onChange={e => setPresentation(e.target.value)}
+                className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-500 outline-none"
+                placeholder="Ej. Pote 1L, Caja 12 uds..."
+              />
+            </div>
+
             
                         <div className="lg:col-span-3 border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800/50">
               <div className="flex items-center gap-6 mb-4">
