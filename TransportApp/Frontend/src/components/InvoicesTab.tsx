@@ -252,6 +252,7 @@ export default function InvoicesTab() {
                  <tr>
                    <th className="px-4 py-3 w-10">Reng.</th>
                    <th className="px-4 py-3 min-w-[280px]">Artículo / Repuesto destino</th>
+                   <th className="px-4 py-3 w-32">Unidad</th>
                    <th className="px-4 py-3 w-32">Cantidad</th>
                    <th className="px-4 py-3 w-40">Costo Unit. ($)</th>
                    <th className="px-4 py-3 w-24">% IVA</th>
@@ -271,6 +272,14 @@ export default function InvoicesTab() {
                             onChange={id => updateLine(index, 'sparePartId', id)}
                             spareParts={parts}
                             placeholder="-- Buscar Artículo en Inventario --"
+                          />
+                       </td>
+                       <td className="px-4 py-2 min-w-[120px]">
+                          <UnitSelector
+                            sparePartId={d.sparePartId || ''}
+                            spareParts={parts}
+                            value={d.unitOfMeasureId || ''}
+                            onChange={id => updateLine(index, 'unitOfMeasureId', id)}
                           />
                        </td>
                        <td className="px-4 py-2">
@@ -442,5 +451,4 @@ export default function InvoicesTab() {
     </div>
   );
 }
-
 
