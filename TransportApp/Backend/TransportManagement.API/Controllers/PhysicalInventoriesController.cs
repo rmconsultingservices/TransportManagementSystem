@@ -41,6 +41,11 @@ namespace TransportManagement.API.Controllers
                 .Include(p => p.Location)
                 .Include(p => p.Details)
                     .ThenInclude(d => d.SparePart)
+                        .ThenInclude(s => s.SparePartUnits)
+                            .ThenInclude(su => su.UnitOfMeasure)
+                .Include(p => p.Details)
+                    .ThenInclude(d => d.SparePart)
+                        .ThenInclude(s => s.UnitOfMeasure)
                 .FirstOrDefaultAsync(p => p.Id == id);
 
             if (physicalInventory == null)
@@ -239,5 +244,6 @@ namespace TransportManagement.API.Controllers
         }
     }
 }
+
 
 
