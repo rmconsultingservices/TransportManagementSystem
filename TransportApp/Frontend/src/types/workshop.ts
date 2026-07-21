@@ -7,6 +7,7 @@ export interface ServiceExecutionSparePart {
   sparePartId: number;
   sparePart?: SparePart;
   quantity: number;
+    unitOfMeasureId?: number | null;
 }
 
 export interface ServiceExecution {
@@ -52,3 +53,4 @@ export interface MaintenanceOrder {
   mechanicAssigned: string;
   notes: string;
 }
+

@@ -30,5 +30,7 @@ namespace TransportManagement.API.Models
         public string? Notes { get; set; }
 
         public bool IsSelected { get; set; } = false;
+        public int? UnitOfMeasureId { get; set; }
+        public UnitOfMeasure? UnitOfMeasure { get; set; }
     }
 }

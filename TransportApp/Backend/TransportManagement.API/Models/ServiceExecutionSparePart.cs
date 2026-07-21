@@ -18,6 +18,7 @@ namespace TransportManagement.API.Models
 
         [Column(TypeName = "decimal(18,4)")]
         public decimal Quantity { get; set; }
+        public int? UnitOfMeasureId { get; set; }
+        public UnitOfMeasure? UnitOfMeasure { get; set; }
     }
 }
-

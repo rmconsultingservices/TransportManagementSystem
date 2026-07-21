@@ -3,6 +3,7 @@ import { FileText, Plus, Loader2, Save, X, Search, Edit, Trash, Upload, Download
 import { purchasingService } from '../services/purchasingService';
 import { inventoryService } from '../services/inventoryService';
 import SparePartSelector from '../components/SparePartSelector';
+import UnitSelector from '../components/UnitSelector';
 import type { PurchaseInvoice, PurchaseInvoiceDetail, Supplier, SparePart } from '../types';
 
 export default function InvoicesTab() {
@@ -441,3 +442,4 @@ export default function InvoicesTab() {
     </div>
   );
 }
+

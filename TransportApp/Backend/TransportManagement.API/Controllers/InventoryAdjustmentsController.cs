@@ -56,14 +56,19 @@ namespace TransportManagement.API.Controllers
                     var part = await _context.SpareParts.FindAsync(detail.SparePartId);
                     if (part == null) continue;
 
+                    decimal baseQuantity = await _context.GetBaseQuantityAsync(detail.SparePartId, detail.UnitOfMeasureId, detail.Quantity);
                     if (detail.Type.ToUpper() == "ENTRADA")
                     {
-                        part.StockQuantity += detail.Quantity;
-                        part.UnitCost = detail.UnitCost; // We use the last cost as requested
+                        part.StockQuantity += baseQuantity;
+                        
+                        // Calculate base unit cost
+                        decimal multiplier = detail.Quantity == 0 ? 1 : baseQuantity / detail.Quantity;
+                        decimal baseUnitCost = detail.UnitCost / (multiplier == 0 ? 1m : multiplier);
+                        part.UnitCost = baseUnitCost; // We use the last cost as requested
                     }
                     else if (detail.Type.ToUpper() == "SALIDA")
                     {
-                        part.StockQuantity -= detail.Quantity;
+                        part.StockQuantity -= baseQuantity;
                         if (part.StockQuantity < 0) part.StockQuantity = 0;
                     }
 
@@ -100,8 +105,9 @@ namespace TransportManagement.API.Controllers
                     var part = await _context.SpareParts.FindAsync(detail.SparePartId);
                     if (part != null)
                     {
-                        if (detail.Type.ToUpper() == "ENTRADA") part.StockQuantity -= detail.Quantity;
-                        else if (detail.Type.ToUpper() == "SALIDA") part.StockQuantity += detail.Quantity;
+                        decimal baseQuantity = await _context.GetBaseQuantityAsync(detail.SparePartId, detail.UnitOfMeasureId, detail.Quantity);
+                        if (detail.Type.ToUpper() == "ENTRADA") part.StockQuantity -= baseQuantity;
+                        else if (detail.Type.ToUpper() == "SALIDA") part.StockQuantity += baseQuantity;
                         if (part.StockQuantity < 0) part.StockQuantity = 0;
 
                         _context.Entry(part).State = EntityState.Modified;
@@ -240,3 +246,5 @@ namespace TransportManagement.API.Controllers
         }
     }
 }
+
+

@@ -4,6 +4,7 @@ import { inventoryAdjustmentsService } from '../services/inventoryAdjustmentsSer
 import { inventoryService } from '../services/inventoryService';
 import type { SparePart, InventoryAdjustment } from '../types';
 import SparePartSelector from '../components/SparePartSelector';
+import UnitSelector from '../components/UnitSelector';
 
 export default function InventoryAdjustments() {
   const [adjustments, setAdjustments] = useState<InventoryAdjustment[]>([]);
@@ -190,8 +191,13 @@ export default function InventoryAdjustments() {
                           <td className="px-3 py-2">
                              <input type="text" value={row.quantity || ''} onChange={e => updateRow(i, 'quantity', e.target.value)} required className="w-full text-sm rounded-md border border-gray-300 dark:border-gray-600 px-2 py-1.5 outline-none focus:border-blue-500 text-right bg-transparent dark:text-white" />
                           </td>
-                          <td className="px-3 py-2 text-sm text-center text-gray-500 dark:text-gray-400">
-                             {row.sparePartId ? (spareParts.find(p => p.id === row.sparePartId)?.unitOfMeasure?.abbreviation || 'UD') : 'UD'}
+                          <td className="px-3 py-2 min-w-[120px]">
+                             <UnitSelector 
+                                sparePartId={row.sparePartId || ''} 
+                                spareParts={spareParts} 
+                                value={row.unitOfMeasureId || ''} 
+                                onChange={val => updateRow(i, 'unitOfMeasureId', val)} 
+                             />
                           </td>
                           <td className="px-3 py-2 text-right">
                              <div className="relative">
@@ -246,3 +252,4 @@ export default function InventoryAdjustments() {
     </div>
   );
 }
+

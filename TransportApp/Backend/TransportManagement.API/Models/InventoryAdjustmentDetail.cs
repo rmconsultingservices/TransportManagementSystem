@@ -26,6 +26,7 @@ namespace TransportManagement.API.Models
         public decimal UnitCost { get; set; }
 
         public decimal TotalCost { get; set; }
+        public int? UnitOfMeasureId { get; set; }
+        public UnitOfMeasure? UnitOfMeasure { get; set; }
     }
 }
-

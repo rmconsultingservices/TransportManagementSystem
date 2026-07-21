@@ -30,6 +30,7 @@ namespace TransportManagement.API.Models
         public string Status { get; set; } = "Pendiente";
 
         public ICollection<Quotation> Quotations { get; set; } = new List<Quotation>();
+        public int? UnitOfMeasureId { get; set; }
+        public UnitOfMeasure? UnitOfMeasure { get; set; }
     }
 }
-

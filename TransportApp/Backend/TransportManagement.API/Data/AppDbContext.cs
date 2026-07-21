@@ -176,6 +176,16 @@ namespace TransportManagement.API.Data
             }
             return "0";
         }
+
+        public async Task<decimal> GetBaseQuantityAsync(int sparePartId, int? unitOfMeasureId, decimal quantity)
+        {
+            if (!unitOfMeasureId.HasValue) return quantity;
+            var sparePart = await SpareParts.FindAsync(sparePartId);
+            if (sparePart == null || sparePart.UnitOfMeasureId == unitOfMeasureId) return quantity;
+            var spUnit = await SparePartUnits.FirstOrDefaultAsync(u => u.SparePartId == sparePartId && u.UnitOfMeasureId == unitOfMeasureId);
+            if (spUnit == null) return quantity;
+            var multiplier = spUnit.IsInverse ? (1m / (spUnit.Equivalence == 0 ? 1m : spUnit.Equivalence)) : spUnit.Equivalence;
+            return quantity * multiplier;
+        }
     }
 }
-

@@ -26,6 +26,7 @@ namespace TransportManagement.API.Models
         public decimal UnitCost { get; set; }
 
         public decimal TaxPercentage { get; set; } // e.g. 16 for 16% IVA
+        public int? UnitOfMeasureId { get; set; }
+        public UnitOfMeasure? UnitOfMeasure { get; set; }
     }
 }
-

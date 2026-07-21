@@ -108,7 +108,8 @@ namespace TransportManagement.API.Controllers
         public class UpdateResultsDto
         {
             public int SparePartId { get; set; }
-            public int RealStock { get; set; }
+            public decimal RealStock { get; set; }
+            public int? UnitOfMeasureId { get; set; }
         }
 
         // PUT: api/PhysicalInventories/5/results
@@ -128,6 +129,7 @@ namespace TransportManagement.API.Controllers
                 if (detail != null)
                 {
                     detail.RealStock = result.RealStock;
+                    detail.UnitOfMeasureId = result.UnitOfMeasureId;
                 }
             }
 
@@ -197,7 +199,8 @@ namespace TransportManagement.API.Controllers
                 // If `ZeroUncounted` is FALSE, maybe we shouldn't adjust those. Let's just adjust whatever differences exist!
                 // We'll trust the user has saved the correct RealStock via PUT /results.
 
-                decimal diff = detail.RealStock - detail.TheoreticalStock;
+                decimal baseRealStock = await _context.GetBaseQuantityAsync(detail.SparePartId, detail.UnitOfMeasureId, detail.RealStock);
+                decimal diff = baseRealStock - detail.TheoreticalStock;
 
                 if (diff != 0)
                 {
@@ -209,14 +212,15 @@ namespace TransportManagement.API.Controllers
                         Type = diff > 0 ? "ENTRADA" : "SALIDA",
                         Quantity = Math.Abs(diff),
                         UnitCost = detail.UnitCost,
-                        TotalCost = Math.Abs(diff) * detail.UnitCost
+                        TotalCost = Math.Abs(diff) * detail.UnitCost,
+                        UnitOfMeasureId = null // We adjust in base units to avoid complex conversions in the adjustment itself
                     });
 
                     // Update actual stock
                     var sparePart = await _context.SpareParts.FindAsync(detail.SparePartId);
                     if (sparePart != null)
                     {
-                        sparePart.StockQuantity = detail.RealStock;
+                        sparePart.StockQuantity = baseRealStock;
                     }
                 }
             }
@@ -235,4 +239,5 @@ namespace TransportManagement.API.Controllers
         }
     }
 }
+
 

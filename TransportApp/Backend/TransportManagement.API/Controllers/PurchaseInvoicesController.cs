@@ -48,10 +48,14 @@ namespace TransportManagement.API.Controllers
                 var sparePart = await _context.SpareParts.FindAsync(detail.SparePartId);
                 if (sparePart != null)
                 {
+                    decimal baseQuantity = await _context.GetBaseQuantityAsync(detail.SparePartId, detail.UnitOfMeasureId, detail.QuantityReceived);
+                    decimal multiplier = detail.QuantityReceived == 0 ? 1 : baseQuantity / detail.QuantityReceived;
+                    decimal baseUnitCost = detail.UnitCost / (multiplier == 0 ? 1m : multiplier);
+
                     // Calculate moving average cost
                     var currentTotalValue = sparePart.StockQuantity * sparePart.UnitCost;
-                    var newIncomingValue = detail.QuantityReceived * detail.UnitCost;
-                    var newTotalQuantity = sparePart.StockQuantity + detail.QuantityReceived;
+                    var newIncomingValue = baseQuantity * baseUnitCost;
+                    var newTotalQuantity = sparePart.StockQuantity + baseQuantity;
 
                     sparePart.StockQuantity = newTotalQuantity;
                     if (newTotalQuantity > 0)
@@ -98,7 +102,8 @@ namespace TransportManagement.API.Controllers
                 var sparePart = await _context.SpareParts.FindAsync(oldDetail.SparePartId);
                 if (sparePart != null)
                 {
-                    sparePart.StockQuantity -= oldDetail.QuantityReceived;
+                    decimal oldBaseQuantity = await _context.GetBaseQuantityAsync(oldDetail.SparePartId, oldDetail.UnitOfMeasureId, oldDetail.QuantityReceived);
+                    sparePart.StockQuantity -= oldBaseQuantity;
                     if (sparePart.StockQuantity < 0) sparePart.StockQuantity = 0;
                 }
             }
@@ -116,9 +121,13 @@ namespace TransportManagement.API.Controllers
                 var sparePart = await _context.SpareParts.FindAsync(detail.SparePartId);
                 if (sparePart != null)
                 {
+                    decimal baseQuantity = await _context.GetBaseQuantityAsync(detail.SparePartId, detail.UnitOfMeasureId, detail.QuantityReceived);
+                    decimal multiplier = detail.QuantityReceived == 0 ? 1 : baseQuantity / detail.QuantityReceived;
+                    decimal baseUnitCost = detail.UnitCost / (multiplier == 0 ? 1m : multiplier);
+
                     var currentTotalValue = sparePart.StockQuantity * sparePart.UnitCost;
-                    var newIncomingValue = detail.QuantityReceived * detail.UnitCost;
-                    var newTotalQuantity = sparePart.StockQuantity + detail.QuantityReceived;
+                    var newIncomingValue = baseQuantity * baseUnitCost;
+                    var newTotalQuantity = sparePart.StockQuantity + baseQuantity;
 
                     sparePart.StockQuantity = newTotalQuantity;
                     if (newTotalQuantity > 0)
@@ -138,7 +147,8 @@ namespace TransportManagement.API.Controllers
                     SparePartId = detail.SparePartId,
                     QuantityReceived = detail.QuantityReceived,
                     UnitCost = detail.UnitCost,
-                    TaxPercentage = detail.TaxPercentage
+                    TaxPercentage = detail.TaxPercentage,
+                    UnitOfMeasureId = detail.UnitOfMeasureId
                 });
             }
 
@@ -173,7 +183,8 @@ namespace TransportManagement.API.Controllers
                 var sparePart = await _context.SpareParts.FindAsync(detail.SparePartId);
                 if (sparePart != null)
                 {
-                    sparePart.StockQuantity -= detail.QuantityReceived;
+                    decimal baseQuantity = await _context.GetBaseQuantityAsync(detail.SparePartId, detail.UnitOfMeasureId, detail.QuantityReceived);
+                    sparePart.StockQuantity -= baseQuantity;
                     if (sparePart.StockQuantity < 0) sparePart.StockQuantity = 0;
                 }
             }
@@ -200,9 +211,13 @@ namespace TransportManagement.API.Controllers
                 var sparePart = await _context.SpareParts.FindAsync(detail.SparePartId);
                 if (sparePart != null)
                 {
+                    decimal baseQuantity = await _context.GetBaseQuantityAsync(detail.SparePartId, detail.UnitOfMeasureId, detail.QuantityReceived);
+                    decimal multiplier = detail.QuantityReceived == 0 ? 1 : baseQuantity / detail.QuantityReceived;
+                    decimal baseUnitCost = detail.UnitCost / (multiplier == 0 ? 1m : multiplier);
+
                     var currentTotalValue = sparePart.StockQuantity * sparePart.UnitCost;
-                    var newIncomingValue = detail.QuantityReceived * detail.UnitCost;
-                    var newTotalQuantity = sparePart.StockQuantity + detail.QuantityReceived;
+                    var newIncomingValue = baseQuantity * baseUnitCost;
+                    var newTotalQuantity = sparePart.StockQuantity + baseQuantity;
 
                     sparePart.StockQuantity = newTotalQuantity;
                     if (newTotalQuantity > 0)
@@ -244,3 +259,5 @@ namespace TransportManagement.API.Controllers
         }
     }
 }
+
+

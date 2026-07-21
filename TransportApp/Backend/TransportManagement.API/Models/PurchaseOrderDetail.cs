@@ -22,6 +22,7 @@ namespace TransportManagement.API.Models
         public decimal QuantityOrdered { get; set; }
 
         public decimal UnitPrice { get; set; }
+        public int? UnitOfMeasureId { get; set; }
+        public UnitOfMeasure? UnitOfMeasure { get; set; }
     }
 }
-

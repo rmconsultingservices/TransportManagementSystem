@@ -23,6 +23,7 @@ namespace TransportManagement.API.Models
         public decimal RealStock { get; set; }
 
         public decimal UnitCost { get; set; }
+        public int? UnitOfMeasureId { get; set; }
+        public UnitOfMeasure? UnitOfMeasure { get; set; }
     }
 }
-

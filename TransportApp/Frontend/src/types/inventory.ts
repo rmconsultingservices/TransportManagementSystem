@@ -71,6 +71,7 @@ export interface PhysicalInventoryDetail {
   sparePart?: SparePart;
   theoreticalStock: number;
   realStock?: number;
+    unitOfMeasureId?: number | null;
   unitCost: number;
 }
 
@@ -87,4 +88,5 @@ export interface PhysicalInventory {
   status: 'INITIATED' | 'PROCESSED' | 'CANCELLED';
   details: PhysicalInventoryDetail[];
 }
+
 
