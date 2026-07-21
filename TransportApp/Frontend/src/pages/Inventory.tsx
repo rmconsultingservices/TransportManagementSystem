@@ -225,6 +225,8 @@ export default function Inventory() {
      setImageFile(null);
      setPreviewUrl(part.imageUrl ? `http://localhost:5024${part.imageUrl}` : null);
      setShowForm(true);
+    setSparePartUnits(part.sparePartUnits || []);
+    setMultiUnit((part.sparePartUnits && part.sparePartUnits.length > 0) ? true : false);
   };
 
   const loadHistory = async (part: SparePart) => {
