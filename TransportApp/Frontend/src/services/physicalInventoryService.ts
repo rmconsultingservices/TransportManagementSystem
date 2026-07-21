@@ -27,8 +27,14 @@ export const physicalInventoryService = {
     return response.data;
   },
 
+  delete: async (id: number) => {
+    const response = await api.delete(/PhysicalInventories/);
+    return response.data;
+  },
+
   cancel: async (id: number) => {
     const response = await api.post<{ message: string }>(`/PhysicalInventories/${id}/cancel`);
     return response.data;
   }
 };
+

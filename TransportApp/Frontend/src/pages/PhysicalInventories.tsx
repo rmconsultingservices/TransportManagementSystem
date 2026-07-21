@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, MapPin, PackageOpen, ClipboardList, AlertCircle, Play, Eye, FileText, FileDown } from 'lucide-react';
+import { Plus, Search, MapPin, PackageOpen, ClipboardList, AlertCircle, Play, Eye, FileText, FileDown, Trash2 } from 'lucide-react';
 import type { PhysicalInventory } from '../types/inventory';
 import { physicalInventoryService } from '../services/physicalInventoryService';
 import { warehouseService, type Warehouse } from '../services/warehouseService';
@@ -63,7 +63,7 @@ export default function PhysicalInventories() {
   const handleDelete = async (id: number) => {
     if (window.confirm('¿Está seguro de eliminar esta toma física? Esta acción no se puede deshacer.')) {
       try {
-        await api.delete(`/api/PhysicalInventories/${id}`);
+        await physicalInventoryService.delete(id);
         fetchInventories();
       } catch (error) {
         console.error('Error deleting inventory:', error);
