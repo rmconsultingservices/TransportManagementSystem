@@ -39,13 +39,14 @@ export default function UnitSelector({ sparePartId, spareParts, value, onChange,
       className={`w-full bg-transparent border-0 border-b border-gray-300 dark:border-gray-650 focus:border-blue-500 focus:ring-0 px-0 py-1 text-sm dark:text-white ${className}`}
     >
       {baseUnitId && (
-        <option value={baseUnitId}>{baseUnitAbbrev} (Base)</option>
+        <option value={baseUnitId} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">{baseUnitAbbrev} (Base)</option>
       )}
       {alternativeUnits.map(u => (
-        <option key={u.id} value={u.unitOfMeasure?.id}>
+        <option key={u.id} value={u.unitOfMeasure?.id} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
           {u.unitOfMeasure?.abbreviation}
         </option>
       ))}
     </select>
   );
 }
+
