@@ -72,6 +72,9 @@ using (var scope = app.Services.CreateScope())
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     try
     {
+        // Aplicar migraciones de EF Core automáticamente en el arranque
+        context.Database.Migrate();
+        
         context.Database.ExecuteSqlRaw(@"
             IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('MaintenanceOrders') AND name = 'TrailerId')
             ALTER TABLE MaintenanceOrders ADD TrailerId INT NULL;
