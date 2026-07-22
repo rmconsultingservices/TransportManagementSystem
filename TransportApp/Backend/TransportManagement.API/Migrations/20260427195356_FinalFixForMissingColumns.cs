@@ -14,33 +14,19 @@ namespace TransportManagement.API.Migrations
                 name: "FK_MaintenanceOrders_Vehicles_VehicleId",
                 table: "MaintenanceOrders");
 
-            migrationBuilder.AddColumn<double>(
-                name: "LastMaintenanceMileage",
-                table: "Vehicles",
-                type: "float",
-                nullable: false,
-                defaultValue: 0.0);
-
-            migrationBuilder.AddColumn<double>(
-                name: "MaintenanceInterval",
-                table: "Vehicles",
-                type: "float",
-                nullable: false,
-                defaultValue: 0.0);
-
-            migrationBuilder.AddColumn<double>(
-                name: "LastMaintenanceMileage",
-                table: "Trailers",
-                type: "float",
-                nullable: false,
-                defaultValue: 0.0);
-
-            migrationBuilder.AddColumn<double>(
-                name: "MaintenanceInterval",
-                table: "Trailers",
-                type: "float",
-                nullable: false,
-                defaultValue: 0.0);
+            migrationBuilder.Sql(@"
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Vehicles') AND name = 'LastMaintenanceMileage')
+                ALTER TABLE Vehicles ADD LastMaintenanceMileage float NOT NULL DEFAULT 0.0;
+                
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Vehicles') AND name = 'MaintenanceInterval')
+                ALTER TABLE Vehicles ADD MaintenanceInterval float NOT NULL DEFAULT 0.0;
+                
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Trailers') AND name = 'LastMaintenanceMileage')
+                ALTER TABLE Trailers ADD LastMaintenanceMileage float NOT NULL DEFAULT 0.0;
+                
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Trailers') AND name = 'MaintenanceInterval')
+                ALTER TABLE Trailers ADD MaintenanceInterval float NOT NULL DEFAULT 0.0;
+            ");
 
             migrationBuilder.AddColumn<int>(
                 name: "LocationId",
