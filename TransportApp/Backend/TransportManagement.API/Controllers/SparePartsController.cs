@@ -70,6 +70,9 @@ namespace TransportManagement.API.Controllers
             existingPart.Code = sparePart.Code;
             existingPart.Name = sparePart.Name;
             existingPart.ItemType = sparePart.ItemType;
+            existingPart.Brand = sparePart.Brand;
+            existingPart.Model = sparePart.Model;
+            existingPart.Presentation = sparePart.Presentation;
             existingPart.UnitOfMeasureId = sparePart.UnitOfMeasureId;
             existingPart.CategoryId = sparePart.CategoryId;
             existingPart.EstimatedLifeSpanKm = sparePart.EstimatedLifeSpanKm;
