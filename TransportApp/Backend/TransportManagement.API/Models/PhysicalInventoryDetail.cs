@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
@@ -20,7 +20,7 @@ namespace TransportManagement.API.Models
         public decimal TheoreticalStock { get; set; }
 
         [Column(TypeName = "decimal(18,4)")]
-        public decimal RealStock { get; set; }
+        public decimal? RealStock { get; set; }
 
         public decimal UnitCost { get; set; }
         public int? UnitOfMeasureId { get; set; }

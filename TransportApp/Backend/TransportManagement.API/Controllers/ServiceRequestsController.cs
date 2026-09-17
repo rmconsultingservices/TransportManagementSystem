@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TransportManagement.API.Data;
 using TransportManagement.API.Models;
@@ -29,7 +29,9 @@ namespace TransportManagement.API.Controllers
                 .AsNoTracking()
                 .AsSplitQuery()
                 .Include(s => s.Vehicle)
+                    .ThenInclude(v => v.FleetOwner)
                 .Include(s => s.Trailer)
+                    .ThenInclude(t => t.FleetOwner)
                 .Include(s => s.Driver)
                 .Include(s => s.Mechanic)
                 .Include(s => s.Execution)
@@ -44,7 +46,9 @@ namespace TransportManagement.API.Controllers
         {
             var serviceRequest = await _context.ServiceRequests
                 .Include(s => s.Vehicle)
+                    .ThenInclude(v => v.FleetOwner)
                 .Include(s => s.Trailer)
+                    .ThenInclude(t => t.FleetOwner)
                 .Include(s => s.Driver)
                 .Include(s => s.Mechanic)
                 .Include(s => s.Activities)
@@ -90,7 +94,7 @@ namespace TransportManagement.API.Controllers
             if (request == null) return NotFound();
 
             request.MechanicId = dto.MechanicId;
-            request.Status = "En Revisión";
+            request.Status = "En RevisiÃ³n";
 
             await _context.SaveChangesAsync();
             return NoContent();
@@ -129,6 +133,42 @@ namespace TransportManagement.API.Controllers
             return Ok(req);
         }
 
+                public class UpdateActivitiesDto
+        {
+            public List<string> Activities { get; set; } = new List<string>();
+        }
+
+        // PUT: api/ServiceRequests/5/Activities
+        [HttpPut("{id}/Activities")]
+        public async Task<IActionResult> UpdateActivities(int id, [FromBody] UpdateActivitiesDto dto)
+        {
+            var request = await _context.ServiceRequests
+                .Include(r => r.Activities)
+                .FirstOrDefaultAsync(r => r.Id == id);
+                
+            if (request == null) return NotFound();
+
+            if (request.Status != "Pendiente" && request.Status != "En Revisión")
+            {
+                return BadRequest("Solo se pueden modificar las actividades si el servicio está pendiente o en revisión.");
+            }
+
+            // Remove existing
+            _context.ServiceRequestActivities.RemoveRange(request.Activities);
+            
+            // Add new
+            foreach (var act in dto.Activities)
+            {
+                if (!string.IsNullOrWhiteSpace(act))
+                {
+                    request.Activities.Add(new ServiceRequestActivity { Description = act });
+                }
+            }
+
+            await _context.SaveChangesAsync();
+            return NoContent();
+        }
+
         public class AddUsedPartDto
         {
             public int SparePartId { get; set; }
@@ -163,7 +203,8 @@ namespace TransportManagement.API.Controllers
             {
                 ServiceExecutionId = request.Execution.Id,
                 SparePartId = dto.SparePartId,
-                Quantity = dto.Quantity
+                Quantity = dto.Quantity,
+                UnitCost = part.UnitCost
             };
 
             // Deduct from stock

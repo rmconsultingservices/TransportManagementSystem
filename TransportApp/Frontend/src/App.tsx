@@ -17,6 +17,7 @@ import Companies from './pages/Companies';
 import UsersAdmin from './pages/Users';
 import AuditLogs from './pages/AuditLogs';
 import PrintServiceReport from './pages/PrintServiceReport';
+import PrintServiceClosureReport from './pages/PrintServiceClosureReport';
 import PrintPurchaseOrder from './pages/PrintPurchaseOrder';
 import InventoryAdjustments from './pages/InventoryAdjustments';
 import InventoryCategories from './pages/InventoryCategories';
@@ -250,6 +251,7 @@ function App() {
             <Route path="/admin/audit" element={<AuditLogs />} />
           </Route>
           <Route path="/print/ticket/:id" element={<PrintServiceReport />} />
+          <Route path="/print-closure/:id" element={<PrintServiceClosureReport />} />
           <Route path="/print/order/:id" element={<PrintPurchaseOrder />} />
         </Route>
       </Routes>

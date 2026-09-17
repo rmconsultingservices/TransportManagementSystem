@@ -1,6 +1,6 @@
-﻿import { useEffect, useState } from 'react';
+﻿import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Truck, Plus, Loader2, Trash2, History, AlertTriangle, CheckCircle2, Container, UserPlus, Search, Calendar as CalendarIcon, Edit, Building2 } from 'lucide-react';
+import { Truck, Plus, Loader2, Trash2, History, AlertTriangle, CheckCircle2, Container, UserPlus, Search, Calendar as CalendarIcon, Edit, Building2, ChevronDown, ChevronRight } from 'lucide-react';
 import { fleetService } from '../services/fleetService';
 import { maintenanceService } from '../services/maintenanceService';
 import { useAuthStore } from '../store/authStore';
@@ -208,6 +208,53 @@ export default function Fleet() {
     return searchStr.includes(filterUnit.toLowerCase());
   });
 
+
+  const [expandedCompanies, setExpandedCompanies] = useState<Set<string>>(new Set());
+  const [expandedVehicles, setExpandedVehicles] = useState<Set<string>>(new Set());
+
+  const toggleCompany = (company: string) => {
+    const newSet = new Set(expandedCompanies);
+    if (newSet.has(company)) newSet.delete(company);
+    else newSet.add(company);
+    setExpandedCompanies(newSet);
+  };
+  const toggleVehicle = (vehicleId: string) => {
+    const newSet = new Set(expandedVehicles);
+    if (newSet.has(vehicleId)) newSet.delete(vehicleId);
+    else newSet.add(vehicleId);
+    setExpandedVehicles(newSet);
+  };
+
+  const groupedExpedientes = useMemo(() => {
+    const groups: Record<string, Record<string, {name: string, orders: any[]}>> = {};
+    filteredExpedientes.forEach((exp: any) => {
+      let companyName = 'Sin Empresa';
+      let vehicleName = 'Desconocido';
+      let vehicleId = 'none';
+
+      if (exp.vehicle) {
+        companyName = exp.vehicle.fleetOwner?.name || 'Desconocido';
+        vehicleName = `${exp.vehicle.licensePlate} ${exp.vehicle.brand} ${exp.vehicle.model || ''}`.trim();
+        vehicleId = `v-${exp.vehicle.id}`;
+      } else if (exp.trailer) {
+        companyName = exp.trailer.fleetOwner?.name || 'Desconocido';
+        vehicleName = `${exp.trailer.licensePlate} ${exp.trailer.type}`;
+        vehicleId = `t-${exp.trailer.id}`;
+      }
+
+      if (!groups[companyName]) groups[companyName] = {};
+      if (!groups[companyName][vehicleId]) {
+        groups[companyName][vehicleId] = {
+           name: vehicleName,
+           orders: []
+        };
+      }
+      
+      groups[companyName][vehicleId].orders.push(exp);
+    });
+    return groups;
+  }, [filteredExpedientes]);
+
   return (
     <div className="p-8 max-w-7xl mx-auto">
       <div className="flex justify-between items-center mb-8">
@@ -305,48 +352,76 @@ export default function Fleet() {
           </div>
           
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-500 uppercase tracking-wider">
-                  <th className="px-6 py-4">Nro. Expediente</th>
-                  <th className="px-6 py-4">Fecha</th>
-                  <th className="px-6 py-4">Vehículo</th>
-                  <th className="px-6 py-4">Detalles</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {loading ? (
-                  <tr><td colSpan={4} className="px-6 py-12 text-center text-gray-500"><Loader2 className="animate-spin mx-auto mb-2" size={24} />Cargando...</td></tr>
-                ) : filteredExpedientes.length === 0 ? (
-                  <tr><td colSpan={4} className="px-6 py-12 text-center text-gray-500">No se encontraron expedientes.</td></tr>
-                ) : (
-                  filteredExpedientes.map((exp: any) => (
-                    <tr key={exp.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="font-bold text-gray-900 dark:text-white">#{exp.id}</div>
-                        {exp.serviceRequestId && (
-                          <Link to={`/workshop/${exp.serviceRequestId}`} className="text-xs text-indigo-500 hover:text-indigo-700 hover:underline inline-flex items-center gap-1 mt-1">Ticket #{exp.serviceRequestId}</Link>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm font-medium text-gray-900 dark:text-gray-200">{new Date(exp.date).toLocaleDateString()}</div>
-                      </td>
-                      <td className="px-6 py-4">
-                        {exp.vehicle ? (
-                          <><div className="font-bold text-gray-900 dark:text-white uppercase">{exp.vehicle.licensePlate}</div><div className="text-xs text-gray-500">{exp.vehicle.brand}</div></>
-                        ) : exp.trailer ? (
-                          <><div className="font-bold text-gray-900 dark:text-white uppercase">{exp.trailer.licensePlate}</div><div className="text-xs text-gray-500">{exp.trailer.type}</div></>
-                        ) : (<div className="text-gray-500 italic">Desconocido</div>)}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-gray-700 dark:text-gray-300 font-medium"><span className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-xs mr-2 uppercase">{exp.type}</span>Mecánico: {exp.mechanicAssigned || '-'}</div>
-                        <div className="text-xs text-gray-500 mt-1 truncate max-w-xs">{exp.notes}</div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+            {loading ? (
+              <div className="py-12 text-center text-gray-500"><Loader2 className="animate-spin mx-auto mb-2" size={24} />Cargando...</div>
+            ) : filteredExpedientes.length === 0 ? (
+              <div className="py-12 text-center text-gray-500">No se encontraron expedientes.</div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {Object.entries(groupedExpedientes).map(([companyName, vehicles]) => (
+                  <div key={companyName} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                    <button 
+                      onClick={() => toggleCompany(companyName)}
+                      className="w-full flex items-center gap-2 p-4 bg-gray-50 dark:bg-gray-900/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left font-bold text-gray-900 dark:text-white"
+                    >
+                      {expandedCompanies.has(companyName) ? <ChevronDown size={18}/> : <ChevronRight size={18}/>}
+                      <Building2 size={18} className="text-indigo-500" />
+                      {companyName}
+                    </button>
+                    
+                    {expandedCompanies.has(companyName) && (
+                      <div className="p-2 flex flex-col gap-2 bg-white dark:bg-gray-800">
+                        {Object.entries(vehicles as Record<string, {name: string, orders: any[]}>).map(([vehicleId, vehicleData]) => (
+                          <div key={vehicleId} className="border border-gray-100 dark:border-gray-700 rounded-lg overflow-hidden ml-6">
+                            <button 
+                              onClick={() => toggleVehicle(vehicleId)}
+                              className="w-full flex items-center gap-2 p-3 bg-gray-50/50 dark:bg-gray-900/20 hover:bg-gray-100/50 dark:hover:bg-gray-800 transition-colors text-left font-semibold text-gray-800 dark:text-gray-200"
+                            >
+                              {expandedVehicles.has(vehicleId) ? <ChevronDown size={16}/> : <ChevronRight size={16}/>}
+                              <Truck size={16} className="text-emerald-500" />
+                              {vehicleData.name}
+                            </button>
+                            
+                            {expandedVehicles.has(vehicleId) && (
+                              <div className="p-0 bg-white dark:bg-gray-800 overflow-x-auto border-t border-gray-100 dark:border-gray-700">
+                                <table className="w-full text-left border-collapse">
+                                  <thead>
+                                    <tr className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                      <th className="px-6 py-3">Nro. Expediente</th>
+                                      <th className="px-6 py-3">Fecha</th>
+                                      <th className="px-6 py-3">Detalles</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                                    {vehicleData.orders.map((exp: any) => (
+                                      <tr key={exp.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors text-sm">
+                                        <td className="px-6 py-3">
+                                          <div className="font-bold text-gray-900 dark:text-white">#{exp.id}</div>
+                                          {exp.serviceRequestId && (
+                                            <Link to={`/workshop/${exp.serviceRequestId}`} className="text-xs text-indigo-500 hover:text-indigo-700 hover:underline inline-flex items-center gap-1 mt-1">Ticket #{exp.serviceRequestId}</Link>
+                                          )}
+                                        </td>
+                                        <td className="px-6 py-3">
+                                          <div className="font-medium text-gray-900 dark:text-gray-200">{new Date(exp.date).toLocaleDateString()}</div>
+                                        </td>
+                                        <td className="px-6 py-3">
+                                          <div className="text-gray-700 dark:text-gray-300 font-medium"><span className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-xs mr-2 uppercase">{exp.type}</span>Mecánico: {exp.mechanicAssigned || '-'}</div>
+                                          <div className="text-xs text-gray-500 mt-1 truncate max-w-xs">{exp.notes}</div>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       ) : activeTab === 'owners' ? (

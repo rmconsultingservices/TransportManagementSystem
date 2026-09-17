@@ -1,5 +1,6 @@
+import api from '../lib/api';
 import { useEffect, useState } from 'react';
-import { PackageOpen, Plus, Loader2, Trash2, AlertTriangle, FileClock, X, ArrowUpRight, ArrowDownRight, Search, Printer, MapPin, TrendingUp } from 'lucide-react';
+import { PackageOpen, FileUp, Download, Plus, Loader2, Trash2, AlertTriangle, FileClock, X, ArrowUpRight, ArrowDownRight, Search, Printer, MapPin, TrendingUp } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { inventoryService } from '../services/inventoryService';
 import type { SparePart, SparePartUnit } from '../types/inventory';
@@ -48,6 +49,10 @@ export default function Inventory() {
   const [historyData, setHistoryData] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [showPrintModal, setShowPrintModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+
   const [printFilters, setPrintFilters] = useState({
     warehouseFrom: '',
     warehouseTo: '',
@@ -112,6 +117,45 @@ export default function Inventory() {
   useEffect(() => {
     fetchSparePartsAndCategories();
   }, []);
+
+  const handleDownloadTemplate = async () => {
+    try {
+      const response = await api.get('/spareparts/export-template', { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'Plantilla_Catalogo_Articulos.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (e) {
+      console.error(e);
+      toast.error('Error al descargar la plantilla');
+    }
+  };
+
+  const handleImport = async () => {
+    if (!importFile) return;
+    setImporting(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', importFile);
+      const res = await api.post('/spareparts/import', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      setShowImportModal(false);
+      setImportFile(null);
+      await fetchSparePartsAndCategories();
+      toast.success(res.data?.message || 'Inventario importado exitosamente.');
+    } catch (error) {
+      console.error(error);
+      toast.error('Hubo un error importando el archivo.');
+    } finally {
+      setImporting(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -287,6 +331,22 @@ export default function Inventory() {
           <p className="text-gray-500 mt-1">Configura la vida útil para el mantenimiento predictivo.</p>
         </div>
         <div className="flex gap-2">
+
+                        <button 
+              onClick={handleDownloadTemplate}
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200 transition-colors border border-emerald-200 shadow-sm"
+            >
+              <Download size={20} />
+              Descargar Plantilla
+            </button>
+            <button 
+              onClick={() => setShowImportModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+            >
+              <FileUp size={20} />
+              Importar Excel
+            </button>
+
           <button 
             onClick={() => setShowPrintModal(true)}
             className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors shadow-sm"
@@ -983,6 +1043,48 @@ export default function Inventory() {
          </div>
       </div>
     </div>
+
+      {showImportModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <FileUp className="text-emerald-500" />
+                Importar Catálogo
+              </h2>
+              <button onClick={() => setShowImportModal(false)} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                &times;
+              </button>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+                Sube un archivo Excel (.xlsx) con las columnas: Código, Nombre, Tipo, Marca, Modelo, Categoría, Unidad, Almacén, Ubicación, Costo Unitario, Stock.
+              </p>
+              <input
+                type="file"
+                accept=".xlsx"
+                onChange={e => setImportFile(e.target.files?.[0] || null)}
+                className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
+              />
+            </div>
+            <div className="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3 bg-gray-50 dark:bg-gray-900">
+              <button
+                onClick={() => setShowImportModal(false)}
+                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleImport}
+                disabled={!importFile || importing}
+                className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50"
+              >
+                {importing ? 'Importando...' : 'Importar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

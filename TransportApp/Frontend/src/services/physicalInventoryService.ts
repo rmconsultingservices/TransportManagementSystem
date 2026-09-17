@@ -1,4 +1,4 @@
-import api from '../lib/api';
+﻿import api from '../lib/api';
 import type { PhysicalInventory } from '../types/inventory';
 
 export const physicalInventoryService = {
@@ -17,7 +17,7 @@ export const physicalInventoryService = {
     return response.data;
   },
 
-  updateResults: async (id: number, results: { sparePartId: number, realStock: number }[]) => {
+  updateResults: async (id: number, results: { sparePartId: number, realStock: number | null }[]) => {
     const response = await api.put(`/PhysicalInventories/${id}/results`, results);
     return response.data;
   },

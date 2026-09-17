@@ -460,7 +460,7 @@ export default function Purchasing() {
                   <Users size={18} className="text-[#2e5b88]" />
                 </div>
                 <div className="flex items-baseline mt-1">
-                  <h3 className="text-3xl font-extrabold text-gray-900 dark:text-white">{totalSuppliersCount}</h3>
+                  <h3 className="text-3xl font-extrañold text-gray-900 dark:text-white">{totalSuppliersCount}</h3>
                 </div>
               </div>
 
@@ -470,7 +470,7 @@ export default function Purchasing() {
                   <CheckCircle2 size={18} className="text-emerald-500" />
                 </div>
                 <div className="flex items-baseline mt-1 gap-2">
-                  <h3 className="text-3xl font-extrabold text-gray-900 dark:text-white">{activeSuppliersCount}</h3>
+                  <h3 className="text-3xl font-extrañold text-gray-900 dark:text-white">{activeSuppliersCount}</h3>
                   <span className="text-sm font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded-full">{activePercentage}%</span>
                 </div>
               </div>
@@ -481,7 +481,7 @@ export default function Purchasing() {
                   <Calendar size={18} className="text-blue-500" />
                 </div>
                 <div className="flex items-baseline mt-1 gap-2">
-                  <h3 className="text-3xl font-extrabold text-gray-900 dark:text-white">{newThisMonth}</h3>
+                  <h3 className="text-3xl font-extrañold text-gray-900 dark:text-white">{newThisMonth}</h3>
                   <span className="text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 px-2 py-0.5 rounded uppercase">NEW</span>
                 </div>
               </div>
@@ -492,7 +492,7 @@ export default function Purchasing() {
                   <Star size={18} className="text-amber-500 fill-amber-500" />
                 </div>
                 <div className="flex items-baseline mt-1 gap-1">
-                  <h3 className="text-3xl font-extrabold text-gray-900 dark:text-white">{avgRating}</h3>
+                  <h3 className="text-3xl font-extrañold text-gray-900 dark:text-white">{avgRating}</h3>
                   <span className="text-gray-400 text-sm font-medium">/5</span>
                 </div>
               </div>
@@ -542,7 +542,7 @@ export default function Purchasing() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700 text-[11px] font-extrabold uppercase tracking-wider text-gray-400">
+                    <tr className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700 text-[11px] font-extrañold uppercase tracking-wider text-gray-400">
                       <th className="py-4 px-6">Código</th>
                       <th className="py-4 px-6">RIF</th>
                       <th className="py-4 px-6">Razón Social</th>
@@ -564,7 +564,7 @@ export default function Purchasing() {
                         <tr key={sup.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-700/25 transition-colors group">
                           <td className="py-4 px-6 font-bold text-indigo-600 dark:text-indigo-400 whitespace-nowrap">{sup.code || 'N/A'}</td>
                           <td className="py-4 px-6 text-gray-600 dark:text-gray-300 whitespace-nowrap">{sup.taxId || 'N/A'}</td>
-                          <td className="py-4 px-6 font-extrabold text-gray-950 dark:text-white max-w-[200px] truncate">{sup.name}</td>
+                          <td className="py-4 px-6 font-extrañold text-gray-950 dark:text-white max-w-[200px] truncate">{sup.name}</td>
                           <td className="py-4 px-6 text-gray-600 dark:text-gray-400">{sup.contactName || 'N/A'}</td>
                           <td className="py-4 px-6 text-gray-600 dark:text-gray-400 whitespace-nowrap">{sup.phoneNumber || 'N/A'}</td>
                           <td className="py-4 px-6 text-gray-400 dark:text-gray-500 max-w-[220px] truncate" title={sup.address}>{sup.address || 'N/A'}</td>
@@ -918,7 +918,7 @@ export default function Purchasing() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-in fade-in duration-200 print:hidden">
           <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-gray-150 dark:border-gray-700 animate-in zoom-in-95 duration-200">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-extrabold text-gray-900 dark:text-white flex items-center gap-2">
+              <h2 className="text-xl font-extrañold text-gray-900 dark:text-white flex items-center gap-2">
                 <Edit className="text-[#2e5b88]" size={24} /> Editar Proveedor: {editingSupplier.name}
               </h2>
               <button 

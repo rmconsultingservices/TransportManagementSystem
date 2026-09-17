@@ -17,6 +17,10 @@ export const workshopService = {
     return response.data;
   },
 
+    updateActivities: async (id: number, activities: string[]) => {
+    const response = await api.put('/ServiceRequests/' + id + '/Activities', { activities });
+    return response.data;
+  },
   assignMechanic: async (id: number, mechanicId: number): Promise<void> => {
     await api.put(`/servicerequests/${id}/AssignMechanic`, { mechanicId });
   },

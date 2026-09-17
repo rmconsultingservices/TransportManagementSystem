@@ -34,7 +34,9 @@ namespace TransportManagement.API.Controllers
 
             return await query
                 .Include(m => m.Vehicle)
+                    .ThenInclude(v => v.FleetOwner)
                 .Include(m => m.Trailer)
+                    .ThenInclude(t => t.FleetOwner)
                 .OrderByDescending(m => m.Date)
                 .ToListAsync();
         }
@@ -45,7 +47,9 @@ namespace TransportManagement.API.Controllers
         {
             var maintenanceOrder = await _context.MaintenanceOrders
                 .Include(m => m.Vehicle)
+                    .ThenInclude(v => v.FleetOwner)
                 .Include(m => m.Trailer)
+                    .ThenInclude(t => t.FleetOwner)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
             if (maintenanceOrder == null) return NotFound();

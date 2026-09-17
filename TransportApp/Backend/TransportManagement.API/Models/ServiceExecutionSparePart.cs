@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
 
 namespace TransportManagement.API.Models
@@ -18,6 +18,9 @@ namespace TransportManagement.API.Models
 
         [Column(TypeName = "decimal(18,4)")]
         public decimal Quantity { get; set; }
+
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal UnitCost { get; set; } = 0;
         public int? UnitOfMeasureId { get; set; }
         public UnitOfMeasure? UnitOfMeasure { get; set; }
     }

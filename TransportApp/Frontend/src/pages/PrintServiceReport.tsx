@@ -57,6 +57,7 @@ export default function PrintServiceReport() {
   const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
   const currentMonthYear = `${monthNames[reqDate.getMonth()]} ${reqDate.getFullYear()}`;
   const formattedDate = reqDate.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const ownerCompanyName = request.vehicle?.fleetOwner?.name || request.trailer?.fleetOwner?.name || selectedCompany?.name || 'N/A';
 
   return (
     <div className="mx-auto bg-white p-4 max-w-[800px] text-zinc-900 w-full font-sans text-[13px] print:p-0 print:m-0" style={{ pageBreakInside: 'avoid' }}>
@@ -97,8 +98,8 @@ export default function PrintServiceReport() {
           <p className="font-bold text-gray-900">{formattedDate}</p>
         </div>
         <div className="p-3">
-          <p className="text-[9px] font-bold text-gray-500 tracking-widest uppercase mb-0.5">Compañía</p>
-          <p className="font-bold text-gray-900 uppercase">{selectedCompany?.name || 'N/A'}</p>
+          <p className="text-[9px] font-bold text-gray-500 tracking-widest uppercase mb-0.5">Empresa</p>
+          <p className="font-bold text-gray-900 uppercase">{ownerCompanyName}</p>
         </div>
       </div>
 
@@ -164,7 +165,7 @@ export default function PrintServiceReport() {
       
       {/* Footer Disclaimer */}
       <div className="text-center mt-auto pt-4 border-t border-gray-100">
-        <p className="text-[7px] text-gray-400">Este reporte es un documento oficial de {selectedCompany?.name || 'la empresa'}. Prohibida su alteración. Generado digitalmente por el Sistema de Flota.</p>
+        <p className="text-[7px] text-gray-400">Este reporte es un documento oficial de {ownerCompanyName}. Prohibida su alteración. Generado digitalmente por el Sistema de Flota.</p>
       </div>
 
       {/* Auto Trigger Print on Load (Optional, but useful) */}

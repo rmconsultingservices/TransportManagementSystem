@@ -2,7 +2,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { workshopService } from '../services/workshopService';
 import { inventoryService } from '../services/inventoryService';
-import { ArrowLeft, Loader2, CheckCircle2, Clock, AlertCircle, ShoppingCart, Text, Box, Plus, Minus, X , Trash2, Wrench} from 'lucide-react';
+import { ArrowLeft, Loader2, CheckCircle2, Clock, AlertCircle, ShoppingCart, Text, Box, Plus, Minus, X , Trash2, Wrench, Printer } from 'lucide-react';
 import type { ServiceRequest, SparePart } from '../types';
 import SparePartSelector from '../components/SparePartSelector';
 
@@ -159,15 +159,23 @@ export default function ServiceExecutionDetail() {
           </div>
         </div>
         
-        {request.status !== 'Completado' && (
-          <button 
-            onClick={handleCompleteFinal}
-            className="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-colors shadow-sm"
-          >
-            <CheckCircle2 size={18} />
-            Concluir Servicio Definitivo
-          </button>
-        )}
+        {request.status !== 'Completado' ? (
+            <button 
+              onClick={handleCompleteFinal}
+              className="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-colors shadow-sm"
+            >
+              <CheckCircle2 size={18} />
+              Concluir Servicio Definitivo
+            </button>
+          ) : (
+            <button 
+              onClick={() => window.open(`/print-closure/${request.id}`, '_blank')}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-colors shadow-sm"
+            >
+              <Printer size={18} />
+              Imprimir Reporte de Cierre
+            </button>
+          )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

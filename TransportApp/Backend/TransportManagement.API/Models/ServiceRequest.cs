@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
@@ -28,13 +28,12 @@ namespace TransportManagement.API.Models
         
         public string Description { get; set; } = string.Empty;
         
-        // Pendiente, En Revisión, Esperando Repuestos, Completado
+        // Pendiente, En RevisiÃ³n, Esperando Repuestos, Completado
         public string Status { get; set; } = "Pendiente";
 
         public int? MechanicId { get; set; }
         public Mechanic? Mechanic { get; set; }
 
-        [JsonIgnore]
         public ServiceExecution? Execution { get; set; }
 
         public ICollection<ServiceLog> Logs { get; set; } = new List<ServiceLog>();

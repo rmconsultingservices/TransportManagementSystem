@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, CheckCircle, PackageOpen, MapPin, Calculator, AlertTriangle, AlertCircle, Ban } from 'lucide-react';
 import type { PhysicalInventory, PhysicalInventoryDetail } from '../types/inventory';
@@ -29,7 +29,7 @@ export default function PhysicalInventoryResults() {
       const data = await physicalInventoryService.getById(invId);
       setInventory(data);
       setDetails(data.details);
-    } catch (error) {
+    } catch (error: any) {
       toast.error('Error al cargar la toma de inventario');
       navigate('/inventory/physical');
     } finally {
@@ -87,16 +87,13 @@ export default function PhysicalInventoryResults() {
     setIsSaving(true);
     try {
       const payload = details
-        .filter(d => d.realStock !== undefined)
-        .map(d => ({
-          sparePartId: d.sparePartId,
-          realStock: d.realStock!
-        }));
+        .map(d => ({ sparePartId: d.sparePartId, realStock: d.realStock == null ? null : d.realStock }));
       
       await physicalInventoryService.updateResults(inventory.id!, payload);
       toast.success('Progreso guardado correctamente');
-    } catch (error) {
-      toast.error('Error al guardar el progreso');
+    } catch (error: any) {
+      const msg = typeof error.response?.data === 'string' ? error.response.data : (error.response?.data?.title || error.response?.data?.message || 'Error al guardar el progreso');
+      toast.error(msg);
     } finally {
       setIsSaving(false);
     }
@@ -113,11 +110,7 @@ export default function PhysicalInventoryResults() {
     try {
       // First save current values
       const payload = details
-        .filter(d => d.realStock !== undefined)
-        .map(d => ({
-          sparePartId: d.sparePartId,
-          realStock: d.realStock!
-        }));
+        .map(d => ({ sparePartId: d.sparePartId, realStock: d.realStock == null ? null : d.realStock }));
       
       if (payload.length > 0) {
         await physicalInventoryService.updateResults(inventory.id!, payload);
@@ -134,7 +127,8 @@ export default function PhysicalInventoryResults() {
       
       loadInventory(inventory.id!);
     } catch (error: any) {
-      toast.error(error.response?.data || 'Error al procesar el inventario');
+      const msg = typeof error.response?.data === 'string' ? error.response.data : (error.response?.data?.title || error.response?.data?.message || 'Error al procesar el inventario');
+      toast.error(msg);
     } finally {
       setIsProcessing(false);
     }
@@ -153,7 +147,8 @@ export default function PhysicalInventoryResults() {
       toast.success('Inventario anulado exitosamente');
       loadInventory(inventory.id!);
     } catch (error: any) {
-      toast.error(error.response?.data || 'Error al anular el inventario');
+      const msg = typeof error.response?.data === 'string' ? error.response.data : (error.response?.data?.title || error.response?.data?.message || 'Error al anular el inventario');
+      toast.error(msg);
     } finally {
       setIsCanceling(false);
     }
@@ -307,15 +302,15 @@ export default function PhysicalInventoryResults() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {filteredDetails.map((detail) => {
+              {filteredDetails.map((detail, idx) => {
                 // If processed, realStock is either value or 0 depending on zeroUncounted
                 // Actually if processed, backend saved it. We just show realStock.
-                const diff = detail.realStock !== undefined 
+                const diff = detail.realStock != null 
                   ? detail.realStock - detail.theoreticalStock 
                   : (isProcessed ? 0 : null);
 
                 return (
-                  <tr key={detail.sparePartId} className={`hover:bg-gray-50 dark:hover:bg-gray-700/50 transition ${diff !== null && diff !== 0 ? 'bg-orange-50/30 dark:bg-orange-900/10' : ''}`}>
+                  <tr key={detail.id || `${detail.sparePartId}-${idx}`} className={`hover:bg-gray-50 dark:hover:bg-gray-700/50 transition ${diff !== null && diff !== 0 ? 'bg-orange-50/30 dark:bg-orange-900/10' : ''}`}>
                     <td className="px-6 py-3 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                       {detail.sparePart?.code}
                     </td>
@@ -328,7 +323,7 @@ export default function PhysicalInventoryResults() {
                     <td className="px-6 py-3 whitespace-nowrap text-right bg-indigo-50/30 dark:bg-indigo-900/5">
                       {isProcessed ? (
                         <span className="font-bold text-indigo-700 dark:text-indigo-300 text-base">
-                          {detail.realStock !== undefined ? detail.realStock : (zeroUncounted ? 0 : detail.theoreticalStock)}
+                          {detail.realStock != null ? detail.realStock : (zeroUncounted ? 0 : detail.theoreticalStock)}
                         </span>
                       ) : (
                         <div className="flex flex-col gap-1 items-end">
@@ -359,14 +354,14 @@ export default function PhysicalInventoryResults() {
                                 />
                               </div>
                               <div className="text-xs font-semibold text-indigo-800 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/40 px-2 py-1 rounded mt-1 border border-indigo-100 dark:border-indigo-800">
-                                Total: {detail.realStock !== undefined ? detail.realStock : '-'} {detail.sparePart?.unitOfMeasure?.abbreviation || 'UND'}
+                                Total: {detail.realStock != null ? detail.realStock : '-'} {detail.sparePart?.unitOfMeasure?.abbreviation || 'UND'}
                               </div>
                             </>
                           ) : (
                             <input
                               type="number"
                               min="0"
-                              value={detail.realStock === undefined ? '' : detail.realStock}
+                              value={detail.realStock == null ? '' : detail.realStock}
                               onChange={(e) => handleStockChange(detail.sparePartId, e.target.value)}
                               className="w-24 text-right bg-white dark:bg-gray-800 border-2 border-indigo-200 dark:border-indigo-800 rounded-md p-1 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none font-bold text-indigo-700 dark:text-indigo-300"
                               placeholder="-"

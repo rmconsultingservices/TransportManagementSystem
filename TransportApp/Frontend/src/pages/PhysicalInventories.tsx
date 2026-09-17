@@ -1,11 +1,12 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { Plus, Search, MapPin, PackageOpen, ClipboardList, AlertCircle, Play, Eye, FileText, FileDown, Trash2 } from 'lucide-react';
+import { Plus, Search, MapPin, PackageOpen, ClipboardList, Download, FileUp, AlertCircle, Play, Eye, FileText, FileDown, Trash2 } from 'lucide-react';
 import type { PhysicalInventory } from '../types/inventory';
 import { physicalInventoryService } from '../services/physicalInventoryService';
 import { warehouseService, type Warehouse } from '../services/warehouseService';
 import { locationService, type Location } from '../services/locationService';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import api from '../lib/api';
 
 export default function PhysicalInventories() {
   const [inventories, setInventories] = useState<PhysicalInventory[]>([]);
@@ -14,6 +15,10 @@ export default function PhysicalInventories() {
   
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   
@@ -72,6 +77,52 @@ export default function PhysicalInventories() {
     }
   };
 
+
+  const handleDownloadTemplate = async () => {
+    try {
+      const response = await api.get('/PhysicalInventories/export-template', { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'Plantilla_Toma_Fisica.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (e) {
+      console.error(e);
+      toast.error('Error al descargar la plantilla');
+    }
+  };
+
+  const handleImport = async () => {
+    if (!importFile) return;
+    setImporting(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', importFile);
+      
+      const response = await api.post('/PhysicalInventories/import', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      setShowImportModal(false);
+      setImportFile(null);
+      toast.success(response.data?.message || 'Toma física importada con éxito');
+      await loadInventories();
+      if (response.data?.id) {
+        navigate(`/inventory/physical/${response.data.id}`);
+      }
+    } catch (error: any) {
+      console.error(error);
+      const msg = typeof error.response?.data === 'string' ? error.response.data : (error.response?.data?.message || 'Hubo un error importando el archivo.');
+      toast.error(msg);
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const handleStartInventory = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.description || formData.warehouseId === 0) {
@@ -111,13 +162,29 @@ export default function PhysicalInventories() {
           </p>
         </div>
         
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition flex items-center gap-2 shadow-sm"
-        >
-          <Plus size={20} />
-          <span>Nueva Toma Física</span>
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={handleDownloadTemplate}
+            className="bg-emerald-100 text-emerald-700 px-4 py-2 rounded-lg hover:bg-emerald-200 transition flex items-center gap-2 shadow-sm border border-emerald-200"
+          >
+            <Download size={20} />
+            <span>Descargar Plantilla</span>
+          </button>
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition flex items-center gap-2 shadow-sm"
+          >
+            <FileUp size={20} />
+            <span>Importar Conteo</span>
+          </button>
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition flex items-center gap-2 shadow-sm"
+          >
+            <Plus size={20} />
+            <span>Nueva Toma Física</span>
+          </button>
+        </div>
       </div>
 
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
@@ -306,6 +373,48 @@ export default function PhysicalInventories() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showImportModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <FileUp className="text-emerald-500" />
+                Importar Toma Física
+              </h2>
+              <button onClick={() => setShowImportModal(false)} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                &times;
+              </button>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+                Sube la plantilla de Excel diligenciada. El sistema procesará el conteo físico y generará los ajustes automáticamente.
+              </p>
+              <input
+                type="file"
+                accept=".xlsx"
+                onChange={e => setImportFile(e.target.files?.[0] || null)}
+                className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
+              />
+            </div>
+            <div className="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3 bg-gray-50 dark:bg-gray-900">
+              <button
+                onClick={() => setShowImportModal(false)}
+                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleImport}
+                disabled={!importFile || importing}
+                className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50"
+              >
+                {importing ? 'Procesando...' : 'Importar'}
+              </button>
+            </div>
           </div>
         </div>
       )}

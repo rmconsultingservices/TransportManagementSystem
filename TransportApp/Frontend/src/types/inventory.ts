@@ -1,4 +1,4 @@
-export interface SparePartUnit {
+﻿export interface SparePartUnit {
   id?: number;
   sparePartId?: number;
   unitOfMeasureId: number;
@@ -73,7 +73,7 @@ export interface PhysicalInventoryDetail {
   sparePartId: number;
   sparePart?: SparePart;
   theoreticalStock: number;
-  realStock?: number;
+  realStock?: number | null;
     unitOfMeasureId?: number | null;
   unitCost: number;
 }
