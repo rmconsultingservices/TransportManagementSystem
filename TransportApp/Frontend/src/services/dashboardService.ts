@@ -13,8 +13,11 @@ export interface OperationalKpis {
   fleetAvailabilityPercent: number;
   vehiclesAvailabilityPercent: number;
   trailersAvailabilityPercent: number;
+  fleetAvailabilityDelta: number;
   mttrHours: number;
   mttrDays: number;
+  mttrDeltaHours: number;
+  mttrSparkline: number[];
   completedOrdersCount: number;
   preventiveCount: number;
   correctiveCount: number;
@@ -35,8 +38,17 @@ export interface OperationalKpis {
   }[];
 }
 
+export interface MonthlyCostEvolution {
+  monthLabel: string;
+  year: number;
+  totalCost: number;
+  averageCost: number;
+  servicedUnitsCount: number;
+}
+
 export interface FinancialKpis {
   totalMaintenanceCost: number;
+  totalCostDeltaPercent: number;
   averageCostPerServicedUnit: number;
   servicedUnitsCount: number;
   immobilizedInventoryValue: number;
@@ -50,6 +62,12 @@ export interface FinancialKpis {
     servicesCount: number;
     partsCount: number;
   }[];
+  monthlyEvolution: MonthlyCostEvolution[];
+}
+
+export interface WarehouseFilter {
+  id: number;
+  name: string;
 }
 
 export interface InventoryKpis {
@@ -60,6 +78,7 @@ export interface InventoryKpis {
     code: string;
     name: string;
     category: string;
+    warehouseName: string;
     stockQuantity: number;
     minimumStock: number;
     unitCost: number;
@@ -76,6 +95,7 @@ export interface InventoryKpis {
     unitOfMeasure: string;
     serviceOrdersCount: number;
   }[];
+  warehouses: WarehouseFilter[];
 }
 
 export interface StaffKpis {
@@ -84,6 +104,8 @@ export interface StaffKpis {
     mechanicName: string;
     speciality: string;
     completedOrders: number;
+    preventiveOrdersCount: number;
+    correctiveOrdersCount: number;
     averageRepairTimeHours: number;
     totalPartsInstalledCount: number;
   }[];
@@ -99,26 +121,29 @@ export interface StaffKpis {
 }
 
 export const dashboardService = {
-  getOperationalKpis: async (startDate?: string, endDate?: string): Promise<OperationalKpis> => {
+  getOperationalKpis: async (startDate?: string, endDate?: string, assetType: string = 'all'): Promise<OperationalKpis> => {
     const params = new URLSearchParams();
     if (startDate) params.append('startDate', startDate);
     if (endDate) params.append('endDate', endDate);
+    if (assetType && assetType !== 'all') params.append('assetType', assetType);
     const res = await api.get(`/dashboard/operational-kpis?${params.toString()}`);
     return res.data;
   },
 
-  getFinancialKpis: async (startDate?: string, endDate?: string): Promise<FinancialKpis> => {
+  getFinancialKpis: async (startDate?: string, endDate?: string, assetType: string = 'all'): Promise<FinancialKpis> => {
     const params = new URLSearchParams();
     if (startDate) params.append('startDate', startDate);
     if (endDate) params.append('endDate', endDate);
+    if (assetType && assetType !== 'all') params.append('assetType', assetType);
     const res = await api.get(`/dashboard/financial-kpis?${params.toString()}`);
     return res.data;
   },
 
-  getInventoryKpis: async (startDate?: string, endDate?: string): Promise<InventoryKpis> => {
+  getInventoryKpis: async (startDate?: string, endDate?: string, warehouseId?: number): Promise<InventoryKpis> => {
     const params = new URLSearchParams();
     if (startDate) params.append('startDate', startDate);
     if (endDate) params.append('endDate', endDate);
+    if (warehouseId && warehouseId > 0) params.append('warehouseId', warehouseId.toString());
     const res = await api.get(`/dashboard/inventory-kpis?${params.toString()}`);
     return res.data;
   },
@@ -131,10 +156,12 @@ export const dashboardService = {
     return res.data;
   },
 
-  downloadExcelReport: async (startDate?: string, endDate?: string) => {
+  downloadExcelReport: async (startDate?: string, endDate?: string, assetType: string = 'all', warehouseId?: number) => {
     const params = new URLSearchParams();
     if (startDate) params.append('startDate', startDate);
     if (endDate) params.append('endDate', endDate);
+    if (assetType && assetType !== 'all') params.append('assetType', assetType);
+    if (warehouseId && warehouseId > 0) params.append('warehouseId', warehouseId.toString());
     const res = await api.get(`/dashboard/export-excel?${params.toString()}`, {
       responseType: 'blob'
     });
