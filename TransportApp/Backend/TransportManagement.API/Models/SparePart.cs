@@ -28,6 +28,9 @@ namespace TransportManagement.API.Models
 
         [Column(TypeName = "decimal(18,4)")]
         public decimal StockQuantity { get; set; } = 0;
+
+        [Column(TypeName = "decimal(18,4)")]
+        public decimal MinimumStock { get; set; } = 0;
         
         public decimal UnitCost { get; set; } = 0;
         public string? ImageUrl { get; set; }
