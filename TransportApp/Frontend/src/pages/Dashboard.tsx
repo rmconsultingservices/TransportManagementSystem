@@ -885,7 +885,7 @@ export default function Dashboard() {
                           {unit.licensePlate}
                         </td>
                         <td className="py-2.5 pr-2 text-slate-500">
-                          {unit.unitType === 'Vehicle' ? 'Chuto' : 'Remolque'} {unit.brandOrType ? `• ${unit.brandOrType}` : ''}
+                          {(unit.unitType?.toLowerCase().includes('chuto') || unit.unitType?.toLowerCase().includes('vehicle')) ? 'Chuto' : 'Remolque'} {unit.brandOrType ? `• ${unit.brandOrType}` : ''}
                         </td>
                         <td className="py-2.5 px-2 text-center">
                           <span className={`inline-block px-2.5 py-0.5 rounded-full font-bold text-[11px] ${
