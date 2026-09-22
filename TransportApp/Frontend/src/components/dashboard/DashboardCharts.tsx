@@ -20,8 +20,9 @@ export const GaugeChart: React.FC<GaugeChartProps> = ({ value, size = 180, label
 
   return (
     <div className="flex flex-col items-center justify-center">
-      <div className="relative" style={{ width: size, height: size * 0.65 }}>
-        <svg viewBox="0 0 200 130" className="w-full h-full overflow-visible">
+      {/* Gauge Arc & Needle */}
+      <div className="relative flex justify-center" style={{ width: size, height: size * 0.54 }}>
+        <svg viewBox="0 15 200 105" className="w-full h-full overflow-visible">
           <defs>
             <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
               <stop offset="0%" stopColor="#ef4444" />
@@ -64,21 +65,20 @@ export const GaugeChart: React.FC<GaugeChartProps> = ({ value, size = 180, label
             <circle cx="100" cy="32" r="3.5" fill={statusColor} />
           </g>
         </svg>
-
-        {/* Big percentage display */}
-        <div className="absolute inset-x-0 bottom-0 text-center">
-          <span className="text-3xl font-black tracking-tight drop-shadow-sm" style={{ color: statusColor }}>
-            {clamped.toFixed(1)}%
-          </span>
-        </div>
       </div>
 
-      <div className="flex items-center gap-1.5 mt-2">
-        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: statusColor }} />
-        <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
-          {statusText}
+      {/* Percentage and Status BELOW the gauge chart */}
+      <div className="flex flex-col items-center mt-2">
+        <span className="text-3xl font-black tracking-tight" style={{ color: statusColor }}>
+          {clamped.toFixed(1)}%
         </span>
-        {label && <span className="text-xs text-slate-400 dark:text-slate-500">({label})</span>}
+        <div className="flex items-center gap-1.5 mt-0.5">
+          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: statusColor }} />
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+            {statusText}
+          </span>
+          {label && <span className="text-xs text-slate-400 dark:text-slate-500">({label})</span>}
+        </div>
       </div>
     </div>
   );
