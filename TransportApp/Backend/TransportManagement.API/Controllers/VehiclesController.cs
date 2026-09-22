@@ -68,24 +68,33 @@ namespace TransportManagement.API.Controllers
                 return BadRequest();
             }
 
-            _context.Entry(vehicle).State = EntityState.Modified;
-
-            try
+            var existing = await _context.Vehicles.IgnoreQueryFilters().FirstOrDefaultAsync(v => v.Id == id);
+            if (existing == null)
             {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!VehicleExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                return NotFound();
             }
 
+            existing.Brand = vehicle.Brand;
+            existing.Model = vehicle.Model;
+            existing.Year = vehicle.Year;
+            existing.LicensePlate = vehicle.LicensePlate;
+            existing.CurrentMileage = vehicle.CurrentMileage;
+            existing.LastMaintenanceMileage = vehicle.LastMaintenanceMileage;
+            existing.MaintenanceInterval = vehicle.MaintenanceInterval;
+            existing.FleetOwnerId = vehicle.FleetOwnerId;
+            existing.IsActive = vehicle.IsActive;
+
+            // Preserve existing CompanyId, or adopt current company if previously orphaned (CompanyId = 0)
+            if (vehicle.CompanyId != 0)
+            {
+                existing.CompanyId = vehicle.CompanyId;
+            }
+            else if (existing.CompanyId == 0 && _context.CurrentCompanyId != 0)
+            {
+                existing.CompanyId = _context.CurrentCompanyId;
+            }
+
+            await _context.SaveChangesAsync();
             return NoContent();
         }
 

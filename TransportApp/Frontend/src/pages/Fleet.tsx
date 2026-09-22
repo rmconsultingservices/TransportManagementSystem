@@ -104,28 +104,30 @@ export default function Fleet() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const activeCompanyId = selectedCompany?.id ?? (selectedCompany as any)?.Id ?? (selectedCompany as any)?.companyId;
       if (activeTab === 'vehicles') {
+        const current = editingUnitId ? vehicles.find(v => v.id === editingUnitId) : null;
         const payload = {
           licensePlate, brand, model, year, currentMileage,
-          lastMaintenanceMileage: currentMileage, maintenanceInterval,
-          fleetOwnerId: fleetOwnerId ? Number(fleetOwnerId) : undefined
+          lastMaintenanceMileage: current?.lastMaintenanceMileage || currentMileage, maintenanceInterval,
+          fleetOwnerId: fleetOwnerId ? Number(fleetOwnerId) : undefined,
+          companyId: current?.companyId || activeCompanyId
         };
         if (editingUnitId) {
-          // fetch current vehicle to keep lastMaintenanceMileage if needed
-          const current = vehicles.find(v => v.id === editingUnitId);
-          await fleetService.updateVehicle(editingUnitId, { ...payload, id: editingUnitId, lastMaintenanceMileage: current?.lastMaintenanceMileage || currentMileage, isActive: true } as any);
+          await fleetService.updateVehicle(editingUnitId, { ...payload, id: editingUnitId, isActive: true } as any);
         } else {
           await fleetService.createVehicle(payload as any);
         }
       } else {
+        const current = editingUnitId ? trailers.find(t => t.id === editingUnitId) : null;
         const payload = {
           licensePlate, type, axlesCount, currentMileage,
-          lastMaintenanceMileage: currentMileage, maintenanceInterval,
-          fleetOwnerId: fleetOwnerId ? Number(fleetOwnerId) : undefined
+          lastMaintenanceMileage: current?.lastMaintenanceMileage || currentMileage, maintenanceInterval,
+          fleetOwnerId: fleetOwnerId ? Number(fleetOwnerId) : undefined,
+          companyId: current?.companyId || activeCompanyId
         };
         if (editingUnitId) {
-          const current = trailers.find(t => t.id === editingUnitId);
-          await fleetService.updateTrailer(editingUnitId, { ...payload, id: editingUnitId, lastMaintenanceMileage: current?.lastMaintenanceMileage || currentMileage, isActive: true } as any);
+          await fleetService.updateTrailer(editingUnitId, { ...payload, id: editingUnitId, isActive: true } as any);
         } else {
           await fleetService.createTrailer(payload as any);
         }
@@ -141,7 +143,13 @@ export default function Fleet() {
   const handleOwnerSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const payload = { name: ownerName, description: ownerDescription };
+      const activeCompanyId = selectedCompany?.id ?? (selectedCompany as any)?.Id ?? (selectedCompany as any)?.companyId;
+      const current = editingOwnerId ? owners.find(o => o.id === editingOwnerId) : null;
+      const payload = { 
+        name: ownerName, 
+        description: ownerDescription,
+        companyId: current?.companyId || activeCompanyId
+      };
       if (editingOwnerId) {
         await fleetService.updateFleetOwner(editingOwnerId, { ...payload, id: editingOwnerId, isActive: true } as any);
       } else {

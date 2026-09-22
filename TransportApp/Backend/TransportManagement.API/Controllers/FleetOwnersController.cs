@@ -43,16 +43,24 @@ namespace TransportManagement.API.Controllers
         public async Task<IActionResult> PutFleetOwner(int id, FleetOwner owner)
         {
             if (id != owner.Id) return BadRequest();
-            _context.Entry(owner).State = EntityState.Modified;
-            try
+
+            var existing = await _context.FleetOwners.IgnoreQueryFilters().FirstOrDefaultAsync(o => o.Id == id);
+            if (existing == null) return NotFound();
+
+            existing.Name = owner.Name;
+            existing.Description = owner.Description;
+            existing.IsActive = owner.IsActive;
+
+            if (owner.CompanyId != 0)
             {
-                await _context.SaveChangesAsync();
+                existing.CompanyId = owner.CompanyId;
             }
-            catch (DbUpdateConcurrencyException)
+            else if (existing.CompanyId == 0 && _context.CurrentCompanyId != 0)
             {
-                if (!_context.FleetOwners.Any(e => e.Id == id)) return NotFound();
-                else throw;
+                existing.CompanyId = _context.CurrentCompanyId;
             }
+
+            await _context.SaveChangesAsync();
             return NoContent();
         }
 

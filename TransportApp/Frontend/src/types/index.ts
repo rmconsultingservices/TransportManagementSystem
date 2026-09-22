@@ -8,6 +8,7 @@ export interface FleetOwner {
 
 export interface Vehicle {
   id: number;
+  companyId?: number;
   licensePlate: string;
   brand: string;
   model: string;
@@ -22,6 +23,7 @@ export interface Vehicle {
 
 export interface Trailer {
   id: number;
+  companyId?: number;
   licensePlate: string;
   type: string;
   axlesCount: number;

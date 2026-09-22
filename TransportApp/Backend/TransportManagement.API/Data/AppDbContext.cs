@@ -121,12 +121,30 @@ namespace TransportManagement.API.Data
                 if (entry.State == EntityState.Detached || entry.State == EntityState.Unchanged)
                     continue;
 
-                // 1. Inject CompanyId for new entities that require it
-                if (entry.State == EntityState.Added && entry.Entity is IMustHaveCompany mustHaveCompany)
+                // 1. Inject or preserve CompanyId for entities implementing IMustHaveCompany
+                if (entry.Entity is IMustHaveCompany companyEntity)
                 {
-                    if (mustHaveCompany.CompanyId == 0)
+                    if (entry.State == EntityState.Added)
                     {
-                        mustHaveCompany.CompanyId = activeCompanyId;
+                        if (companyEntity.CompanyId == 0)
+                        {
+                            companyEntity.CompanyId = activeCompanyId;
+                        }
+                    }
+                    else if (entry.State == EntityState.Modified)
+                    {
+                        // Prevent accidental zeroing of CompanyId on updates
+                        if (companyEntity.CompanyId == 0)
+                        {
+                            if (activeCompanyId != 0)
+                            {
+                                companyEntity.CompanyId = activeCompanyId;
+                            }
+                            else
+                            {
+                                entry.Property("CompanyId").IsModified = false;
+                            }
+                        }
                     }
                 }
 
