@@ -36,6 +36,7 @@ export interface OperationalKpis {
     preventiveCount: number;
     lastServiceDate: string | null;
   }[];
+  fleetOwners?: FleetOwnerFilter[];
 }
 
 export interface MonthlyCostEvolution {
@@ -66,6 +67,11 @@ export interface FinancialKpis {
 }
 
 export interface WarehouseFilter {
+  id: number;
+  name: string;
+}
+
+export interface FleetOwnerFilter {
   id: number;
   name: string;
 }
@@ -121,20 +127,22 @@ export interface StaffKpis {
 }
 
 export const dashboardService = {
-  getOperationalKpis: async (startDate?: string, endDate?: string, assetType: string = 'all'): Promise<OperationalKpis> => {
+  getOperationalKpis: async (startDate?: string, endDate?: string, assetType: string = 'all', fleetOwnerId?: number): Promise<OperationalKpis> => {
     const params = new URLSearchParams();
     if (startDate) params.append('startDate', startDate);
     if (endDate) params.append('endDate', endDate);
     if (assetType && assetType !== 'all') params.append('assetType', assetType);
+    if (fleetOwnerId && fleetOwnerId > 0) params.append('fleetOwnerId', fleetOwnerId.toString());
     const res = await api.get(`/dashboard/operational-kpis?${params.toString()}`);
     return res.data;
   },
 
-  getFinancialKpis: async (startDate?: string, endDate?: string, assetType: string = 'all'): Promise<FinancialKpis> => {
+  getFinancialKpis: async (startDate?: string, endDate?: string, assetType: string = 'all', fleetOwnerId?: number): Promise<FinancialKpis> => {
     const params = new URLSearchParams();
     if (startDate) params.append('startDate', startDate);
     if (endDate) params.append('endDate', endDate);
     if (assetType && assetType !== 'all') params.append('assetType', assetType);
+    if (fleetOwnerId && fleetOwnerId > 0) params.append('fleetOwnerId', fleetOwnerId.toString());
     const res = await api.get(`/dashboard/financial-kpis?${params.toString()}`);
     return res.data;
   },
@@ -148,20 +156,22 @@ export const dashboardService = {
     return res.data;
   },
 
-  getStaffKpis: async (startDate?: string, endDate?: string): Promise<StaffKpis> => {
+  getStaffKpis: async (startDate?: string, endDate?: string, fleetOwnerId?: number): Promise<StaffKpis> => {
     const params = new URLSearchParams();
     if (startDate) params.append('startDate', startDate);
     if (endDate) params.append('endDate', endDate);
+    if (fleetOwnerId && fleetOwnerId > 0) params.append('fleetOwnerId', fleetOwnerId.toString());
     const res = await api.get(`/dashboard/staff-kpis?${params.toString()}`);
     return res.data;
   },
 
-  downloadExcelReport: async (startDate?: string, endDate?: string, assetType: string = 'all', warehouseId?: number) => {
+  downloadExcelReport: async (startDate?: string, endDate?: string, assetType: string = 'all', warehouseId?: number, fleetOwnerId?: number) => {
     const params = new URLSearchParams();
     if (startDate) params.append('startDate', startDate);
     if (endDate) params.append('endDate', endDate);
     if (assetType && assetType !== 'all') params.append('assetType', assetType);
     if (warehouseId && warehouseId > 0) params.append('warehouseId', warehouseId.toString());
+    if (fleetOwnerId && fleetOwnerId > 0) params.append('fleetOwnerId', fleetOwnerId.toString());
     const res = await api.get(`/dashboard/export-excel?${params.toString()}`, {
       responseType: 'blob'
     });

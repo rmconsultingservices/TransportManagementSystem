@@ -33,27 +33,44 @@ namespace TransportManagement.API.Controllers
             [FromQuery] DateTime? startDate, 
             [FromQuery] DateTime? endDate,
             [FromQuery] string? assetType = "all",
-            [FromQuery] int? warehouseId = null)
+            [FromQuery] int? warehouseId = null,
+            [FromQuery] int? fleetOwnerId = null)
         {
             var (start, end) = NormalizeDateRange(startDate, endDate);
             var isVehicleAllowed = assetType != "trailer";
             var isTrailerAllowed = assetType != "vehicle";
 
-            // Flota Activa según filtro de tipo de activo
+            // Flota Activa según filtro de tipo de activo y empresa propietaria
+            var vehiclesQuery = _context.Vehicles.Where(v => v.IsActive);
+            if (fleetOwnerId.HasValue && fleetOwnerId.Value > 0)
+                vehiclesQuery = vehiclesQuery.Where(v => v.FleetOwnerId == fleetOwnerId.Value);
+
+            var trailersQuery = _context.Trailers.Where(t => t.IsActive);
+            if (fleetOwnerId.HasValue && fleetOwnerId.Value > 0)
+                trailersQuery = trailersQuery.Where(t => t.FleetOwnerId == fleetOwnerId.Value);
+
             var vehicles = isVehicleAllowed 
-                ? await _context.Vehicles.Where(v => v.IsActive).ToListAsync()
+                ? await vehiclesQuery.ToListAsync()
                 : new List<Vehicle>();
 
             var trailers = isTrailerAllowed 
-                ? await _context.Trailers.Where(t => t.IsActive).ToListAsync()
+                ? await trailersQuery.ToListAsync()
                 : new List<Trailer>();
 
             // Unidades actualmente inmovilizadas en taller (solicitud no completada)
             var activeServicesQuery = _context.ServiceRequests
+                .Include(sr => sr.Vehicle)
+                .Include(sr => sr.Trailer)
                 .Where(sr => sr.Status != "Completado");
 
             if (!isTrailerAllowed) activeServicesQuery = activeServicesQuery.Where(sr => sr.VehicleId.HasValue);
             if (!isVehicleAllowed) activeServicesQuery = activeServicesQuery.Where(sr => sr.TrailerId.HasValue);
+            if (fleetOwnerId.HasValue && fleetOwnerId.Value > 0)
+            {
+                activeServicesQuery = activeServicesQuery.Where(sr => 
+                    (sr.Vehicle != null && sr.Vehicle.FleetOwnerId == fleetOwnerId.Value) ||
+                    (sr.Trailer != null && sr.Trailer.FleetOwnerId == fleetOwnerId.Value));
+            }
 
             var activeServices = await activeServicesQuery
                 .Select(sr => new { sr.VehicleId, sr.TrailerId })
@@ -79,13 +96,25 @@ namespace TransportManagement.API.Controllers
             double trailerAvailPercent = totalTrailers > 0 ? Math.Round((double)operationalTrailers / totalTrailers * 100, 1) : 100.0;
 
             // MTTR actual
-            var completedOrders = await _context.ServiceRequests
+            var completedOrdersQuery = _context.ServiceRequests
                 .Include(sr => sr.Execution)
+                .Include(sr => sr.Vehicle)
+                .Include(sr => sr.Trailer)
                 .Where(sr => sr.Status == "Completado" 
                              && sr.Execution != null 
                              && sr.Execution.DateCompleted >= start 
-                             && sr.Execution.DateCompleted <= end)
-                .ToListAsync();
+                             && sr.Execution.DateCompleted <= end);
+
+            if (!isTrailerAllowed) completedOrdersQuery = completedOrdersQuery.Where(sr => sr.VehicleId.HasValue);
+            if (!isVehicleAllowed) completedOrdersQuery = completedOrdersQuery.Where(sr => sr.TrailerId.HasValue);
+            if (fleetOwnerId.HasValue && fleetOwnerId.Value > 0)
+            {
+                completedOrdersQuery = completedOrdersQuery.Where(sr => 
+                    (sr.Vehicle != null && sr.Vehicle.FleetOwnerId == fleetOwnerId.Value) ||
+                    (sr.Trailer != null && sr.Trailer.FleetOwnerId == fleetOwnerId.Value));
+            }
+
+            var completedOrders = await completedOrdersQuery.ToListAsync();
 
             if (!isTrailerAllowed) completedOrders = completedOrders.Where(o => o.VehicleId.HasValue).ToList();
             if (!isVehicleAllowed) completedOrders = completedOrders.Where(o => o.TrailerId.HasValue).ToList();
@@ -132,13 +161,25 @@ namespace TransportManagement.API.Controllers
             var prevEnd = start.AddDays(-1);
             var prevStart = prevEnd.AddDays(-durationDays);
 
-            var prevCompletedOrders = await _context.ServiceRequests
+            var prevCompletedOrdersQuery = _context.ServiceRequests
                 .Include(sr => sr.Execution)
+                .Include(sr => sr.Vehicle)
+                .Include(sr => sr.Trailer)
                 .Where(sr => sr.Status == "Completado" 
                              && sr.Execution != null 
                              && sr.Execution.DateCompleted >= prevStart 
-                             && sr.Execution.DateCompleted <= prevEnd)
-                .ToListAsync();
+                             && sr.Execution.DateCompleted <= prevEnd);
+
+            if (!isTrailerAllowed) prevCompletedOrdersQuery = prevCompletedOrdersQuery.Where(sr => sr.VehicleId.HasValue);
+            if (!isVehicleAllowed) prevCompletedOrdersQuery = prevCompletedOrdersQuery.Where(sr => sr.TrailerId.HasValue);
+            if (fleetOwnerId.HasValue && fleetOwnerId.Value > 0)
+            {
+                prevCompletedOrdersQuery = prevCompletedOrdersQuery.Where(sr => 
+                    (sr.Vehicle != null && sr.Vehicle.FleetOwnerId == fleetOwnerId.Value) ||
+                    (sr.Trailer != null && sr.Trailer.FleetOwnerId == fleetOwnerId.Value));
+            }
+
+            var prevCompletedOrders = await prevCompletedOrdersQuery.ToListAsync();
 
             double prevTotalHours = 0;
             int prevValidCount = 0;
@@ -159,10 +200,18 @@ namespace TransportManagement.API.Controllers
 
             // Preventivos vs Correctivos en el período
             var periodRequestsQuery = _context.ServiceRequests
+                .Include(sr => sr.Vehicle)
+                .Include(sr => sr.Trailer)
                 .Where(sr => sr.DateRequested >= start && sr.DateRequested <= end);
 
             if (!isTrailerAllowed) periodRequestsQuery = periodRequestsQuery.Where(sr => sr.VehicleId.HasValue);
             if (!isVehicleAllowed) periodRequestsQuery = periodRequestsQuery.Where(sr => sr.TrailerId.HasValue);
+            if (fleetOwnerId.HasValue && fleetOwnerId.Value > 0)
+            {
+                periodRequestsQuery = periodRequestsQuery.Where(sr => 
+                    (sr.Vehicle != null && sr.Vehicle.FleetOwnerId == fleetOwnerId.Value) ||
+                    (sr.Trailer != null && sr.Trailer.FleetOwnerId == fleetOwnerId.Value));
+            }
 
             var periodRequests = await periodRequestsQuery.ToListAsync();
 
@@ -222,6 +271,11 @@ namespace TransportManagement.API.Controllers
                 .Take(10)
                 .ToList();
 
+            var fleetOwnersList = await _context.FleetOwners
+                .OrderBy(fo => fo.Name)
+                .Select(fo => new FleetOwnerFilterDto { Id = fo.Id, Name = fo.Name })
+                .ToListAsync();
+
             return Ok(new OperationalKpisDto
             {
                 TotalActiveVehicles = totalVehicles,
@@ -248,7 +302,8 @@ namespace TransportManagement.API.Controllers
                 TotalRequestsCount = totalReqs,
                 PreventivePercent = prevPercent,
                 CorrectivePercent = corrPercent,
-                FailureFrequency = topFailures
+                FailureFrequency = topFailures,
+                FleetOwners = fleetOwnersList
             });
         }
 
@@ -259,7 +314,8 @@ namespace TransportManagement.API.Controllers
         public async Task<ActionResult<FinancialKpisDto>> GetFinancialKpis(
             [FromQuery] DateTime? startDate, 
             [FromQuery] DateTime? endDate,
-            [FromQuery] string? assetType = "all")
+            [FromQuery] string? assetType = "all",
+            [FromQuery] int? fleetOwnerId = null)
         {
             var (start, end) = NormalizeDateRange(startDate, endDate);
             var isVehicleAllowed = assetType != "trailer";
@@ -279,6 +335,12 @@ namespace TransportManagement.API.Controllers
 
             if (!isTrailerAllowed) usedPartsQuery = usedPartsQuery.Where(p => p.ServiceExecution!.ServiceRequest!.VehicleId.HasValue);
             if (!isVehicleAllowed) usedPartsQuery = usedPartsQuery.Where(p => p.ServiceExecution!.ServiceRequest!.TrailerId.HasValue);
+            if (fleetOwnerId.HasValue && fleetOwnerId.Value > 0)
+            {
+                usedPartsQuery = usedPartsQuery.Where(p => 
+                    (p.ServiceExecution!.ServiceRequest!.Vehicle != null && p.ServiceExecution.ServiceRequest.Vehicle.FleetOwnerId == fleetOwnerId.Value) ||
+                    (p.ServiceExecution!.ServiceRequest!.Trailer != null && p.ServiceExecution.ServiceRequest.Trailer.FleetOwnerId == fleetOwnerId.Value));
+            }
 
             var usedParts = await usedPartsQuery.ToListAsync();
             decimal totalCost = usedParts.Sum(p => p.Quantity * p.UnitCost);
@@ -288,11 +350,27 @@ namespace TransportManagement.API.Controllers
             var prevEnd = start.AddDays(-1);
             var prevStart = prevEnd.AddDays(-durationDays);
 
-            var prevUsedParts = await _context.ServiceExecutionSpareParts
+            var prevUsedPartsQuery = _context.ServiceExecutionSpareParts
+                .Include(p => p.ServiceExecution)
+                    .ThenInclude(e => e!.ServiceRequest)
+                        .ThenInclude(sr => sr!.Vehicle)
+                .Include(p => p.ServiceExecution)
+                    .ThenInclude(e => e!.ServiceRequest)
+                        .ThenInclude(sr => sr!.Trailer)
                 .Where(p => p.ServiceExecution != null 
                             && p.ServiceExecution.DateCompleted >= prevStart 
-                            && p.ServiceExecution.DateCompleted <= prevEnd)
-                .ToListAsync();
+                            && p.ServiceExecution.DateCompleted <= prevEnd);
+
+            if (!isTrailerAllowed) prevUsedPartsQuery = prevUsedPartsQuery.Where(p => p.ServiceExecution!.ServiceRequest!.VehicleId.HasValue);
+            if (!isVehicleAllowed) prevUsedPartsQuery = prevUsedPartsQuery.Where(p => p.ServiceExecution!.ServiceRequest!.TrailerId.HasValue);
+            if (fleetOwnerId.HasValue && fleetOwnerId.Value > 0)
+            {
+                prevUsedPartsQuery = prevUsedPartsQuery.Where(p => 
+                    (p.ServiceExecution!.ServiceRequest!.Vehicle != null && p.ServiceExecution.ServiceRequest.Vehicle.FleetOwnerId == fleetOwnerId.Value) ||
+                    (p.ServiceExecution!.ServiceRequest!.Trailer != null && p.ServiceExecution.ServiceRequest.Trailer.FleetOwnerId == fleetOwnerId.Value));
+            }
+
+            var prevUsedParts = await prevUsedPartsQuery.ToListAsync();
 
             decimal prevCost = prevUsedParts.Sum(p => p.Quantity * p.UnitCost);
             double costDeltaPercent = prevCost > 0 
@@ -368,11 +446,27 @@ namespace TransportManagement.API.Controllers
                 var mStart = new DateTime(monthTarget.Year, monthTarget.Month, 1);
                 var mEnd = mStart.AddMonths(1).AddTicks(-1);
 
-                var mParts = await _context.ServiceExecutionSpareParts
+                var mPartsQuery = _context.ServiceExecutionSpareParts
+                    .Include(p => p.ServiceExecution)
+                        .ThenInclude(e => e!.ServiceRequest)
+                            .ThenInclude(sr => sr!.Vehicle)
+                    .Include(p => p.ServiceExecution)
+                        .ThenInclude(e => e!.ServiceRequest)
+                            .ThenInclude(sr => sr!.Trailer)
                     .Where(p => p.ServiceExecution != null 
                                 && p.ServiceExecution.DateCompleted >= mStart 
-                                && p.ServiceExecution.DateCompleted <= mEnd)
-                    .ToListAsync();
+                                && p.ServiceExecution.DateCompleted <= mEnd);
+
+                if (!isTrailerAllowed) mPartsQuery = mPartsQuery.Where(p => p.ServiceExecution!.ServiceRequest!.VehicleId.HasValue);
+                if (!isVehicleAllowed) mPartsQuery = mPartsQuery.Where(p => p.ServiceExecution!.ServiceRequest!.TrailerId.HasValue);
+                if (fleetOwnerId.HasValue && fleetOwnerId.Value > 0)
+                {
+                    mPartsQuery = mPartsQuery.Where(p => 
+                        (p.ServiceExecution!.ServiceRequest!.Vehicle != null && p.ServiceExecution.ServiceRequest.Vehicle.FleetOwnerId == fleetOwnerId.Value) ||
+                        (p.ServiceExecution!.ServiceRequest!.Trailer != null && p.ServiceExecution.ServiceRequest.Trailer.FleetOwnerId == fleetOwnerId.Value));
+                }
+
+                var mParts = await mPartsQuery.ToListAsync();
 
                 decimal mCost = Math.Round(mParts.Sum(p => p.Quantity * p.UnitCost), 2);
                 int mUnits = mParts.Select(p => p.ServiceExecutionId).Distinct().Count();
@@ -539,20 +633,31 @@ namespace TransportManagement.API.Controllers
         [HttpGet("staff-kpis")]
         public async Task<ActionResult<StaffKpisDto>> GetStaffKpis(
             [FromQuery] DateTime? startDate, 
-            [FromQuery] DateTime? endDate)
+            [FromQuery] DateTime? endDate,
+            [FromQuery] int? fleetOwnerId = null)
         {
             var (start, end) = NormalizeDateRange(startDate, endDate);
 
             // Productividad por Mecánico (con desglose Preventivo vs Correctivo)
-            var completedOrders = await _context.ServiceRequests
+            var completedOrdersQuery = _context.ServiceRequests
                 .Include(sr => sr.Mechanic)
+                .Include(sr => sr.Vehicle)
+                .Include(sr => sr.Trailer)
                 .Include(sr => sr.Execution)
                     .ThenInclude(e => e!.UsedSpareParts)
                 .Where(sr => sr.Status == "Completado" 
                              && sr.Execution != null 
                              && sr.Execution.DateCompleted >= start 
-                             && sr.Execution.DateCompleted <= end)
-                .ToListAsync();
+                             && sr.Execution.DateCompleted <= end);
+
+            if (fleetOwnerId.HasValue && fleetOwnerId.Value > 0)
+            {
+                completedOrdersQuery = completedOrdersQuery.Where(sr => 
+                    (sr.Vehicle != null && sr.Vehicle.FleetOwnerId == fleetOwnerId.Value) ||
+                    (sr.Trailer != null && sr.Trailer.FleetOwnerId == fleetOwnerId.Value));
+            }
+
+            var completedOrders = await completedOrdersQuery.ToListAsync();
 
             var mechanicProductivity = completedOrders
                 .Where(sr => sr.MechanicId.HasValue)
@@ -584,10 +689,20 @@ namespace TransportManagement.API.Controllers
                 .ToList();
 
             // Incidencias por Chofer Solicitante
-            var requestsWithDriver = await _context.ServiceRequests
+            var requestsWithDriverQuery = _context.ServiceRequests
                 .Include(sr => sr.Driver)
-                .Where(sr => sr.DateRequested >= start && sr.DateRequested <= end && sr.DriverId.HasValue)
-                .ToListAsync();
+                .Include(sr => sr.Vehicle)
+                .Include(sr => sr.Trailer)
+                .Where(sr => sr.DateRequested >= start && sr.DateRequested <= end && sr.DriverId.HasValue);
+
+            if (fleetOwnerId.HasValue && fleetOwnerId.Value > 0)
+            {
+                requestsWithDriverQuery = requestsWithDriverQuery.Where(sr => 
+                    (sr.Vehicle != null && sr.Vehicle.FleetOwnerId == fleetOwnerId.Value) ||
+                    (sr.Trailer != null && sr.Trailer.FleetOwnerId == fleetOwnerId.Value));
+            }
+
+            var requestsWithDriver = await requestsWithDriverQuery.ToListAsync();
 
             var driverIncidents = requestsWithDriver
                 .GroupBy(sr => new {
@@ -625,14 +740,15 @@ namespace TransportManagement.API.Controllers
             [FromQuery] DateTime? startDate, 
             [FromQuery] DateTime? endDate,
             [FromQuery] string? assetType = "all",
-            [FromQuery] int? warehouseId = null)
+            [FromQuery] int? warehouseId = null,
+            [FromQuery] int? fleetOwnerId = null)
         {
             var (start, end) = NormalizeDateRange(startDate, endDate);
 
-            var opRes = await GetOperationalKpis(start, end, assetType);
-            var finRes = await GetFinancialKpis(start, end, assetType);
+            var opRes = await GetOperationalKpis(start, end, assetType, null, fleetOwnerId);
+            var finRes = await GetFinancialKpis(start, end, assetType, fleetOwnerId);
             var invRes = await GetInventoryKpis(start, end, warehouseId);
-            var staffRes = await GetStaffKpis(start, end);
+            var staffRes = await GetStaffKpis(start, end, fleetOwnerId);
 
             var opKpis = (opRes.Result as OkObjectResult)?.Value as OperationalKpisDto ?? opRes.Value ?? new OperationalKpisDto();
             var finKpis = (finRes.Result as OkObjectResult)?.Value as FinancialKpisDto ?? finRes.Value ?? new FinancialKpisDto();
@@ -646,7 +762,13 @@ namespace TransportManagement.API.Controllers
             wsSummary.Cell(1, 1).Value = "REPORTE GERENCIAL DE FLOTA Y MANTENIMIENTO";
             wsSummary.Cell(1, 1).Style.Font.Bold = true;
             wsSummary.Cell(1, 1).Style.Font.FontSize = 16;
-            wsSummary.Cell(2, 1).Value = $"Período: {start:dd/MM/yyyy} al {end:dd/MM/yyyy} | Filtro Activo: {assetType?.ToUpper()}";
+            string ownerName = "TODAS";
+            if (fleetOwnerId.HasValue && fleetOwnerId.Value > 0)
+            {
+                var fo = await _context.FleetOwners.FindAsync(fleetOwnerId.Value);
+                if (fo != null) ownerName = fo.Name;
+            }
+            wsSummary.Cell(2, 1).Value = $"Período: {start:dd/MM/yyyy} al {end:dd/MM/yyyy} | Filtro: {assetType?.ToUpper()} | Empresa Propietaria: {ownerName}";
             wsSummary.Cell(2, 1).Style.Font.Italic = true;
 
             int row = 4;
@@ -754,8 +876,15 @@ namespace TransportManagement.API.Controllers
     // ==========================================
     // DTOs
     // ==========================================
+    public class FleetOwnerFilterDto
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+    }
+
     public class OperationalKpisDto
     {
+        public List<FleetOwnerFilterDto> FleetOwners { get; set; } = new();
         public int TotalActiveVehicles { get; set; }
         public int TotalActiveTrailers { get; set; }
         public int TotalActiveUnits { get; set; }

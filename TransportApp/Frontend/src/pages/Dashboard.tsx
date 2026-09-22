@@ -4,7 +4,7 @@ import {
   BarChart3, TrendingUp, TrendingDown, DollarSign, Clock, Package, 
   PackageX, Download, Calendar, ShieldAlert, ArrowUpRight, 
   Activity, Users, FileSpreadsheet, RefreshCw, X, AlertCircle,
-  ArrowUp, ArrowDown, Minus, Filter, Warehouse as WarehouseIcon
+  ArrowUp, ArrowDown, Minus, Filter, Warehouse as WarehouseIcon, Building2
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -41,6 +41,7 @@ export default function Dashboard() {
   const [preset, setPreset] = useState<DatePreset>('month');
   const [assetType, setAssetType] = useState<AssetTypeFilter>('all');
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<number | undefined>(undefined);
+  const [selectedFleetOwnerId, setSelectedFleetOwnerId] = useState<number | undefined>(undefined);
 
   // Fechas: Por defecto "Este Mes"
   const [startDate, setStartDate] = useState<string>(() => {
@@ -98,10 +99,10 @@ export default function Dashboard() {
     try {
       setLoadingExecutive(true);
       const results = await Promise.allSettled([
-        dashboardService.getOperationalKpis(startDate, endDate, assetType),
-        dashboardService.getFinancialKpis(startDate, endDate, assetType),
+        dashboardService.getOperationalKpis(startDate, endDate, assetType, selectedFleetOwnerId),
+        dashboardService.getFinancialKpis(startDate, endDate, assetType, selectedFleetOwnerId),
         dashboardService.getInventoryKpis(startDate, endDate, selectedWarehouseId),
-        dashboardService.getStaffKpis(startDate, endDate)
+        dashboardService.getStaffKpis(startDate, endDate, selectedFleetOwnerId)
       ]);
 
       if (results[0].status === 'fulfilled') setOpKpis(results[0].value);
@@ -145,7 +146,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchExecutiveData();
-  }, [startDate, endDate, assetType, selectedWarehouseId, selectedCompany]);
+  }, [startDate, endDate, assetType, selectedWarehouseId, selectedFleetOwnerId, selectedCompany]);
 
   useEffect(() => {
     fetchFleetData();
@@ -156,7 +157,7 @@ export default function Dashboard() {
     try {
       setExportingExcel(true);
       toast.loading('Generando reporte en Excel...', { id: 'excel-export' });
-      await dashboardService.downloadExcelReport(startDate, endDate, assetType, selectedWarehouseId);
+      await dashboardService.downloadExcelReport(startDate, endDate, assetType, selectedWarehouseId, selectedFleetOwnerId);
       toast.success('Reporte descargado correctamente', { id: 'excel-export' });
     } catch (error) {
       console.error('Error exportando excel:', error);
@@ -329,6 +330,28 @@ export default function Dashboard() {
                     {invKpis.warehouses.map(w => (
                       <option key={w.id} value={w.id} className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white">
                         {w.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Filtro de Empresa Propietaria */}
+              {opKpis?.fleetOwners && opKpis.fleetOwners.length > 0 && (
+                <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900/60 px-3 py-1 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <Building2 size={14} className="text-slate-400" />
+                  <select
+                    value={selectedFleetOwnerId || ''}
+                    onChange={(e) => setSelectedFleetOwnerId(e.target.value ? Number(e.target.value) : undefined)}
+                    aria-label="Filtrar por empresa propietaria"
+                    className="bg-transparent text-xs font-semibold text-slate-800 dark:text-white focus:outline-none cursor-pointer py-1 dark:bg-slate-900 [color-scheme:light] dark:[color-scheme:dark]"
+                  >
+                    <option value="" className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white">
+                      Todas las Empresas Propietarias
+                    </option>
+                    {opKpis.fleetOwners.map(fo => (
+                      <option key={fo.id} value={fo.id} className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white">
+                        {fo.name}
                       </option>
                     ))}
                   </select>
