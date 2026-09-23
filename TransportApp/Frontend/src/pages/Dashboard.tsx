@@ -739,7 +739,7 @@ export default function Dashboard() {
 
               <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700 text-xs text-slate-400 flex items-center justify-between">
                 <span>Top de unidades en el período</span>
-                <Link to="/maintenance" className="text-blue-600 hover:underline font-semibold flex items-center gap-1">
+                <Link to="/workshop" className="text-blue-600 hover:underline font-semibold flex items-center gap-1">
                   Ver órdenes <ArrowUpRight size={12} />
                 </Link>
               </div>

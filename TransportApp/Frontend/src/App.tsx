@@ -242,6 +242,7 @@ function App() {
             <Route path="/inventory/warehouses" element={<Warehouses />} />
             <Route path="/inventory/locations" element={<Locations />} />
             <Route path="/workshop" element={<Workshop />} />
+            <Route path="/maintenance" element={<Navigate to="/workshop" replace />} />
             <Route path="/workshop/:id" element={<ServiceExecutionDetail />} />
             <Route path="/staff" element={<Staff />} />
             <Route path="/purchasing" element={<Purchasing />} />
@@ -254,6 +255,7 @@ function App() {
           <Route path="/print-closure/:id" element={<PrintServiceClosureReport />} />
           <Route path="/print/order/:id" element={<PrintPurchaseOrder />} />
         </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
   );
