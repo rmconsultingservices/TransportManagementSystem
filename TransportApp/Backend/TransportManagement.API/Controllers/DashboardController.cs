@@ -223,7 +223,30 @@ namespace TransportManagement.API.Controllers
             double prevPercent = totalReqs > 0 ? Math.Round((double)preventiveCount / totalReqs * 100, 1) : 0.0;
             double corrPercent = totalReqs > 0 ? Math.Round((double)correctiveCount / totalReqs * 100, 1) : 0.0;
 
-            // Frecuencia de Fallas por Unidad
+            // Costo acumulado en repuestos por unidad dentro del período
+            var partsInPeriodQuery = _context.ServiceExecutionSpareParts
+                .Include(p => p.ServiceExecution)
+                    .ThenInclude(e => e!.ServiceRequest)
+                .Where(p => p.ServiceExecution != null 
+                            && p.ServiceExecution.DateCompleted >= start 
+                            && p.ServiceExecution.DateCompleted <= end);
+
+            if (!isTrailerAllowed) partsInPeriodQuery = partsInPeriodQuery.Where(p => p.ServiceExecution!.ServiceRequest!.VehicleId.HasValue);
+            if (!isVehicleAllowed) partsInPeriodQuery = partsInPeriodQuery.Where(p => p.ServiceExecution!.ServiceRequest!.TrailerId.HasValue);
+
+            var partsInPeriod = await partsInPeriodQuery.ToListAsync();
+
+            var costByVehicle = partsInPeriod
+                .Where(p => p.ServiceExecution?.ServiceRequest?.VehicleId.HasValue == true)
+                .GroupBy(p => p.ServiceExecution!.ServiceRequest!.VehicleId!.Value)
+                .ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity * x.UnitCost));
+
+            var costByTrailer = partsInPeriod
+                .Where(p => p.ServiceExecution?.ServiceRequest?.TrailerId.HasValue == true)
+                .GroupBy(p => p.ServiceExecution!.ServiceRequest!.TrailerId!.Value)
+                .ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity * x.UnitCost));
+
+            // Frecuencia de Fallas y Gasto por Unidad
             var vehicleMap = vehicles.ToDictionary(v => v.Id);
             var trailerMap = trailers.ToDictionary(t => t.Id);
 
@@ -242,6 +265,7 @@ namespace TransportManagement.API.Controllers
                         TotalFailures = g.Count(),
                         CorrectiveCount = g.Count(x => (x.RepairType ?? "").ToLower().Contains("corr")),
                         PreventiveCount = g.Count(x => (x.RepairType ?? "").ToLower().Contains("prev")),
+                        TotalCostAccumulated = Math.Round(costByVehicle.GetValueOrDefault(g.Key, 0m), 2),
                         LastServiceDate = g.Max(x => (DateTime?)x.DateRequested)
                     };
                 }) : Enumerable.Empty<UnitFailureFrequencyDto>();
@@ -261,14 +285,14 @@ namespace TransportManagement.API.Controllers
                         TotalFailures = g.Count(),
                         CorrectiveCount = g.Count(x => (x.RepairType ?? "").ToLower().Contains("corr")),
                         PreventiveCount = g.Count(x => (x.RepairType ?? "").ToLower().Contains("prev")),
+                        TotalCostAccumulated = Math.Round(costByTrailer.GetValueOrDefault(g.Key, 0m), 2),
                         LastServiceDate = g.Max(x => (DateTime?)x.DateRequested)
                     };
                 }) : Enumerable.Empty<UnitFailureFrequencyDto>();
 
             var topFailures = failureByVehicle.Concat(failureByTrailer)
-                .OrderByDescending(f => f.TotalFailures)
-                .ThenByDescending(f => f.CorrectiveCount)
-                .Take(10)
+                .OrderByDescending(f => f.TotalCostAccumulated)
+                .ThenByDescending(f => f.TotalFailures)
                 .ToList();
 
             var fleetOwnersList = await _context.FleetOwners
@@ -865,6 +889,221 @@ namespace TransportManagement.API.Controllers
             );
         }
 
+        // ==========================================
+        // 6. GASTO POR PROVEEDOR POR ARTÍCULO (COMPRAS)
+        // ==========================================
+        [HttpGet("supplier-purchases")]
+        public async Task<ActionResult<SupplierPurchasesKpiDto>> GetSupplierPurchases(
+            [FromQuery] DateTime? startDate, 
+            [FromQuery] DateTime? endDate)
+        {
+            var (start, end) = NormalizeDateRange(startDate, endDate);
+
+            var invoices = await _context.PurchaseInvoices
+                .Include(pi => pi.Supplier)
+                .Include(pi => pi.Details)
+                    .ThenInclude(d => d.SparePart)
+                        .ThenInclude(sp => sp!.Category)
+                .Include(pi => pi.Details)
+                    .ThenInclude(d => d.UnitOfMeasure)
+                .Where(pi => !pi.IsCancelled && pi.DateIssued >= start && pi.DateIssued <= end)
+                .ToListAsync();
+
+            decimal totalPurchased = invoices.Sum(pi => pi.Details.Sum(d => d.QuantityReceived * d.UnitCost));
+
+            var supplierGroups = invoices
+                .GroupBy(pi => new {
+                    Id = pi.SupplierId,
+                    Name = pi.Supplier != null ? pi.Supplier.Name : "Sin Proveedor",
+                    TaxId = pi.Supplier?.TaxId ?? "",
+                    Code = pi.Supplier?.Code ?? ""
+                })
+                .Select(sg => {
+                    var allDetails = sg.SelectMany(pi => pi.Details).ToList();
+                    decimal supplierTotal = allDetails.Sum(d => d.QuantityReceived * d.UnitCost);
+                    double pct = totalPurchased > 0 ? (double)(supplierTotal / totalPurchased * 100) : 0;
+
+                    var itemGroups = allDetails
+                        .GroupBy(d => new {
+                            PartId = d.SparePartId,
+                            Code = d.SparePart?.Code ?? $"ART-{d.SparePartId}",
+                            Name = d.SparePart?.Name ?? "Artículo Desconocido",
+                            Category = d.SparePart?.Category?.Name ?? "General",
+                            Uom = d.UnitOfMeasure?.Abbreviation ?? d.SparePart?.UnitOfMeasure?.Abbreviation ?? "UND"
+                        })
+                        .Select(ig => {
+                            decimal totalQty = ig.Sum(x => x.QuantityReceived);
+                            decimal totalCost = ig.Sum(x => x.QuantityReceived * x.UnitCost);
+                            decimal avgUnitCost = totalQty > 0 ? totalCost / totalQty : 0;
+
+                            return new SupplierPurchaseItemDto
+                            {
+                                SparePartId = ig.Key.PartId,
+                                Code = ig.Key.Code,
+                                Name = ig.Key.Name,
+                                Category = ig.Key.Category,
+                                UnitOfMeasure = ig.Key.Uom,
+                                TotalQuantity = Math.Round(totalQty, 2),
+                                AverageUnitCost = Math.Round(avgUnitCost, 2),
+                                TotalCost = Math.Round(totalCost, 2),
+                                InvoicesCount = ig.Select(x => x.PurchaseInvoiceId).Distinct().Count()
+                            };
+                        })
+                        .OrderByDescending(item => item.TotalCost)
+                        .ToList();
+
+                    return new SupplierPurchaseGroupDto
+                    {
+                        SupplierId = sg.Key.Id,
+                        SupplierName = sg.Key.Name,
+                        TaxId = sg.Key.TaxId,
+                        Code = sg.Key.Code,
+                        TotalSpent = Math.Round(supplierTotal, 2),
+                        PercentageOfTotal = Math.Round(pct, 1),
+                        InvoicesCount = sg.Select(pi => pi.Id).Distinct().Count(),
+                        ItemsCount = itemGroups.Count(),
+                        Items = itemGroups
+                    };
+                })
+                .OrderByDescending(sg => sg.TotalSpent)
+                .ToList();
+
+            return Ok(new SupplierPurchasesKpiDto
+            {
+                TotalPurchasedAmount = Math.Round(totalPurchased, 2),
+                SuppliersCount = supplierGroups.Count(),
+                TotalItemsCount = supplierGroups.Sum(sg => sg.ItemsCount),
+                Suppliers = supplierGroups
+            });
+        }
+
+        // ==========================================
+        // 7. DETALLE DE MANTENIMIENTO POR UNIDAD (DRILL-DOWN)
+        // ==========================================
+        [HttpGet("unit-maintenance-detail/{id}")]
+        public async Task<ActionResult<UnitMaintenanceDetailDto>> GetUnitMaintenanceDetail(
+            int id,
+            [FromQuery] string unitType = "chuto",
+            [FromQuery] DateTime? startDate = null,
+            [FromQuery] DateTime? endDate = null)
+        {
+            var (start, end) = NormalizeDateRange(startDate, endDate);
+            bool isVehicle = unitType.ToLower().Contains("chuto") || unitType.ToLower().Contains("vehicle");
+
+            string licensePlate = "";
+            string brand = "";
+            string model = "";
+            string fleetOwnerName = "";
+            double? currentMileage = null;
+
+            if (isVehicle)
+            {
+                var vehicle = await _context.Vehicles
+                    .Include(v => v.FleetOwner)
+                    .FirstOrDefaultAsync(v => v.Id == id);
+                if (vehicle == null) return NotFound("Vehículo no encontrado");
+                licensePlate = vehicle.LicensePlate;
+                brand = vehicle.Brand ?? "";
+                model = vehicle.Model ?? "";
+                fleetOwnerName = vehicle.FleetOwner?.Name ?? "Sin Empresa";
+                currentMileage = vehicle.CurrentMileage;
+            }
+            else
+            {
+                var trailer = await _context.Trailers
+                    .Include(t => t.FleetOwner)
+                    .FirstOrDefaultAsync(t => t.Id == id);
+                if (trailer == null) return NotFound("Remolque no encontrado");
+                licensePlate = trailer.LicensePlate;
+                brand = trailer.Type ?? "Remolque";
+                model = $"{trailer.AxlesCount} Ejes";
+                fleetOwnerName = trailer.FleetOwner?.Name ?? "Sin Empresa";
+            }
+
+            var requestsQuery = _context.ServiceRequests
+                .Include(sr => sr.Mechanic)
+                .Include(sr => sr.Driver)
+                .Include(sr => sr.Execution)
+                    .ThenInclude(e => e!.UsedSpareParts)
+                        .ThenInclude(p => p.SparePart)
+                .Include(sr => sr.Execution)
+                    .ThenInclude(e => e!.UsedSpareParts)
+                        .ThenInclude(p => p.UnitOfMeasure)
+                .Where(sr => sr.DateRequested >= start && sr.DateRequested <= end);
+
+            if (isVehicle)
+                requestsQuery = requestsQuery.Where(sr => sr.VehicleId == id);
+            else
+                requestsQuery = requestsQuery.Where(sr => sr.TrailerId == id);
+
+            var requests = await requestsQuery
+                .OrderByDescending(sr => sr.DateRequested)
+                .ToListAsync();
+
+            decimal totalUnitCost = 0;
+            var services = new List<UnitServiceHistoryDto>();
+
+            foreach (var r in requests)
+            {
+                var usedPartsDto = new List<InstalledSparePartDto>();
+                decimal serviceCost = 0;
+
+                if (r.Execution?.UsedSpareParts != null)
+                {
+                    foreach (var p in r.Execution.UsedSpareParts)
+                    {
+                        decimal partTotal = Math.Round(p.Quantity * p.UnitCost, 2);
+                        serviceCost += partTotal;
+
+                        usedPartsDto.Add(new InstalledSparePartDto
+                        {
+                            SparePartId = p.SparePartId,
+                            Code = p.SparePart?.Code ?? "",
+                            Name = p.SparePart?.Name ?? "Repuesto",
+                            Quantity = Math.Round(p.Quantity, 2),
+                            UnitCost = Math.Round(p.UnitCost, 2),
+                            TotalCost = partTotal,
+                            UnitOfMeasure = p.UnitOfMeasure?.Abbreviation ?? p.SparePart?.UnitOfMeasure?.Abbreviation ?? "UND"
+                        });
+                    }
+                }
+
+                totalUnitCost += serviceCost;
+
+                services.Add(new UnitServiceHistoryDto
+                {
+                    ServiceRequestId = r.Id,
+                    DateRequested = r.DateRequested,
+                    DateCompleted = r.Execution?.DateCompleted,
+                    RepairType = r.RepairType ?? "General",
+                    Status = r.Status ?? "Pendiente",
+                    ReportedFailureDescription = r.Description ?? "",
+                    Observations = r.Execution?.FinalObservations ?? r.Execution?.DiagnosisObservations ?? "",
+                    MechanicName = r.Mechanic?.Name ?? "No Asignado",
+                    DriverName = r.Driver?.Name ?? "",
+                    MileageAtService = r.Execution?.MileageAtService,
+                    TotalServiceCost = Math.Round(serviceCost, 2),
+                    InstalledParts = usedPartsDto
+                });
+            }
+
+            return Ok(new UnitMaintenanceDetailDto
+            {
+                UnitId = id,
+                LicensePlate = licensePlate,
+                UnitType = isVehicle ? "Chuto" : "Remolque",
+                Brand = brand,
+                Model = model,
+                FleetOwnerName = fleetOwnerName,
+                CurrentMileage = currentMileage,
+                TotalServicesCount = services.Count,
+                CorrectiveServicesCount = services.Count(s => s.RepairType.ToLower().Contains("corr")),
+                PreventiveServicesCount = services.Count(s => s.RepairType.ToLower().Contains("prev")),
+                TotalCostInPeriod = Math.Round(totalUnitCost, 2),
+                Services = services
+            });
+        }
+
         private static (DateTime start, DateTime end) NormalizeDateRange(DateTime? startDate, DateTime? endDate)
         {
             var end = (endDate ?? DateTime.UtcNow).Date.AddDays(1).AddTicks(-1);
@@ -925,7 +1164,85 @@ namespace TransportManagement.API.Controllers
         public int TotalFailures { get; set; }
         public int CorrectiveCount { get; set; }
         public int PreventiveCount { get; set; }
+        public decimal TotalCostAccumulated { get; set; }
         public DateTime? LastServiceDate { get; set; }
+    }
+
+    public class SupplierPurchasesKpiDto
+    {
+        public decimal TotalPurchasedAmount { get; set; }
+        public int SuppliersCount { get; set; }
+        public int TotalItemsCount { get; set; }
+        public List<SupplierPurchaseGroupDto> Suppliers { get; set; } = new();
+    }
+
+    public class SupplierPurchaseGroupDto
+    {
+        public int SupplierId { get; set; }
+        public string SupplierName { get; set; } = string.Empty;
+        public string TaxId { get; set; } = string.Empty;
+        public string Code { get; set; } = string.Empty;
+        public decimal TotalSpent { get; set; }
+        public double PercentageOfTotal { get; set; }
+        public int InvoicesCount { get; set; }
+        public int ItemsCount { get; set; }
+        public List<SupplierPurchaseItemDto> Items { get; set; } = new();
+    }
+
+    public class SupplierPurchaseItemDto
+    {
+        public int SparePartId { get; set; }
+        public string Code { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public string Category { get; set; } = string.Empty;
+        public string UnitOfMeasure { get; set; } = string.Empty;
+        public decimal TotalQuantity { get; set; }
+        public decimal AverageUnitCost { get; set; }
+        public decimal TotalCost { get; set; }
+        public int InvoicesCount { get; set; }
+    }
+
+    public class UnitMaintenanceDetailDto
+    {
+        public int UnitId { get; set; }
+        public string LicensePlate { get; set; } = string.Empty;
+        public string UnitType { get; set; } = string.Empty;
+        public string Brand { get; set; } = string.Empty;
+        public string Model { get; set; } = string.Empty;
+        public string FleetOwnerName { get; set; } = string.Empty;
+        public double? CurrentMileage { get; set; }
+        public int TotalServicesCount { get; set; }
+        public int CorrectiveServicesCount { get; set; }
+        public int PreventiveServicesCount { get; set; }
+        public decimal TotalCostInPeriod { get; set; }
+        public List<UnitServiceHistoryDto> Services { get; set; } = new();
+    }
+
+    public class UnitServiceHistoryDto
+    {
+        public int ServiceRequestId { get; set; }
+        public DateTime DateRequested { get; set; }
+        public DateTime? DateCompleted { get; set; }
+        public string RepairType { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
+        public string ReportedFailureDescription { get; set; } = string.Empty;
+        public string Observations { get; set; } = string.Empty;
+        public string MechanicName { get; set; } = string.Empty;
+        public string DriverName { get; set; } = string.Empty;
+        public double? MileageAtService { get; set; }
+        public decimal TotalServiceCost { get; set; }
+        public List<InstalledSparePartDto> InstalledParts { get; set; } = new();
+    }
+
+    public class InstalledSparePartDto
+    {
+        public int SparePartId { get; set; }
+        public string Code { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public decimal Quantity { get; set; }
+        public decimal UnitCost { get; set; }
+        public decimal TotalCost { get; set; }
+        public string UnitOfMeasure { get; set; } = string.Empty;
     }
 
     public class FinancialKpisDto

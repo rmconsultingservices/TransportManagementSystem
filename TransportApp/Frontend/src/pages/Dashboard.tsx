@@ -4,8 +4,11 @@ import {
   BarChart3, TrendingUp, TrendingDown, DollarSign, Clock, Package, 
   PackageX, Download, Calendar, ShieldAlert, ArrowUpRight, 
   Activity, Users, FileSpreadsheet, RefreshCw, X, AlertCircle,
-  ArrowUp, ArrowDown, Minus, Filter, Warehouse as WarehouseIcon, Building2
+  ArrowUp, ArrowDown, Minus, Filter, Warehouse as WarehouseIcon, Building2,
+  Layers, ArrowUpDown, ExternalLink, Search
 } from 'lucide-react';
+import SupplierPurchasesModal from '../components/dashboard/SupplierPurchasesModal';
+import VehicleMaintenanceDetailModal from '../components/dashboard/VehicleMaintenanceDetailModal';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { fleetService } from '../services/fleetService';
@@ -14,7 +17,9 @@ import {
   type OperationalKpis, 
   type FinancialKpis, 
   type InventoryKpis, 
-  type StaffKpis 
+  type StaffKpis,
+  type SupplierPurchasesResponse,
+  type UnitMaintenanceDetail
 } from '../services/dashboardService';
 import {
   GaugeChart,
@@ -66,6 +71,100 @@ export default function Dashboard() {
 
   // Datos Pestaña Mantenimiento (Flota)
   const [units, setUnits] = useState<FleetUnit[]>([]);
+
+  // Estados para Modales de Drill-Down
+  const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
+  const [supplierData, setSupplierData] = useState<SupplierPurchasesResponse | null>(null);
+  const [loadingSupplierPurchases, setLoadingSupplierPurchases] = useState(false);
+
+  const [isVehicleModalOpen, setIsVehicleModalOpen] = useState(false);
+  const [vehicleDetailData, setVehicleDetailData] = useState<UnitMaintenanceDetail | null>(null);
+  const [loadingVehicleDetail, setLoadingVehicleDetail] = useState(false);
+
+  // Estados de Ordenamiento y Visualización de Flota Completa
+  const [sortField, setSortField] = useState<'cost' | 'failures' | 'corrective' | 'preventive' | 'plate'>('cost');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [showAllUnits, setShowAllUnits] = useState(false);
+  const [unitSearch, setUnitSearch] = useState('');
+
+  const handleOpenSupplierPurchases = async () => {
+    try {
+      setIsSupplierModalOpen(true);
+      setLoadingSupplierPurchases(true);
+      const res = await dashboardService.getSupplierPurchases(startDate, endDate);
+      setSupplierData(res);
+    } catch (error) {
+      console.error('Error cargando compras por proveedor:', error);
+      toast.error('Error al cargar datos de compras');
+    } finally {
+      setLoadingSupplierPurchases(false);
+    }
+  };
+
+  const handleOpenVehicleDetail = async (unit: { id: number; unitType: string }) => {
+    try {
+      setIsVehicleModalOpen(true);
+      setLoadingVehicleDetail(true);
+      const res = await dashboardService.getUnitMaintenanceDetail(unit.id, unit.unitType, startDate, endDate);
+      setVehicleDetailData(res);
+    } catch (error) {
+      console.error('Error cargando historial de la unidad:', error);
+      toast.error('Error al cargar detalle de la unidad');
+    } finally {
+      setLoadingVehicleDetail(false);
+    }
+  };
+
+  const handleSort = (field: 'cost' | 'failures' | 'corrective' | 'preventive' | 'plate') => {
+    if (sortField === field) {
+      setSortDirection(prev => prev === 'desc' ? 'asc' : 'desc');
+    } else {
+      setSortField(field);
+      setSortDirection('desc');
+    }
+  };
+
+  const sortedFailureUnits = useMemo(() => {
+    if (!opKpis?.failureFrequency) return [];
+    let list = [...opKpis.failureFrequency];
+
+    if (unitSearch.trim()) {
+      const q = unitSearch.toLowerCase();
+      list = list.filter(u => 
+        u.licensePlate.toLowerCase().includes(q) || 
+        u.brandOrType.toLowerCase().includes(q) ||
+        u.model.toLowerCase().includes(q)
+      );
+    }
+
+    list.sort((a, b) => {
+      let valA: any;
+      let valB: any;
+
+      if (sortField === 'cost') {
+        valA = a.totalCostAccumulated ?? 0;
+        valB = b.totalCostAccumulated ?? 0;
+      } else if (sortField === 'failures') {
+        valA = a.totalFailures;
+        valB = b.totalFailures;
+      } else if (sortField === 'corrective') {
+        valA = a.correctiveCount;
+        valB = b.correctiveCount;
+      } else if (sortField === 'preventive') {
+        valA = a.preventiveCount;
+        valB = b.preventiveCount;
+      } else {
+        valA = a.licensePlate.toLowerCase();
+        valB = b.licensePlate.toLowerCase();
+      }
+
+      if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+      if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return showAllUnits ? list : list.slice(0, 10);
+  }, [opKpis?.failureFrequency, unitSearch, sortField, sortDirection, showAllUnits]);
 
   // Manejador de cambio de Preset de fecha
   const handlePresetChange = (p: DatePreset) => {
@@ -549,6 +648,22 @@ export default function Dashboard() {
                     <span className="text-[10px] text-slate-400">{finKpis?.immobilizedItemsCount ?? 0} ítems &gt;90d</span>
                   </div>
                 </div>
+
+                {/* Botón de acceso al Gasto por Proveedor por Artículo */}
+                <div className="mt-3 pt-2">
+                  <button
+                    onClick={handleOpenSupplierPurchases}
+                    className="w-full py-2 px-3 rounded-xl bg-slate-50 hover:bg-indigo-50 dark:bg-slate-900/70 dark:hover:bg-indigo-950/40 text-slate-700 dark:text-slate-200 hover:text-indigo-600 dark:hover:text-indigo-400 font-bold text-xs flex items-center justify-between border border-slate-200/80 dark:border-slate-700 transition-all group shadow-sm cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="p-1 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400">
+                        <Layers size={13} />
+                      </div>
+                      <span>Gasto por Proveedor y Artículo</span>
+                    </div>
+                    <ArrowUpRight size={14} className="text-slate-400 group-hover:text-indigo-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+                  </button>
+                </div>
               </div>
 
               <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between text-xs text-slate-500">
@@ -850,39 +965,112 @@ export default function Dashboard() {
           </div>
 
           {/* ===================================================================== */}
-          {/* NIVEL 4: FRECUENCIA DE FALLAS POR UNIDAD                              */}
+          {/* NIVEL 4: FRECUENCIA DE FALLAS Y GASTO POR UNIDAD                      */}
           {/* ===================================================================== */}
           <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-200/80 dark:border-slate-700">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
               <div>
                 <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <Truck size={17} className="text-indigo-600" />
-                  Frecuencia de Fallas Recurrentes por Unidad
+                  Frecuencia de Fallas y Gasto por Unidad
                 </h2>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Identifica cuáles chutos o remolques ingresan al taller con mayor recurrencia para evaluar desincorporación o reacondicionamiento
+                  Consolida el historial de entradas al taller y el costo acumulado en repuestos por vehículo (haz clic en la placa para ver el desglose)
                 </p>
+              </div>
+
+              {/* Controles: Buscador y Toggle Ver Toda la Flota */}
+              <div className="flex items-center gap-2.5">
+                <div className="relative w-48 sm:w-60">
+                  <Search className="absolute left-2.5 top-2 text-slate-400" size={13} />
+                  <input
+                    type="text"
+                    placeholder="Buscar placa o marca..."
+                    value={unitSearch}
+                    onChange={(e) => setUnitSearch(e.target.value)}
+                    className="w-full pl-8 pr-3 py-1.5 bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <button
+                  onClick={() => setShowAllUnits(!showAllUnits)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                    showAllUnits
+                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                      : 'bg-slate-50 dark:bg-slate-900/80 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  {showAllUnits ? 'Top 10 Unidades' : `Ver Flota Completa (${opKpis?.failureFrequency?.length ?? 0})`}
+                </button>
               </div>
             </div>
 
             <div className="overflow-x-auto">
-              {opKpis && opKpis.failureFrequency && opKpis.failureFrequency.length > 0 ? (
+              {sortedFailureUnits.length > 0 ? (
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="border-b border-slate-200 dark:border-slate-700 text-slate-400 font-bold uppercase text-[10px]">
-                      <th className="pb-2">Unidad / Placa</th>
+                      <th 
+                        onClick={() => handleSort('plate')}
+                        className="pb-2 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 select-none"
+                      >
+                        <div className="flex items-center gap-1">
+                          <span>Unidad / Placa</span>
+                          <ArrowUpDown size={11} className={sortField === 'plate' ? 'text-indigo-600 font-bold' : 'opacity-40'} />
+                        </div>
+                      </th>
                       <th className="pb-2">Tipo / Marca</th>
-                      <th className="pb-2 text-center">Fallas Correctivas</th>
-                      <th className="pb-2 text-center">Servicios Prev.</th>
-                      <th className="pb-2 text-center">Total Entradas</th>
-                      <th className="pb-2 text-right">Último Servicio</th>
+                      <th 
+                        onClick={() => handleSort('corrective')}
+                        className="pb-2 text-center cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 select-none"
+                      >
+                        <div className="flex items-center justify-center gap-1">
+                          <span>Fallas Correctivas</span>
+                          <ArrowUpDown size={11} className={sortField === 'corrective' ? 'text-indigo-600 font-bold' : 'opacity-40'} />
+                        </div>
+                      </th>
+                      <th 
+                        onClick={() => handleSort('preventive')}
+                        className="pb-2 text-center cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 select-none"
+                      >
+                        <div className="flex items-center justify-center gap-1">
+                          <span>Servicios Prev.</span>
+                          <ArrowUpDown size={11} className={sortField === 'preventive' ? 'text-indigo-600 font-bold' : 'opacity-40'} />
+                        </div>
+                      </th>
+                      <th 
+                        onClick={() => handleSort('failures')}
+                        className="pb-2 text-center cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 select-none"
+                      >
+                        <div className="flex items-center justify-center gap-1">
+                          <span>Total Entradas</span>
+                          <ArrowUpDown size={11} className={sortField === 'failures' ? 'text-indigo-600 font-bold' : 'opacity-40'} />
+                        </div>
+                      </th>
+                      <th 
+                        onClick={() => handleSort('cost')}
+                        className="pb-2 text-right cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 select-none"
+                      >
+                        <div className="flex items-center justify-end gap-1">
+                          <span>Costo Total Acumulado ($)</span>
+                          <ArrowUpDown size={11} className={sortField === 'cost' ? 'text-indigo-600 font-bold' : 'opacity-40'} />
+                        </div>
+                      </th>
+                      <th className="pb-2 text-right pr-2">Último Servicio</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">
-                    {opKpis.failureFrequency.slice(0, 6).map((unit, idx) => (
+                    {sortedFailureUnits.map((unit, idx) => (
                       <tr key={unit.id || idx} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
                         <td className="py-2.5 pr-2 font-extrabold text-slate-900 dark:text-white font-mono">
-                          {unit.licensePlate}
+                          <button
+                            onClick={() => handleOpenVehicleDetail(unit)}
+                            className="font-extrabold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 hover:underline font-mono flex items-center gap-1.5 group text-left cursor-pointer"
+                            title="Ver desglose de servicios y repuestos instalados"
+                          >
+                            <span>{unit.licensePlate}</span>
+                            <ExternalLink size={11} className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400" />
+                          </button>
                         </td>
                         <td className="py-2.5 pr-2 text-slate-500">
                           {(unit.unitType?.toLowerCase().includes('chuto') || unit.unitType?.toLowerCase().includes('vehicle')) ? 'Chuto' : 'Remolque'} {unit.brandOrType ? `• ${unit.brandOrType}` : ''}
@@ -897,11 +1085,14 @@ export default function Dashboard() {
                         <td className="py-2.5 px-2 text-center text-slate-600 dark:text-slate-300 font-medium">
                           {unit.preventiveCount}
                         </td>
-                        <td className="py-2.5 px-2 text-center font-bold text-slate-900 dark:text-white">
+                        <td className="py-2.5 px-2 text-center font-bold text-slate-900 dark:text-white font-mono">
                           {unit.totalFailures}
                         </td>
-                        <td className="py-2.5 pl-2 text-right text-slate-400 font-mono text-[11px]">
-                          {unit.lastServiceDate ? new Date(unit.lastServiceDate).toLocaleDateString() : 'Sin fecha'}
+                        <td className="py-2.5 px-2 text-right font-mono font-bold text-slate-900 dark:text-white">
+                          ${unit.totalCostAccumulated != null ? unit.totalCostAccumulated.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
+                        </td>
+                        <td className="py-2.5 pr-2 text-right text-slate-400 font-mono text-[11px]">
+                          {unit.lastServiceDate ? new Date(unit.lastServiceDate).toLocaleDateString('es-ES') : '—'}
                         </td>
                       </tr>
                     ))}
@@ -1071,6 +1262,26 @@ export default function Dashboard() {
 
         </div>
       )}
+
+      {/* Modal 1: Gasto por Proveedor por Artículo */}
+      <SupplierPurchasesModal
+        isOpen={isSupplierModalOpen}
+        onClose={() => setIsSupplierModalOpen(false)}
+        data={supplierData}
+        loading={loadingSupplierPurchases}
+        startDate={startDate}
+        endDate={endDate}
+      />
+
+      {/* Modal 2: Detalle de Mantenimiento por Unidad (Drill-Down) */}
+      <VehicleMaintenanceDetailModal
+        isOpen={isVehicleModalOpen}
+        onClose={() => setIsVehicleModalOpen(false)}
+        detail={vehicleDetailData}
+        loading={loadingVehicleDetail}
+        startDate={startDate}
+        endDate={endDate}
+      />
 
     </div>
   );

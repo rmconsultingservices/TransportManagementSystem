@@ -34,6 +34,7 @@ export interface OperationalKpis {
     totalFailures: number;
     correctiveCount: number;
     preventiveCount: number;
+    totalCostAccumulated: number;
     lastServiceDate: string | null;
   }[];
   fleetOwners?: FleetOwnerFilter[];
@@ -104,6 +105,77 @@ export interface InventoryKpis {
   warehouses: WarehouseFilter[];
 }
 
+export interface SupplierPurchaseItem {
+  sparePartId: number;
+  code: string;
+  name: string;
+  category: string;
+  unitOfMeasure: string;
+  totalQuantity: number;
+  averageUnitCost: number;
+  totalCost: number;
+  invoicesCount: number;
+}
+
+export interface SupplierPurchaseGroup {
+  supplierId: number;
+  supplierName: string;
+  taxId: string;
+  code: string;
+  totalSpent: number;
+  percentageOfTotal: number;
+  invoicesCount: number;
+  itemsCount: number;
+  items: SupplierPurchaseItem[];
+}
+
+export interface SupplierPurchasesResponse {
+  totalPurchasedAmount: number;
+  suppliersCount: number;
+  totalItemsCount: number;
+  suppliers: SupplierPurchaseGroup[];
+}
+
+export interface InstalledSparePart {
+  sparePartId: number;
+  code: string;
+  name: string;
+  quantity: number;
+  unitCost: number;
+  totalCost: number;
+  unitOfMeasure: string;
+}
+
+export interface UnitServiceHistory {
+  serviceRequestId: number;
+  dateRequested: string;
+  dateCompleted: string | null;
+  repairType: string;
+  status: string;
+  reportedFailureDescription: string;
+  observations: string;
+  mechanicName: string;
+  driverName: string;
+  mileageAtService: number | null;
+  totalServiceCost: number;
+  installedParts: InstalledSparePart[];
+}
+
+export interface UnitMaintenanceDetail {
+  unitId: number;
+  licensePlate: string;
+  unitType: string;
+  brand: string;
+  model: string;
+  fleetOwnerName: string;
+  currentMileage: number | null;
+  totalServicesCount: number;
+  correctiveServicesCount: number;
+  preventiveServicesCount: number;
+  totalCostInPeriod: number;
+  services: UnitServiceHistory[];
+}
+
 export interface StaffKpis {
   mechanicProductivity: {
     mechanicId: number;
@@ -162,6 +234,23 @@ export const dashboardService = {
     if (endDate) params.append('endDate', endDate);
     if (fleetOwnerId && fleetOwnerId > 0) params.append('fleetOwnerId', fleetOwnerId.toString());
     const res = await api.get(`/dashboard/staff-kpis?${params.toString()}`);
+    return res.data;
+  },
+
+  getSupplierPurchases: async (startDate?: string, endDate?: string): Promise<SupplierPurchasesResponse> => {
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    const res = await api.get(`/dashboard/supplier-purchases?${params.toString()}`);
+    return res.data;
+  },
+
+  getUnitMaintenanceDetail: async (id: number, unitType: string = 'chuto', startDate?: string, endDate?: string): Promise<UnitMaintenanceDetail> => {
+    const params = new URLSearchParams();
+    params.append('unitType', unitType);
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    const res = await api.get(`/dashboard/unit-maintenance-detail/${id}?${params.toString()}`);
     return res.data;
   },
 
