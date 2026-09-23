@@ -82,6 +82,48 @@ using (var scope = app.Services.CreateScope())
             IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('MaintenanceOrders') AND name = 'ServiceRequestId')
             ALTER TABLE MaintenanceOrders ADD ServiceRequestId INT NULL;
         ");
+        // Dynamic column migrations
+            context.Database.ExecuteSqlRaw(@"
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('PurchaseInvoices') AND name = 'PurchaseOrderId')
+                ALTER TABLE PurchaseInvoices ADD PurchaseOrderId INT NULL;
+
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('PurchaseInvoices') AND name = 'PaymentStatus')
+                ALTER TABLE PurchaseInvoices ADD PaymentStatus NVARCHAR(50) NOT NULL DEFAULT 'CXP';
+
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('PurchaseInvoices') AND name = 'AmountPaid')
+                ALTER TABLE PurchaseInvoices ADD AmountPaid DECIMAL(18,2) NOT NULL DEFAULT 0;
+
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('PurchaseInvoices') AND name = 'PaymentDate')
+                ALTER TABLE PurchaseInvoices ADD PaymentDate DATETIME2 NULL;
+
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('PurchaseInvoices') AND name = 'PaymentMethod')
+                ALTER TABLE PurchaseInvoices ADD PaymentMethod NVARCHAR(100) NULL;
+
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('PurchaseInvoices') AND name = 'PaymentReference')
+                ALTER TABLE PurchaseInvoices ADD PaymentReference NVARCHAR(100) NULL;
+
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('PurchaseInvoices') AND name = 'ExchangeRate')
+                ALTER TABLE PurchaseInvoices ADD ExchangeRate DECIMAL(18,4) NOT NULL DEFAULT 0;
+
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('PurchaseInvoiceDetails') AND name = 'PurchaseOrderDetailId')
+                ALTER TABLE PurchaseInvoiceDetails ADD PurchaseOrderDetailId INT NULL;
+
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('PurchaseInvoiceDetails') AND name = 'PurchaseRequisitionId')
+                ALTER TABLE PurchaseInvoiceDetails ADD PurchaseRequisitionId INT NULL;
+
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('PurchaseInvoiceDetails') AND name = 'VehicleId')
+                ALTER TABLE PurchaseInvoiceDetails ADD VehicleId INT NULL;
+
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('PurchaseInvoiceDetails') AND name = 'TrailerId')
+                ALTER TABLE PurchaseInvoiceDetails ADD TrailerId INT NULL;
+
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('PurchaseInvoiceDetails') AND name = 'ItemType')
+                ALTER TABLE PurchaseInvoiceDetails ADD ItemType NVARCHAR(10) NOT NULL DEFAULT 'C';
+
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('PurchaseInvoiceDetails') AND name = 'Description')
+                ALTER TABLE PurchaseInvoiceDetails ADD Description NVARCHAR(500) NULL;
+            ");
+
         Console.WriteLine("Base de datos verificada y actualizada correctamente.");
     }
     catch (Exception ex)

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TransportManagement.API.Data;
 using TransportManagement.API.Models;
@@ -29,6 +29,16 @@ namespace TransportManagement.API.Controllers
                 .Include(po => po.Supplier)
                 .Include(po => po.Details)
                     .ThenInclude(d => d.PurchaseRequisition)
+                        .ThenInclude(pr => pr!.ServiceRequest)
+                            .ThenInclude(sr => sr!.Vehicle)
+                                .ThenInclude(v => v!.FleetOwner)
+                .Include(po => po.Details)
+                    .ThenInclude(d => d.PurchaseRequisition)
+                        .ThenInclude(pr => pr!.ServiceRequest)
+                            .ThenInclude(sr => sr!.Trailer)
+                                .ThenInclude(t => t!.FleetOwner)
+                .Include(po => po.Details)
+                    .ThenInclude(d => d.UnitOfMeasure)
                 .OrderByDescending(po => po.DateCreated)
                 .ToListAsync();
         }
@@ -41,6 +51,16 @@ namespace TransportManagement.API.Controllers
                 .Include(po => po.Supplier)
                 .Include(po => po.Details)
                     .ThenInclude(d => d.PurchaseRequisition)
+                        .ThenInclude(pr => pr!.ServiceRequest)
+                            .ThenInclude(sr => sr!.Vehicle)
+                                .ThenInclude(v => v!.FleetOwner)
+                .Include(po => po.Details)
+                    .ThenInclude(d => d.PurchaseRequisition)
+                        .ThenInclude(pr => pr!.ServiceRequest)
+                            .ThenInclude(sr => sr!.Trailer)
+                                .ThenInclude(t => t!.FleetOwner)
+                .Include(po => po.Details)
+                    .ThenInclude(d => d.UnitOfMeasure)
                 .FirstOrDefaultAsync(po => po.Id == id);
 
             if (purchaseOrder == null)
@@ -49,6 +69,17 @@ namespace TransportManagement.API.Controllers
             }
 
             return purchaseOrder;
+        }
+
+        // PUT: api/PurchaseOrders/5/status
+        [HttpPut("{id}/status")]
+        public async Task<IActionResult> UpdateStatus(int id, [FromBody] string status)
+        {
+            var po = await _context.PurchaseOrders.FindAsync(id);
+            if (po == null) return NotFound();
+            po.Status = status;
+            await _context.SaveChangesAsync();
+            return Ok(po);
         }
 
         // POST: api/PurchaseOrders/GenerateFromRequisitions
@@ -107,7 +138,8 @@ namespace TransportManagement.API.Controllers
                 {
                     PurchaseRequisitionId = req.Id,
                     QuantityOrdered = qtyToOrder,
-                    UnitPrice = selectedQuote.UnitPrice
+                    UnitPrice = selectedQuote.UnitPrice,
+                    UnitOfMeasureId = req.UnitOfMeasureId
                 });
 
                 total += (qtyToOrder * selectedQuote.UnitPrice);

@@ -41,12 +41,15 @@ export interface PurchaseOrderDetail {
   purchaseRequisition?: any; // Requisition back ref
   quantityOrdered: number;
   unitPrice: number;
+  unitOfMeasureId?: number;
 }
 
 export interface PurchaseInvoice {
   id: number;
   supplierId: number;
   supplier?: Supplier;
+  purchaseOrderId?: number | null;
+  purchaseOrder?: PurchaseOrder | null;
   invoiceNumber: string;
   controlNumber?: string;
   dateIssued: string;
@@ -54,6 +57,12 @@ export interface PurchaseInvoice {
   subTotal: number;
   taxAmount: number;
   totalAmount: number;
+  paymentStatus?: string; // "CXP", "PARCIAL", "PAGADO"
+  amountPaid?: number;
+  paymentDate?: string | null;
+  paymentMethod?: string | null;
+  paymentReference?: string | null;
+  exchangeRate?: number;
   attachmentUrl?: string;
   isCancelled?: boolean;
   details?: PurchaseInvoiceDetail[];
@@ -69,5 +78,13 @@ export interface PurchaseInvoiceDetail {
   quantityReceived: number;
   unitCost: number;
   taxPercentage: number;
+  purchaseOrderDetailId?: number | null;
+  purchaseRequisitionId?: number | null;
+  purchaseRequisition?: any;
+  vehicleId?: number | null;
+  vehicle?: any;
+  trailerId?: number | null;
+  trailer?: any;
+  itemType?: string; // "C" | "S"
+  description?: string;
 }
-

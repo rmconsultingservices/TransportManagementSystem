@@ -40,6 +40,12 @@ export const purchasingService = {
     const response = await api.post<PurchaseOrder>('/purchaseorders/GenerateFromRequisitions', { supplierId, requisitionIds });
     return response.data;
   },
+  updatePurchaseOrderStatus: async (id: number, status: string): Promise<PurchaseOrder> => {
+    const response = await api.put<PurchaseOrder>(`/purchaseorders/${id}/status`, JSON.stringify(status), {
+      headers: { 'Content-Type': 'application/json' }
+    });
+    return response.data;
+  },
 
   // Invoices (Receiving)
   getPurchaseInvoices: async (): Promise<PurchaseInvoice[]> => {
@@ -64,6 +70,27 @@ export const purchasingService = {
     formData.append('file', file);
     const response = await api.post<{ attachmentUrl: string }>(`/purchaseinvoices/${id}/attachment`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+  },
+
+  // Payments / CXP
+  recordPayment: async (
+    invoiceId: number, 
+    paymentData: { paymentDate: string; paymentMethod: string; paymentReference?: string; amountPaid: number }
+  ): Promise<PurchaseInvoice> => {
+    const response = await api.post<PurchaseInvoice>(`/purchaseinvoices/${invoiceId}/record-payment`, paymentData);
+    return response.data;
+  },
+
+  // Export Expenses Sheet (Client exact Excel)
+  exportExpensesExcel: async (startDate?: string, endDate?: string): Promise<Blob> => {
+    const params: Record<string, string> = {};
+    if (startDate) params.startDate = startDate;
+    if (endDate) params.endDate = endDate;
+    const response = await api.get('/purchaseinvoices/export-expenses-sheet', {
+      params,
+      responseType: 'blob'
     });
     return response.data;
   }
