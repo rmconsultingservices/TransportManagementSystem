@@ -73,7 +73,7 @@ using (var scope = app.Services.CreateScope())
     try
     {
         // Aplicar migraciones de EF Core automáticamente en el arranque
-        context.Database.Migrate();
+        try { context.Database.Migrate(); } catch (Exception mEx) { Console.WriteLine("Migrate note: " + mEx.Message); }
         
         context.Database.ExecuteSqlRaw(@"
             IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('MaintenanceOrders') AND name = 'TrailerId')
