@@ -61,7 +61,7 @@ export default function Fleet() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [selectedCompany]);
 
   const resetForm = () => {
     setEditingUnitId(null);
