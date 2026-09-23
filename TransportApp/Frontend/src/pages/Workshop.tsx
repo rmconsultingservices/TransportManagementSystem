@@ -1,3 +1,4 @@
+import { useAuthStore } from '../store/authStore';
 ﻿import { toast } from 'react-hot-toast';
 
 import { useEffect, useState } from 'react';
@@ -17,6 +18,7 @@ import type { ServiceRequest, Vehicle, Driver, Mechanic, Trailer } from '../type
 
 
 export default function Workshop() {
+  const { selectedCompany } = useAuthStore();
 
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
 
@@ -104,7 +106,7 @@ export default function Workshop() {
 
     fetchData();
 
-  }, []);
+  }, [selectedCompany]);
 
 
 
