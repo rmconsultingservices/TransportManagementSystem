@@ -59,6 +59,24 @@ namespace TransportManagement.API.Controllers
         [HttpPost]
         public async Task<ActionResult<PurchaseInvoice>> PostPurchaseInvoice(PurchaseInvoice invoice)
         {
+            if (string.IsNullOrWhiteSpace(invoice.InvoiceNumber))
+            {
+                return BadRequest("El número de factura es obligatorio.");
+            }
+
+            var cleanInvoiceNumber = invoice.InvoiceNumber.Trim();
+
+            // Validate that no active invoice with the same InvoiceNumber exists for this supplier and company
+            var duplicateExists = await _context.PurchaseInvoices
+                .AnyAsync(pi => pi.CompanyId == invoice.CompanyId 
+                             && pi.SupplierId == invoice.SupplierId 
+                             && pi.InvoiceNumber.Trim().ToLower() == cleanInvoiceNumber.ToLower() 
+                             && !pi.IsCancelled);
+
+            if (duplicateExists)
+            {
+                return BadRequest($"Ya existe una factura activa registrada con el número '{cleanInvoiceNumber}' para este proveedor.");
+            }
             // Calculate totals mathematically
             decimal subTotal = 0;
             decimal taxAmount = 0;
@@ -138,6 +156,25 @@ namespace TransportManagement.API.Controllers
             if (existingInvoice == null) return NotFound();
 
             if (existingInvoice.IsCancelled) return BadRequest("No se puede modificar una factura anulada.");
+
+            if (string.IsNullOrWhiteSpace(updatedInvoice.InvoiceNumber))
+            {
+                return BadRequest("El número de factura es obligatorio.");
+            }
+
+            var cleanInvoiceNumber = updatedInvoice.InvoiceNumber.Trim();
+
+            var duplicateExists = await _context.PurchaseInvoices
+                .AnyAsync(pi => pi.Id != id
+                             && pi.CompanyId == updatedInvoice.CompanyId 
+                             && pi.SupplierId == updatedInvoice.SupplierId 
+                             && pi.InvoiceNumber.Trim().ToLower() == cleanInvoiceNumber.ToLower() 
+                             && !pi.IsCancelled);
+
+            if (duplicateExists)
+            {
+                return BadRequest($"Ya existe otra factura activa registrada con el número '{cleanInvoiceNumber}' para este proveedor.");
+            }
 
             // Revert old inventory stock
             foreach (var oldDetail in existingInvoice.Details)

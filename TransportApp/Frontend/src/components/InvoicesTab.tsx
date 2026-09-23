@@ -37,6 +37,7 @@ export default function InvoicesTab() {
   const [controlNumber, setControlNumber] = useState('');
   const [dateIssued, setDateIssued] = useState(new Date().toISOString().split('T')[0]);
   const [details, setDetails] = useState<Partial<PurchaseInvoiceDetail>[]>([]);
+  const [isSavingInvoice, setIsSavingInvoice] = useState(false);
 
   // Expanded card rows
   const [expandedInvoiceIds, setExpandedInvoiceIds] = useState<number[]>([]);
@@ -243,6 +244,7 @@ export default function InvoicesTab() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSavingInvoice) return;
     if (!supplierId) {
       alert('Por favor seleccione un proveedor.');
       return;
@@ -294,6 +296,7 @@ export default function InvoicesTab() {
     };
 
     try {
+      setIsSavingInvoice(true);
       if (editingInvoiceId) {
         await purchasingService.updatePurchaseInvoice(editingInvoiceId, {
           ...payload,
@@ -307,9 +310,12 @@ export default function InvoicesTab() {
       
       resetForm();
       fetchData();
-    } catch (error) {
+    } catch (error: any) {
        console.error('Error saving invoice:', error);
-       alert('Error de conexión guardando la factura.');
+       const errorMsg = error?.response?.data?.message || (typeof error?.response?.data === 'string' ? error.response.data : 'Error guardando la factura.');
+       alert(errorMsg);
+    } finally {
+       setIsSavingInvoice(false);
     }
   };
 
@@ -736,11 +742,22 @@ export default function InvoicesTab() {
                </div>
                
                <button 
-                 type="submit" 
-                 className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-4 rounded-xl mt-3 flex items-center justify-center gap-2 shadow-sm transition-colors cursor-pointer"
-               >
-                 <Save size={16}/> {editingInvoiceId ? 'Guardar Cambios' : 'Procesar Factura y Actualizar Stock'}
-               </button>
+                  type="submit" 
+                  disabled={isSavingInvoice}
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-2.5 px-4 rounded-xl mt-3 flex items-center justify-center gap-2 shadow-sm transition-colors cursor-pointer"
+                >
+                  {isSavingInvoice ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      <span>{editingInvoiceId ? 'Guardando...' : 'Procesando e ingresando stock...'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save size={16}/> 
+                      <span>{editingInvoiceId ? 'Guardar Cambios' : 'Procesar Factura y Actualizar Stock'}</span>
+                    </>
+                  )}
+                </button>
             </div>
           </div>
         </form>
