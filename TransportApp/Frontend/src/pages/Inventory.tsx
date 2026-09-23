@@ -162,7 +162,7 @@ export default function Inventory() {
     try {
       const payload: any = {
         itemType,
-        code,
+        code: editingId ? code : '',
         name,
         brand,
         model,
@@ -388,12 +388,16 @@ export default function Inventory() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Código SSR</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Código SSR <span className="text-gray-400 font-normal text-xs">(Automático)</span>
+              </label>
               <input 
-                type="text" required
-                value={code} onChange={e => setCode(e.target.value)}
-                className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 bg-transparent focus:ring-2 focus:ring-amber-500 outline-none"
-                placeholder="ej. FIL-ACE-01"
+                type="text" 
+                readOnly 
+                disabled
+                value={editingId ? code : 'Auto-generado por el sistema'} 
+                className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed outline-none select-none font-mono"
+                placeholder="Auto-generado por el sistema"
               />
             </div>
             

@@ -69,7 +69,10 @@ namespace TransportManagement.API.Controllers
             }
 
             // Update only allowed properties, preserving CompanyId and RegistrationDate
-            existingPart.Code = sparePart.Code;
+            if (!string.IsNullOrWhiteSpace(sparePart.Code) && sparePart.Code != "TEMP" && !sparePart.Code.StartsWith("Auto-generado", StringComparison.OrdinalIgnoreCase))
+            {
+                existingPart.Code = sparePart.Code;
+            }
             existingPart.Name = sparePart.Name;
             existingPart.ItemType = sparePart.ItemType;
             existingPart.Brand = sparePart.Brand;
@@ -119,6 +122,29 @@ namespace TransportManagement.API.Controllers
         [HttpPost]
         public async Task<ActionResult<SparePart>> PostSparePart(SparePart sparePart)
         {
+            if (string.IsNullOrWhiteSpace(sparePart.Code) || sparePart.Code == "TEMP" || sparePart.Code.StartsWith("Auto-generado", StringComparison.OrdinalIgnoreCase))
+            {
+                var existingCodes = await _context.SpareParts.IgnoreQueryFilters().Select(s => s.Code).ToListAsync();
+                int nextNum = 1;
+                foreach (var c in existingCodes)
+                {
+                    if (c != null && c.StartsWith("SSR-", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var part = c.Substring(4);
+                        if (int.TryParse(part, out int n) && n >= nextNum)
+                        {
+                            nextNum = n + 1;
+                        }
+                    }
+                }
+                var maxId = await _context.SpareParts.IgnoreQueryFilters().MaxAsync(s => (int?)s.Id) ?? 0;
+                if (maxId >= nextNum)
+                {
+                    nextNum = maxId + 1;
+                }
+                sparePart.Code = $"SSR-{nextNum:D5}";
+            }
+
             _context.SpareParts.Add(sparePart);
             await _context.SaveChangesAsync();
 
