@@ -733,15 +733,27 @@ export default function Dashboard() {
                 </div>
 
                 <div className="py-2">
-                  <HorizontalBarChart data={finKpis?.topSpendingVehicles ?? []} />
+                  <HorizontalBarChart data={finKpis?.topSpendingVehicles ?? []} onItemClick={handleOpenVehicleDetail} />
                 </div>
               </div>
 
               <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700 text-xs text-slate-400 flex items-center justify-between">
                 <span>Top de unidades en el período</span>
-                <Link to="/workshop" className="text-blue-600 hover:underline font-semibold flex items-center gap-1">
-                  Ver órdenes <ArrowUpRight size={12} />
-                </Link>
+                {finKpis?.topSpendingVehicles && finKpis.topSpendingVehicles.length > 0 ? (
+                  <button 
+                    onClick={() => handleOpenVehicleDetail(finKpis.topSpendingVehicles[0])}
+                    className="text-blue-600 dark:text-blue-400 hover:underline font-semibold flex items-center gap-1 cursor-pointer bg-transparent border-0 p-0"
+                    title={`Ver órdenes de ${finKpis.topSpendingVehicles[0].licensePlate}`}
+                  >
+                    <span>Ver órdenes</span>
+                    <ArrowUpRight size={12} />
+                  </button>
+                ) : (
+                  <Link to="/workshop" className="text-blue-600 dark:text-blue-400 hover:underline font-semibold flex items-center gap-1">
+                    <span>Ver órdenes</span>
+                    <ArrowUpRight size={12} />
+                  </Link>
+                )}
               </div>
             </div>
 

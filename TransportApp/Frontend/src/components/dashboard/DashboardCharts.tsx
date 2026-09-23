@@ -301,9 +301,10 @@ interface HorizontalBarItem {
 
 interface HorizontalBarChartProps {
   data: HorizontalBarItem[];
+  onItemClick?: (item: HorizontalBarItem) => void;
 }
 
-export const HorizontalBarChart: React.FC<HorizontalBarChartProps> = ({ data = [] }) => {
+export const HorizontalBarChart: React.FC<HorizontalBarChartProps> = ({ data = [], onItemClick }) => {
   if (!data || data.length === 0) {
     return (
       <div className="py-12 text-center text-slate-400 text-sm italic">
@@ -323,7 +324,12 @@ export const HorizontalBarChart: React.FC<HorizontalBarChartProps> = ({ data = [
         const unitTypeLabel = isVehicle ? 'Chuto' : 'Remolque';
 
         return (
-          <div key={item.id || idx} className="group">
+          <div 
+            key={item.id || idx} 
+            className={`group transition-all ${onItemClick ? 'cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-700/30 p-1.5 -mx-1.5 rounded-xl' : ''}`}
+            onClick={() => onItemClick?.(item)}
+            title={onItemClick ? `Clic para ver historial y órdenes de ${item.licensePlate}` : undefined}
+          >
             {/* Header info row */}
             <div className="flex items-center justify-between text-xs mb-1.5">
               <div className="flex items-center gap-2 flex-wrap">

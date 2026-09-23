@@ -2,7 +2,7 @@ import React from 'react';
 import { 
   X, Truck, Container, DollarSign, Wrench, Calendar, 
   User, CheckCircle2, Clock, AlertTriangle, Package, FileText, 
-  Building2, Gauge, ArrowRight
+  Building2, Gauge, ArrowRight, Loader2
 } from 'lucide-react';
 import type { UnitMaintenanceDetail } from '../../services/dashboardService';
 
@@ -25,7 +25,7 @@ export default function VehicleMaintenanceDetailModal({
 }: VehicleMaintenanceDetailModalProps) {
   if (!isOpen) return null;
 
-  const isVehicle = detail?.unitType.toLowerCase().includes('chuto') || detail?.unitType.toLowerCase().includes('vehicle');
+  const isVehicle = Boolean(detail?.unitType ? (detail.unitType.toLowerCase().includes('chuto') || detail.unitType.toLowerCase().includes('vehicle')) : true);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-sm animate-fade-in">
@@ -127,8 +127,8 @@ export default function VehicleMaintenanceDetailModal({
               </h3>
 
               {detail.services.map((svc) => {
-                const isCorrective = svc.repairType.toLowerCase().includes('corr');
-                const isCompleted = svc.status.toLowerCase().includes('complet');
+                const isCorrective = Boolean((svc.repairType || '').toLowerCase().includes('corr'));
+                const isCompleted = Boolean((svc.status || '').toLowerCase().includes('complet'));
 
                 return (
                   <div 
@@ -240,10 +240,10 @@ export default function VehicleMaintenanceDetailModal({
                                     {part.quantity} {part.unitOfMeasure}
                                   </td>
                                   <td className="py-1.5 text-right font-mono text-slate-600 dark:text-slate-400">
-                                    ${part.unitCost.toFixed(2)}
+                                    ${(part.unitCost ?? 0).toFixed(2)}
                                   </td>
                                   <td className="py-1.5 pr-2 text-right font-mono font-black text-slate-900 dark:text-white">
-                                    ${part.totalCost.toFixed(2)}
+                                    ${(part.totalCost ?? 0).toFixed(2)}
                                   </td>
                                 </tr>
                               ))}
