@@ -94,7 +94,7 @@ namespace TransportManagement.API.Controllers
             if (request == null) return NotFound();
 
             request.MechanicId = dto.MechanicId;
-            request.Status = "En RevisiÃ³n";
+            request.Status = "En Revisión";
 
             await _context.SaveChangesAsync();
             return NoContent();
@@ -148,20 +148,35 @@ namespace TransportManagement.API.Controllers
                 
             if (request == null) return NotFound();
 
-            if (request.Status != "Pendiente" && request.Status != "En Revisión")
+            var currentStatus = request.Status?.Trim() ?? "";
+            bool isEditable = currentStatus.Contains("Pendiente", StringComparison.OrdinalIgnoreCase) 
+                           || currentStatus.Contains("Revisi", StringComparison.OrdinalIgnoreCase);
+
+            if (!isEditable)
             {
                 return BadRequest("Solo se pueden modificar las actividades si el servicio está pendiente o en revisión.");
             }
 
             // Remove existing
-            _context.ServiceRequestActivities.RemoveRange(request.Activities);
+            if (request.Activities != null && request.Activities.Any())
+            {
+                _context.ServiceRequestActivities.RemoveRange(request.Activities);
+            }
             
             // Add new
-            foreach (var act in dto.Activities)
+            if (dto.Activities != null)
             {
-                if (!string.IsNullOrWhiteSpace(act))
+                foreach (var act in dto.Activities)
                 {
-                    request.Activities.Add(new ServiceRequestActivity { Description = act });
+                    if (!string.IsNullOrWhiteSpace(act))
+                    {
+                        _context.ServiceRequestActivities.Add(new ServiceRequestActivity 
+                        { 
+                            ServiceRequestId = request.Id,
+                            CompanyId = request.CompanyId,
+                            Description = act.Trim() 
+                        });
+                    }
                 }
             }
 

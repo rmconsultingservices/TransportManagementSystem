@@ -310,11 +310,13 @@ export default function Workshop() {
 
       fetchData();
 
-    } catch (error) {
+    } catch (error: any) {
 
       console.error('Error updating activities:', error);
 
-      toast.error('Error al actualizar las actividades');
+      const msg = error?.response?.data?.message || (typeof error?.response?.data === 'string' ? error.response.data : 'Error al actualizar las actividades');
+
+      toast.error(msg);
 
     }
 
