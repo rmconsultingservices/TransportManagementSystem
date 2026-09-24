@@ -1,7 +1,8 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, Outlet, Navigate, useNavigate } from 'react-router-dom';
-import { Truck, Home, PackageOpen, Wrench, Users, ShoppingCart, FileText, LogOut, Menu, X, ChevronDown, ChevronRight, List, SlidersHorizontal, Tags, Scale, MapPin, FileBarChart, ClipboardList, Key } from 'lucide-react';
+import { Truck, Home, PackageOpen, Wrench, Users, ShoppingCart, FileText, LogOut, Menu, X, ChevronDown, ChevronRight, List, SlidersHorizontal, Tags, Scale, MapPin, FileBarChart, ClipboardList, Key, Sun, Moon } from 'lucide-react';
 import { useAuthStore } from './store/authStore';
+import { useThemeStore } from './store/themeStore';
 import { Toaster, toast } from 'react-hot-toast';
 import { authService } from './services/authService';
 
@@ -40,6 +41,7 @@ const ProtectedRoute = () => {
 
 function Layout() {
   const { user, selectedCompany, logout } = useAuthStore();
+  const { theme, toggleTheme } = useThemeStore();
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isInventoryExpanded, setIsInventoryExpanded] = useState(false);
@@ -150,6 +152,33 @@ function Layout() {
             )}
           </ul>
         </nav>
+        {/* Dark / Light Mode Switcher in Lateral Menu */}
+        <div className="p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-800/80">
+          <button
+            onClick={toggleTheme}
+            className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200/60 dark:hover:bg-gray-700/60 transition-colors group cursor-pointer"
+            title={theme === 'dark' ? 'Cambiar a Modo Claro' : 'Cambiar a Modo Oscuro'}
+          >
+            <div className="flex items-center gap-3">
+              {theme === 'dark' ? (
+                <Moon size={18} className="text-indigo-400 group-hover:-rotate-12 transition-transform" />
+              ) : (
+                <Sun size={18} className="text-amber-500 group-hover:rotate-45 transition-transform" />
+              )}
+              <span className="font-medium">{theme === 'dark' ? 'Modo Oscuro' : 'Modo Claro'}</span>
+            </div>
+            
+            <div className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-200 ${
+              theme === 'dark' ? 'bg-indigo-600' : 'bg-gray-300'
+            }`}>
+              <span
+                className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition duration-200 shadow-sm ${
+                  theme === 'dark' ? 'translate-x-4' : 'translate-x-1'
+                }`}
+              />
+            </div>
+          </button>
+        </div>
       </aside>
       
       {/* Main Content Area */}
@@ -174,7 +203,14 @@ function Layout() {
              </div>
            </div>
            
-           <div className="flex items-center gap-4">
+           <div className="flex items-center gap-3 sm:gap-4">
+             <button 
+               onClick={toggleTheme} 
+               className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+               title={theme === 'dark' ? 'Cambiar a Modo Claro' : 'Cambiar a Modo Oscuro'}
+             >
+               {theme === 'dark' ? <Sun size={18} className="text-amber-400" /> : <Moon size={18} className="text-indigo-600" />}
+             </button>
              <button onClick={() => setIsChangePasswordOpen(true)} className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 transition flex items-center gap-1 sm:gap-2 text-sm sm:text-base">
                <Key size={18} /> <span className="hidden sm:inline">Cambiar Clave</span>
              </button>
