@@ -4,6 +4,7 @@ import { PackageOpen, FileUp, Download, Plus, Loader2, Trash2, AlertTriangle, Fi
 import toast from 'react-hot-toast';
 import { inventoryService } from '../services/inventoryService';
 import type { SparePart, SparePartUnit } from '../types/inventory';
+import { formatSparePartName } from '../types/inventory';
 
 export default function Inventory() {
   const [spareParts, setSpareParts] = useState<SparePart[]>([]);
@@ -63,9 +64,13 @@ export default function Inventory() {
 
   const filteredParts = spareParts.filter(part => {
     const search = searchTerm.toLowerCase();
+    const formatted = formatSparePartName(part).toLowerCase();
     return (
+      formatted.includes(search) ||
       part.name.toLowerCase().includes(search) ||
       part.code.toLowerCase().includes(search) ||
+      (part.brand || '').toLowerCase().includes(search) ||
+      (part.model || '').toLowerCase().includes(search) ||
       (part.location?.name || '').toLowerCase().includes(search) ||
       (part.category?.name || '').toLowerCase().includes(search)
     );
@@ -669,7 +674,7 @@ export default function Inventory() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
           <input 
             type="text" 
-            placeholder="Buscar por código, nombre o rack..."
+            placeholder="Buscar por código, nombre, marca, modelo o rack..."
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none transition-all shadow-sm"
@@ -728,7 +733,7 @@ export default function Inventory() {
                            {part.itemType || 'Producto'}
                         </span>
                       </div>
-                      <div className="text-sm text-gray-600 dark:text-gray-300">{part.name}</div>
+                      <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">{formatSparePartName(part)}</div>
                       {(part.warehouse || part.location) && (
                         <div className="text-xs text-amber-600 dark:text-amber-500 mt-1 flex items-center gap-1">
                           <PackageOpen size={12} />
@@ -792,7 +797,7 @@ export default function Inventory() {
                   <h3 className="text-2xl font-black text-gray-900 dark:text-white flex items-center gap-2">
                     <FileClock className="text-blue-500"/> Kardex de Inventario
                   </h3>
-                  <p className="text-sm text-gray-500 mt-1">Historial del Componente <strong className="text-gray-800 dark:text-gray-200">{historyPart.code} - {historyPart.name}</strong></p>
+                  <p className="text-sm text-gray-500 mt-1">Historial del Componente <strong className="text-gray-800 dark:text-gray-200">{historyPart.code} - {formatSparePartName(historyPart)}</strong></p>
                </div>
                <button onClick={() => setShowHistoryModal(false)} className="text-gray-400 hover:text-red-500 p-2"><X size={24}/></button>
              </div>
@@ -1020,7 +1025,7 @@ export default function Inventory() {
                 return (
                   <tr key={part.id} className="border-b border-gray-50">
                     <td className="px-2 py-3 font-bold text-blue-600 text-[11px]">#{part.code}</td>
-                    <td className="px-2 py-3 font-bold text-gray-900 text-[11px] leading-tight break-words">{part.name}</td>
+                    <td className="px-2 py-3 font-bold text-gray-900 text-[11px] leading-tight break-words">{formatSparePartName(part)}</td>
                     <td className="px-2 py-3 text-center">
                        <span className={`inline-flex items-center justify-center min-w-[32px] px-2 py-0.5 rounded text-[10px] font-bold ${
                          part.stockQuantity > 10 ? 'bg-blue-50 text-blue-700 border border-blue-100' :

@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { workshopService } from '../services/workshopService';
 import { useAuthStore } from '../store/authStore';
 import type { ServiceRequest } from '../types';
+import { formatSparePartName } from '../types';
 import { Loader2 } from 'lucide-react';
 
 export default function PrintServiceClosureReport() {
@@ -184,7 +185,7 @@ export default function PrintServiceClosureReport() {
                 return (
                   <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                     <td className="px-4 py-2 text-xs font-semibold text-gray-800">{usp.sparePart?.code}</td>
-                    <td className="px-4 py-2 text-xs text-gray-800">{usp.sparePart?.name}</td>
+                    <td className="px-4 py-2 text-xs text-gray-800">{formatSparePartName(usp.sparePart)}</td>
                     <td className="px-4 py-2 text-xs font-semibold text-gray-800 text-right">{usp.quantity}</td>
                     <td className="px-4 py-2 text-xs text-gray-600 text-right">${unitCost.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
                     <td className="px-4 py-2 text-xs font-bold text-gray-900 text-right">${subTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>

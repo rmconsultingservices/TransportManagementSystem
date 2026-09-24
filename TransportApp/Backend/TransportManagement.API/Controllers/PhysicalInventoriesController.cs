@@ -311,7 +311,8 @@ namespace TransportManagement.API.Controllers
                 var row = i + 2;
                 var part = spareParts[i];
                 worksheet.Cell(row, 1).Value = part.Code;
-                worksheet.Cell(row, 2).Value = part.Name;
+                var displayName = string.Join(" ", new[] { part.Name, part.Brand, part.Model }.Where(s => !string.IsNullOrWhiteSpace(s)).Select(s => s.Trim()));
+                worksheet.Cell(row, 2).Value = !string.IsNullOrWhiteSpace(displayName) ? displayName : part.Name;
                 worksheet.Cell(row, 3).Value = part.Category?.Name ?? "";
                 worksheet.Cell(row, 4).Value = part.UnitOfMeasure?.Abbreviation ?? "";
                 worksheet.Cell(row, 5).Value = part.Warehouse?.Name ?? "";

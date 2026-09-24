@@ -8,6 +8,7 @@ import {
 import { purchasingService } from '../services/purchasingService';
 import { inventoryService } from '../services/inventoryService';
 import SparePartSelector from '../components/SparePartSelector';
+import { formatSparePartName } from '../types';
 import UnitSelector from '../components/UnitSelector';
 import type { 
   PurchaseInvoice, 
@@ -129,7 +130,8 @@ export default function InvoicesTab() {
         if (req?.partNameOrDescription) {
           const match = parts.find(p => 
             p.name.toLowerCase() === req.partNameOrDescription.toLowerCase() ||
-            p.code.toLowerCase() === req.partNameOrDescription.toLowerCase()
+            p.code.toLowerCase() === req.partNameOrDescription.toLowerCase() ||
+            formatSparePartName(p).toLowerCase() === req.partNameOrDescription.toLowerCase()
           );
           if (match) matchedPartId = match.id;
         }
@@ -1014,7 +1016,7 @@ export default function InvoicesTab() {
                           </thead>
                           <tbody className="divide-y divide-slate-200/60 dark:divide-slate-800">
                             {inv.details.map((d, dIdx) => {
-                              const desc = d.description || d.sparePart?.name || 'Artículo';
+                              const desc = d.description || formatSparePartName(d.sparePart) || 'Artículo';
                               const veh = d.vehicle;
                               const trailer = d.trailer;
                               const req = d.purchaseRequisition;

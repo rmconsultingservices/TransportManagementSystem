@@ -4,6 +4,7 @@ import { workshopService } from '../services/workshopService';
 import { inventoryService } from '../services/inventoryService';
 import { ArrowLeft, Loader2, CheckCircle2, Clock, AlertCircle, ShoppingCart, Text, Box, Plus, Minus, X , Trash2, Wrench, Printer } from 'lucide-react';
 import type { ServiceRequest, SparePart } from '../types';
+import { formatSparePartName } from '../types';
 import SparePartSelector from '../components/SparePartSelector';
 
 export default function ServiceExecutionDetail() {
@@ -199,7 +200,7 @@ export default function ServiceExecutionDetail() {
                          <div className="bg-emerald-500 text-white p-2 rounded-lg"><Box size={16}/></div>
                          <div>
                             <div className="text-sm font-bold text-emerald-900 dark:text-emerald-100 uppercase">{usp.sparePart?.code}</div>
-                            <div className="text-xs text-emerald-700 dark:text-emerald-400">{usp.sparePart?.name}</div>
+                            <div className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">{formatSparePartName(usp.sparePart)}</div>
                          </div>
                       </div>
                       <div className="text-xl font-black text-emerald-600">x{usp.quantity}</div>

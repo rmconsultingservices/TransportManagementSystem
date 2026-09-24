@@ -366,11 +366,13 @@ namespace TransportManagement.API.Controllers
 
                         var type = row.Cell(3).Value.ToString().Trim();
                         if (string.IsNullOrEmpty(type)) type = "Producto";
+                        var brand = row.Cell(4).Value.ToString().Trim();
+                        var model = row.Cell(5).Value.ToString().Trim();
 
                         // If code is empty, auto-generate it or find by name
                         if (string.IsNullOrEmpty(code))
                         {
-                            var matchByName = await _context.SpareParts.FirstOrDefaultAsync(s => s.Name.ToLower() == name.ToLower());
+                            var matchByName = await _context.SpareParts.FirstOrDefaultAsync(s => s.Name.ToLower() == name.ToLower() && (s.Brand ?? "").ToLower() == brand.ToLower() && (s.Model ?? "").ToLower() == model.ToLower());
                             if (matchByName != null)
                             {
                                 code = matchByName.Code;
@@ -388,8 +390,6 @@ namespace TransportManagement.API.Controllers
                             }
                         }
 
-                        var brand = row.Cell(4).Value.ToString().Trim();
-                        var model = row.Cell(5).Value.ToString().Trim();
                         var categoryName = row.Cell(6).Value.ToString().Trim();
                         var unitName = row.Cell(7).Value.ToString().Trim();
                         var warehouseName = row.Cell(8).Value.ToString().Trim();

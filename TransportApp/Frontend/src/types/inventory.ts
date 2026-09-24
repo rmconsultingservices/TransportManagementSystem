@@ -93,3 +93,20 @@ export interface PhysicalInventory {
 }
 
 
+
+export function formatSparePartName(part?: { name?: string | null; brand?: string | null; model?: string | null } | null): string {
+  if (!part) return '';
+  const name = (part.name || '').trim();
+  const brand = (part.brand || '').trim();
+  const model = (part.model || '').trim();
+
+  const tokens: string[] = [];
+  if (name) tokens.push(name);
+  if (brand && !name.toLowerCase().includes(brand.toLowerCase())) {
+    tokens.push(brand);
+  }
+  if (model && !name.toLowerCase().includes(model.toLowerCase())) {
+    tokens.push(model);
+  }
+  return tokens.join(' ');
+}

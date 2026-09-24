@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Search, ChevronDown, Check } from 'lucide-react';
 import type { SparePart } from '../types';
+import { formatSparePartName } from '../types';
 
 interface SparePartSelectorProps {
   value: number | '';
@@ -24,11 +25,18 @@ export default function SparePartSelector({
   
   const selectedPart = spareParts.find(p => p.id === value);
   
-  const filteredParts = spareParts.filter(p => 
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (p.location?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredParts = spareParts.filter(p => {
+    const s = searchTerm.toLowerCase();
+    const formatted = formatSparePartName(p).toLowerCase();
+    return (
+      formatted.includes(s) ||
+      (p.name || '').toLowerCase().includes(s) ||
+      (p.code || '').toLowerCase().includes(s) ||
+      (p.brand || '').toLowerCase().includes(s) ||
+      (p.model || '').toLowerCase().includes(s) ||
+      (p.location?.name || '').toLowerCase().includes(s)
+    );
+  });
 
   useEffect(() => {
     if (isOpen) {
@@ -64,7 +72,7 @@ export default function SparePartSelector({
             <span>
               <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">{selectedPart.code}</span>
               <span className="text-gray-400 mx-1.5">•</span>
-              <span>{selectedPart.name}</span>
+              <span>{formatSparePartName(selectedPart)}</span>
             </span>
           ) : <span className="text-gray-400">{placeholder}</span>}
         </span>
@@ -82,7 +90,7 @@ export default function SparePartSelector({
               ref={inputRef}
               type="text"
               className="w-full text-xs font-medium bg-transparent outline-none text-gray-900 dark:text-white placeholder-gray-400"
-              placeholder="Buscar por código, nombre o rack..."
+              placeholder="Buscar por código, nombre, marca, modelo o rack..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               onClick={e => e.stopPropagation()}
@@ -132,7 +140,7 @@ export default function SparePartSelector({
                     </div>
 
                     <div className="text-gray-900 dark:text-gray-100 font-semibold truncate text-[11px]">
-                      {p.name}
+                      {formatSparePartName(p)}
                     </div>
 
                     <div className="flex items-center justify-between text-[10px] text-gray-400 mt-1">

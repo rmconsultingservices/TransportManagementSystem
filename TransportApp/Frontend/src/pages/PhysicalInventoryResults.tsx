@@ -2,6 +2,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, CheckCircle, PackageOpen, MapPin, Calculator, AlertTriangle, AlertCircle, Ban } from 'lucide-react';
 import type { PhysicalInventory, PhysicalInventoryDetail } from '../types/inventory';
+import { formatSparePartName } from '../types/inventory';
 import { physicalInventoryService } from '../services/physicalInventoryService';
 import toast from 'react-hot-toast';
 
@@ -164,10 +165,17 @@ export default function PhysicalInventoryResults() {
 
   const isProcessed = inventory.status === 'PROCESSED';
 
-  const filteredDetails = details.filter(d => 
-    (d.sparePart?.code || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (d.sparePart?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredDetails = details.filter(d => {
+    const s = searchTerm.toLowerCase();
+    const formatted = formatSparePartName(d.sparePart).toLowerCase();
+    return (
+      formatted.includes(s) ||
+      (d.sparePart?.code || '').toLowerCase().includes(s) ||
+      (d.sparePart?.name || '').toLowerCase().includes(s) ||
+      (d.sparePart?.brand || '').toLowerCase().includes(s) ||
+      (d.sparePart?.model || '').toLowerCase().includes(s)
+    );
+  });
 
   const uncountedCount = details.filter(d => d.realStock === undefined).length;
   const withDiffCount = details.filter(d => d.realStock !== undefined && d.realStock !== d.theoreticalStock).length;
@@ -269,7 +277,7 @@ export default function PhysicalInventoryResults() {
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-4 shrink-0">
         <input
           type="text"
-          placeholder="Buscar repuesto..."
+          placeholder="Buscar por código, nombre, marca o modelo..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full sm:w-80 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
@@ -315,7 +323,7 @@ export default function PhysicalInventoryResults() {
                       {detail.sparePart?.code}
                     </td>
                     <td className="px-6 py-3 text-sm text-gray-600 dark:text-gray-300">
-                      {detail.sparePart?.name}
+                      {formatSparePartName(detail.sparePart)}
                     </td>
                     <td className="px-6 py-3 whitespace-nowrap text-sm text-right bg-blue-50/30 dark:bg-blue-900/5 font-semibold text-gray-700 dark:text-gray-200">
                       {detail.theoreticalStock}
