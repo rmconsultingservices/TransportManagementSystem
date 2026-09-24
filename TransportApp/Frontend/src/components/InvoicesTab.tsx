@@ -59,19 +59,27 @@ export default function InvoicesTab() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [invData, supData, ptsData, poData] = await Promise.all([
+      // Cargar facturas y proveedores de forma prioritaria para desplegar la lista de inmediato
+      const [invData, supData] = await Promise.all([
         purchasingService.getPurchaseInvoices(),
-        purchasingService.getSuppliers(),
+        purchasingService.getSuppliers()
+      ]);
+      setInvoices(invData || []);
+      setSuppliers(supData || []);
+      setLoading(false);
+
+      // Cargar repuestos y órdenes de compra en segundo plano para el formulario/modal
+      Promise.all([
         inventoryService.getSpareParts(),
         purchasingService.getPurchaseOrders()
-      ]);
-      setInvoices(invData);
-      setSuppliers(supData);
-      setParts(ptsData);
-      setPurchaseOrders(poData);
+      ]).then(([ptsData, poData]) => {
+        setParts(ptsData || []);
+        setPurchaseOrders(poData || []);
+      }).catch(err => {
+        console.warn('Error al cargar datos auxiliares en segundo plano:', err);
+      });
     } catch (error) {
       console.error('Error fetching invoices data:', error);
-    } finally {
       setLoading(false);
     }
   };

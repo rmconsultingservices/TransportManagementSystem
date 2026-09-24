@@ -26,6 +26,8 @@ namespace TransportManagement.API.Controllers
         public async Task<ActionResult<IEnumerable<PurchaseOrder>>> GetPurchaseOrders()
         {
             return await _context.PurchaseOrders
+                .AsNoTracking()
+                .AsSplitQuery()
                 .Include(po => po.Supplier)
                 .Include(po => po.Details)
                     .ThenInclude(d => d.PurchaseRequisition)
