@@ -559,7 +559,7 @@ export default function InvoicesTab() {
              </div>
           </div>
 
-          <div className="p-0 overflow-x-auto min-h-[280px] pb-12">
+          <div className="p-0 overflow-x-auto min-h-[380px] pb-44">
              <table className="w-full text-xs text-left whitespace-nowrap">
                <thead className="text-[10px] text-gray-400 bg-gray-100 dark:bg-gray-800 uppercase font-bold">
                  <tr>
@@ -597,7 +597,7 @@ export default function InvoicesTab() {
                        </td>
 
                        {/* Artículo o Descripción */}
-                       <td className="px-4 py-2 min-w-[280px]">
+                       <td className="px-4 py-2 min-w-[280px] relative">
                          {d.itemType === 'S' ? (
                            <input
                              type="text"

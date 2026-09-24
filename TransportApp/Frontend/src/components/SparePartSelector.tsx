@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import { Search, ChevronDown, Check } from 'lucide-react';
 import type { SparePart } from '../types';
 
@@ -21,15 +20,7 @@ export default function SparePartSelector({
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  const [coords, setCoords] = useState<{ top: number; left: number; width: number; placeAbove: boolean }>({
-    top: 0,
-    left: 0,
-    width: 320,
-    placeAbove: false
-  });
   
   const selectedPart = spareParts.find(p => p.id === value);
   
@@ -39,53 +30,16 @@ export default function SparePartSelector({
     (p.location?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const updatePosition = () => {
-    if (containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      const spaceBelow = window.innerHeight - rect.bottom;
-      // If less than 280px below and more space above, open above
-      const placeAbove = spaceBelow < 280 && rect.top > 280;
-      
-      // Ensure it doesn't overflow viewport horizontally
-      let left = rect.left;
-      const width = Math.max(rect.width, 340);
-      if (left + width > window.innerWidth - 10) {
-        left = Math.max(10, window.innerWidth - width - 10);
-      }
-
-      setCoords({
-        top: placeAbove ? rect.top : rect.bottom,
-        left,
-        width,
-        placeAbove
-      });
-    }
-  };
-
   useEffect(() => {
     if (isOpen) {
-      updatePosition();
-      // Focus input after opening
       setTimeout(() => inputRef.current?.focus(), 50);
-
-      const handleScrollOrResize = () => updatePosition();
-      window.addEventListener('resize', handleScrollOrResize);
-      window.addEventListener('scroll', handleScrollOrResize, true);
-
-      return () => {
-        window.removeEventListener('resize', handleScrollOrResize);
-        window.removeEventListener('scroll', handleScrollOrResize, true);
-      };
     }
   }, [isOpen]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node;
-      if (
-        containerRef.current && !containerRef.current.contains(target) &&
-        dropdownRef.current && !dropdownRef.current.contains(target)
-      ) {
+      if (containerRef.current && !containerRef.current.contains(target)) {
         setIsOpen(false);
       }
     };
@@ -94,7 +48,7 @@ export default function SparePartSelector({
   }, []);
 
   return (
-    <div className="relative spare-part-selector w-full" ref={containerRef}>
+    <div className={`relative spare-part-selector w-full ${isOpen ? 'z-50' : 'z-0'}`} ref={containerRef}>
       <div 
         onClick={() => {
           if (!disabled) {
@@ -117,21 +71,12 @@ export default function SparePartSelector({
         <ChevronDown size={14} className={`text-gray-400 transition-transform flex-shrink-0 ${isOpen ? 'rotate-180 text-indigo-500' : ''}`} />
       </div>
       
-      {isOpen && createPortal(
+      {isOpen && (
         <div 
-          ref={dropdownRef}
-          style={{
-            position: 'fixed',
-            top: coords.placeAbove ? 'auto' : `${coords.top + 4}px`,
-            bottom: coords.placeAbove ? `${window.innerHeight - coords.top + 4}px` : 'auto',
-            left: `${coords.left}px`,
-            width: `${coords.width}px`,
-            zIndex: 99999
-          }}
-          className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl max-h-80 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-100"
+          className="absolute left-0 top-full mt-1.5 w-full min-w-[340px] z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl max-h-72 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-75"
         >
           {/* Header de Búsqueda */}
-          <div className="p-2.5 border-b border-gray-100 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-900/60 flex items-center gap-2">
+          <div className="p-2.5 border-b border-gray-100 dark:border-gray-700 bg-gray-50/90 dark:bg-gray-900/70 flex items-center gap-2">
             <Search size={14} className="text-indigo-500 flex-shrink-0" />
             <input 
               ref={inputRef}
@@ -144,6 +89,7 @@ export default function SparePartSelector({
             />
             {searchTerm && (
               <button 
+                type="button"
                 onClick={(e) => { e.stopPropagation(); setSearchTerm(''); }}
                 className="text-[11px] font-bold text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 px-1"
               >
@@ -202,8 +148,7 @@ export default function SparePartSelector({
               })
             )}
           </div>
-        </div>,
-        document.body
+        </div>
       )}
     </div>
   );
