@@ -448,11 +448,13 @@ export default function Dashboard() {
                     <option value="" className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white">
                       Todas las Empresas Propietarias
                     </option>
-                    {opKpis.fleetOwners.map(fo => (
-                      <option key={fo.id} value={fo.id} className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white">
-                        {fo.name}
-                      </option>
-                    ))}
+                    {opKpis.fleetOwners
+                      .filter((fo, idx, arr) => arr.findIndex(x => x.name.trim().toLowerCase() === fo.name.trim().toLowerCase()) === idx)
+                      .map(fo => (
+                        <option key={fo.id} value={fo.id} className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white">
+                          {fo.name}
+                        </option>
+                      ))}
                   </select>
                 </div>
               )}

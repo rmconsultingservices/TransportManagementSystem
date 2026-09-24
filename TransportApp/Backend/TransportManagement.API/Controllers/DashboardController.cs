@@ -296,6 +296,7 @@ namespace TransportManagement.API.Controllers
                 .ToList();
 
             var fleetOwnersList = await _context.FleetOwners
+                .Where(fo => fo.IsActive)
                 .OrderBy(fo => fo.Name)
                 .Select(fo => new FleetOwnerFilterDto { Id = fo.Id, Name = fo.Name })
                 .ToListAsync();
