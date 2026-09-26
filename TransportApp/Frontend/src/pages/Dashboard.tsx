@@ -84,7 +84,7 @@ export default function Dashboard() {
   const [loadingVehicleDetail, setLoadingVehicleDetail] = useState(false);
 
   // Estados de Ordenamiento y Visualización de Flota Completa
-  const [sortField, setSortField] = useState<'cost' | 'failures' | 'corrective' | 'preventive' | 'plate'>('cost');
+  const [sortField, setSortField] = useState<'cost' | 'failures' | 'corrective' | 'roadside' | 'preventive' | 'plate'>('cost');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [showAllUnits, setShowAllUnits] = useState(false);
   const [unitSearch, setUnitSearch] = useState('');
@@ -117,7 +117,7 @@ export default function Dashboard() {
     }
   };
 
-  const handleSort = (field: 'cost' | 'failures' | 'corrective' | 'preventive' | 'plate') => {
+  const handleSort = (field: 'cost' | 'failures' | 'corrective' | 'roadside' | 'preventive' | 'plate') => {
     if (sortField === field) {
       setSortDirection(prev => prev === 'desc' ? 'asc' : 'desc');
     } else {
@@ -152,6 +152,9 @@ export default function Dashboard() {
       } else if (sortField === 'corrective') {
         valA = a.correctiveCount;
         valB = b.correctiveCount;
+      } else if (sortField === 'roadside') {
+        valA = a.roadsideCount ?? 0;
+        valB = b.roadsideCount ?? 0;
       } else if (sortField === 'preventive') {
         valA = a.preventiveCount;
         valB = b.preventiveCount;
@@ -755,6 +758,7 @@ export default function Dashboard() {
                   <DonutChart 
                     preventive={opKpis?.preventiveCount ?? 0}
                     corrective={opKpis?.correctiveCount ?? 0}
+                    roadside={opKpis?.roadsideCount ?? 0}
                     other={opKpis?.otherTypeCount ?? 0}
                     size={190}
                   />
@@ -1095,6 +1099,15 @@ export default function Dashboard() {
                         <div className="flex items-center justify-center gap-1">
                           <span>Fallas Correctivas</span>
                           <ArrowUpDown size={11} className={sortField === 'corrective' ? 'text-indigo-600 font-bold' : 'opacity-40'} />
+                        </div>
+                      </th>
+                      <th 
+                        onClick={() => handleSort('roadside')}
+                        className="pb-2 text-center cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 select-none"
+                      >
+                        <div className="flex items-center justify-center gap-1">
+                          <span>Auxilios Viales</span>
+                          <ArrowUpDown size={11} className={sortField === 'roadside' ? 'text-indigo-600 font-bold' : 'opacity-40'} />
                         </div>
                       </th>
                       <th 
