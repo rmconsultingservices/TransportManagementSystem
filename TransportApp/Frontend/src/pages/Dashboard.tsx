@@ -5,7 +5,7 @@ import {
   PackageX, Download, Calendar, ShieldAlert, ArrowUpRight, 
   Activity, Users, FileSpreadsheet, RefreshCw, X, AlertCircle,
   ArrowUp, ArrowDown, Minus, Filter, Warehouse as WarehouseIcon, Building2,
-  Layers, ArrowUpDown, ExternalLink, Search
+  Layers, ArrowUpDown, ExternalLink, Search, Printer
 } from 'lucide-react';
 import SupplierPurchasesModal from '../components/dashboard/SupplierPurchasesModal';
 import VehicleMaintenanceDetailModal from '../components/dashboard/VehicleMaintenanceDetailModal';
@@ -292,12 +292,46 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="p-4 sm:p-8 max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="p-4 sm:p-8 max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 print:p-0 print:m-0 print:max-w-none print:w-full">
       
       {/* ========================================================================= */}
-      {/* TOP HEADER & TAB SWITCHER                                                 */}
+      {/* CABECERA EXCLUSIVA PARA IMPRESIÓN (REPORT HEADER)                         */}
       {/* ========================================================================= */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+      <div className="hidden print:flex items-center justify-between pb-4 mb-5 border-b-2 border-slate-900 bg-white">
+        <div className="flex items-center gap-4">
+          {selectedCompany?.logoUrl ? (
+            <img src={selectedCompany.logoUrl} alt="Logo" className="w-14 h-14 object-contain" />
+          ) : (
+            <div className="p-2.5 bg-blue-600 text-white rounded-xl">
+              <Activity size={24} />
+            </div>
+          )}
+          <div>
+            <p className="text-[10px] font-black text-blue-700 tracking-widest uppercase">
+              INFORME GERENCIAL Y OPERATIVO DE FLOTA
+            </p>
+            <h1 className="text-xl font-black text-slate-900 leading-tight">
+              {selectedCompany?.name || 'EMPRESA DE TRANSPORTE'}
+            </h1>
+            <p className="text-xs text-slate-600 font-semibold mt-0.5">
+              Período analizado: <strong className="text-slate-900 font-mono">{startDate}</strong> al <strong className="text-slate-900 font-mono">{endDate}</strong> &bull; Filtro: <strong className="text-slate-900">{assetType === 'all' ? 'Toda la Flota (Chutos y Remolques)' : assetType === 'vehicle' ? 'Solo Chutos' : 'Solo Remolques'}</strong>
+            </p>
+          </div>
+        </div>
+        <div className="text-right">
+          <span className="inline-block bg-slate-900 text-white px-3 py-1 rounded text-[10px] font-mono font-bold tracking-wide uppercase">
+            {activeTab === 'gerencial' ? 'DASHBOARD GERENCIAL' : 'CONTROL DE MANTENIMIENTO'}
+          </span>
+          <p className="text-[10px] text-slate-500 font-mono mt-1">
+            Fecha Emisión: {new Date().toLocaleDateString('es-ES')} {new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+          </p>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* TOP HEADER & TAB SWITCHER (PANTALLA)                                      */}
+      {/* ========================================================================= */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 print:hidden">
         <div>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
             <Activity className="text-blue-600 dark:text-blue-400" size={32} />
@@ -349,7 +383,7 @@ export default function Dashboard() {
           {/* ===================================================================== */}
           {/* 0. FRANJA SUPERIOR: BARRA DE FILTROS GLOBALES Y ACCIÓN EXCEL          */}
           {/* ===================================================================== */}
-          <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200/80 dark:border-slate-700 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+          <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200/80 dark:border-slate-700 flex flex-col xl:flex-row xl:items-center justify-between gap-4 print:hidden">
             
             {/* Filtros Izquierda / Centro */}
             <div className="flex flex-wrap items-center gap-3">
@@ -504,6 +538,15 @@ export default function Dashboard() {
                   <FileSpreadsheet size={15} />
                 )}
                 <span>Exportar Dashboard (.xlsx)</span>
+              </button>
+
+              <button
+                onClick={() => window.print()}
+                className="flex items-center gap-2 bg-slate-800 hover:bg-slate-900 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer"
+                title="Imprimir el Dashboard o Guardar como PDF tal cual como se ve en pantalla"
+              >
+                <Printer size={15} />
+                <span>Imprimir Reporte</span>
               </button>
             </div>
           </div>
@@ -1307,6 +1350,15 @@ export default function Dashboard() {
         startDate={startDate}
         endDate={endDate}
       />
+
+
+      {/* ========================================================================= */}
+      {/* PIE DE PÁGINA EXCLUSIVO PARA IMPRESIÓN                                    */}
+      {/* ========================================================================= */}
+      <div className="hidden print:flex items-center justify-between pt-4 mt-6 border-t border-slate-300 text-[10px] text-slate-500 font-mono">
+        <span>Sistema de Gestión de Transporte y Flota &bull; {selectedCompany?.name || 'Empresa'}</span>
+        <span>Reporte Gerencial &bull; Confidencial &bull; Página 1</span>
+      </div>
 
       {/* Modal 3: Registro Oficial de Gastos y Compras (Auditoría) */}
       <ExpensesSheetModal
