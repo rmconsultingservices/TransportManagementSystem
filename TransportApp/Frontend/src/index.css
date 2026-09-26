@@ -89,12 +89,11 @@ input::-ms-clear {
   display: none;
 }
 
-
 /* Print optimization for Executive Dashboard & Reports */
 @media print {
   @page {
-    size: auto;
-    margin: 8mm 10mm;
+    size: landscape;
+    margin: 6mm 8mm;
   }
 
   * {
@@ -103,37 +102,53 @@ input::-ms-clear {
   }
 
   html, body {
-    background: #ffffff !important;
-    color: #0f172a !important;
     font-size: 11px !important;
   }
 
-  .dark,
-  .dark body,
-  .dark main,
-  .dark div,
-  .dark section {
-    background-color: transparent !important;
-    color: #0f172a !important;
+  /* FORZAR LA DISTRIBUCION EXACTA IDENTICA A LA PANTALLA */
+  .dashboard-grid-3 {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+    width: 100% !important;
   }
 
-  .dark .bg-slate-800,
-  .dark .bg-slate-900,
-  .dark .bg-gray-800,
-  .dark .bg-gray-900 {
-    background-color: #ffffff !important;
-    color: #0f172a !important;
-    border-color: #cbd5e1 !important;
+  .dashboard-grid-2 {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+    width: 100% !important;
   }
 
-  .dark .text-white {
-    color: #0f172a !important;
+  .dashboard-grid-3 > div,
+  .dashboard-grid-2 > div,
+  .print-avoid-break {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    min-width: 0 !important;
   }
 
-  .dark .text-slate-400,
-  .dark .text-slate-300,
-  .dark .text-gray-400 {
-    color: #475569 !important;
+  /* Mantener proporcion de graficos vectoriales */
+  svg {
+    max-width: 100% !important;
+  }
+
+  tr {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Ajuste de relleno para impresion limpia */
+  .p-5 {
+    padding: 12px !important;
+  }
+
+  .p-4 {
+    padding: 10px !important;
+  }
+
+  .rounded-2xl {
+    border-radius: 12px !important;
   }
 
   .shadow-xs,
@@ -143,12 +158,6 @@ input::-ms-clear {
   .shadow-xl,
   .shadow-2xl {
     box-shadow: none !important;
-  }
-
-  .grid > div,
-  .print-avoid-break {
-    break-inside: avoid !important;
-    page-break-inside: avoid !important;
   }
 
   main,

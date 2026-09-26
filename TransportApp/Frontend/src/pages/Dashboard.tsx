@@ -554,7 +554,7 @@ export default function Dashboard() {
           {/* ===================================================================== */}
           {/* NIVEL 1: CABECERA EJECUTIVA (KPI CARDS CON GAUGE Y SPARKLINE)         */}
           {/* ===================================================================== */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="dashboard-grid-3 grid grid-cols-1 md:grid-cols-3 gap-5 print:grid-cols-3 print:gap-3">
             
             {/* KPI 1: Disponibilidad de Flota (Gauge Velocímetro) */}
             <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-200/80 dark:border-slate-700 flex flex-col justify-between relative overflow-hidden">
@@ -735,7 +735,7 @@ export default function Dashboard() {
           {/* ===================================================================== */}
           {/* NIVEL 2: CUERPO PRINCIPAL (ANÁLISIS Y TENDENCIAS)                     */}
           {/* ===================================================================== */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="dashboard-grid-3 grid grid-cols-1 lg:grid-cols-3 gap-6 print:grid-cols-3 print:gap-3">
             
             {/* Columna 1: Preventivo vs Correctivo (Donut Ring Chart) */}
             <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-200/80 dark:border-slate-700 flex flex-col justify-between">
@@ -845,7 +845,7 @@ export default function Dashboard() {
           {/* ===================================================================== */}
           {/* NIVEL 3: PANELES INFERIORES (CONTROL OPERATIVO Y PERSONAL)             */}
           {/* ===================================================================== */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="dashboard-grid-2 grid grid-cols-1 lg:grid-cols-2 gap-6 print:grid-cols-2 print:gap-3">
             
             {/* Panel Izquierdo: Alertas de Quiebre de Stock (Data Grid Condicional) */}
             <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-200/80 dark:border-slate-700 flex flex-col justify-between">
@@ -938,7 +938,7 @@ export default function Dashboard() {
 
               <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700 text-xs text-slate-400 flex items-center justify-between">
                 <span>Valuación Total: ${invKpis?.totalInventoryValuation.toLocaleString('en-US', { minimumFractionDigits: 2 }) ?? '0.00'}</span>
-                <Link to="/inventory" className="text-blue-600 hover:underline font-semibold flex items-center gap-1">
+                <Link to="/inventory" className="text-blue-600 hover:underline font-semibold flex items-center gap-1 print:hidden">
                   Gestionar inventario <ArrowUpRight size={12} />
                 </Link>
               </div>
@@ -961,7 +961,7 @@ export default function Dashboard() {
                   </div>
 
                   {/* Toggle Mecánicos vs Choferes */}
-                  <div className="flex items-center bg-slate-100 dark:bg-slate-900 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                  <div className="flex items-center bg-slate-100 dark:bg-slate-900 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 print:hidden">
                     <button
                       onClick={() => setStaffView('mechanics')}
                       className={`px-2.5 py-1 rounded text-[11px] font-bold transition-all ${
@@ -1048,7 +1048,7 @@ export default function Dashboard() {
               </div>
 
               {/* Controles: Buscador y Toggle Ver Toda la Flota */}
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2.5 print:hidden">
                 <div className="relative w-48 sm:w-60">
                   <Search className="absolute left-2.5 top-2 text-slate-400" size={13} />
                   <input
