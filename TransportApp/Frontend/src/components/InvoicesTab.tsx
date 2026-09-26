@@ -10,6 +10,7 @@ import { inventoryService } from '../services/inventoryService';
 import SparePartSelector from '../components/SparePartSelector';
 import { formatSparePartName } from '../types';
 import UnitSelector from '../components/UnitSelector';
+import ExpensesSheetModal from './ExpensesSheetModal';
 import type { 
   PurchaseInvoice, 
   PurchaseInvoiceDetail, 
@@ -27,6 +28,7 @@ export default function InvoicesTab() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'CXP' | 'PAGADO'>('all');
   const [exportingExcel, setExportingExcel] = useState(false);
+  const [showExpensesModal, setShowExpensesModal] = useState(false);
 
   // Form state
   const [showForm, setShowForm] = useState(false);
@@ -457,17 +459,12 @@ export default function InvoicesTab() {
         <div className="flex flex-wrap items-center gap-2.5">
           {/* Botón Exportar Excel Idéntico al Cliente */}
           <button
-            onClick={handleExportExcel}
-            disabled={exportingExcel}
-            className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-sm shadow-emerald-600/20 cursor-pointer disabled:opacity-60"
-            title="Descargar el reporte en Excel con el formato corporativo oficial"
+            onClick={() => setShowExpensesModal(true)}
+            className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-sm shadow-emerald-600/20 cursor-pointer"
+            title="Ver en pantalla el registro consolidado de gastos y exportar a Excel"
           >
-            {exportingExcel ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              <FileSpreadsheet size={16} />
-            )}
-            <span>Exportar Registro de Gastos (Excel)</span>
+            <FileSpreadsheet size={16} />
+            <span>Ver Registro de Gastos</span>
           </button>
 
           {!showForm && (
@@ -1222,6 +1219,12 @@ export default function InvoicesTab() {
           </div>
         </div>
       )}
+    
+      {/* Modal Interactivo de Registro de Gastos */}
+      <ExpensesSheetModal
+        isOpen={showExpensesModal}
+        onClose={() => setShowExpensesModal(false)}
+      />
     </div>
   );
 }

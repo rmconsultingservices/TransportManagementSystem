@@ -507,6 +507,144 @@ namespace TransportManagement.API.Controllers
             return Ok(new { AttachmentUrl = invoice.AttachmentUrl });
         }
 
+        // GET: api/PurchaseInvoices/expenses-sheet
+        [HttpGet("expenses-sheet")]
+        public async Task<ActionResult<ExpensesSheetResponseDto>> GetExpensesSheet(
+            [FromQuery] DateTime? startDate, 
+            [FromQuery] DateTime? endDate)
+        {
+            var query = _context.PurchaseInvoices
+                .AsNoTracking()
+                .AsSplitQuery()
+                .Include(pi => pi.Supplier)
+                .Include(pi => pi.PurchaseOrder)
+                .Include(pi => pi.Details)
+                    .ThenInclude(d => d.SparePart)
+                .Include(pi => pi.Details)
+                    .ThenInclude(d => d.PurchaseRequisition)
+                        .ThenInclude(pr => pr!.ServiceRequest)
+                            .ThenInclude(sr => sr!.Vehicle)
+                                .ThenInclude(v => v!.FleetOwner)
+                .Include(pi => pi.Details)
+                    .ThenInclude(d => d.PurchaseRequisition)
+                        .ThenInclude(pr => pr!.ServiceRequest)
+                            .ThenInclude(sr => sr!.Trailer)
+                                .ThenInclude(t => t!.FleetOwner)
+                .Include(pi => pi.Details)
+                    .ThenInclude(d => d.Vehicle)
+                        .ThenInclude(v => v!.FleetOwner)
+                .Include(pi => pi.Details)
+                    .ThenInclude(d => d.Trailer)
+                        .ThenInclude(t => t!.FleetOwner)
+                .Where(pi => !pi.IsCancelled);
+
+            if (startDate.HasValue)
+                query = query.Where(pi => pi.DateIssued >= startDate.Value.Date);
+            if (endDate.HasValue)
+                query = query.Where(pi => pi.DateIssued <= endDate.Value.Date.AddDays(1).AddTicks(-1));
+
+            var invoices = await query.OrderBy(pi => pi.DateIssued).ToListAsync();
+
+            var company = await _context.Companies.FindAsync(_context.CurrentCompanyId);
+            string companyName = company?.Name ?? "TRANSPORMETALS, C.A.";
+
+            string periodText = startDate.HasValue && endDate.HasValue
+                ? $"Período: {startDate.Value:dd/MM/yyyy} al {endDate.Value:dd/MM/yyyy}"
+                : DateTime.UtcNow.ToString("MMMM-yyyy", new System.Globalization.CultureInfo("es-ES")).ToUpper();
+
+            var items = new List<ExpensesSheetItemDto>();
+            decimal totalSpent = 0;
+            decimal totalPaid = 0;
+            decimal totalPendingCxp = 0;
+            var invoiceIds = new HashSet<int>();
+
+            foreach (var inv in invoices)
+            {
+                invoiceIds.Add(inv.Id);
+                string status = (inv.PaymentStatus?.ToUpper() == "PAGADO") ? "PAGADO" : "CXP";
+
+                foreach (var d in inv.Details)
+                {
+                    string tipo = (d.ItemType == "S" || (d.SparePart != null && d.SparePart.ItemType != null && d.SparePart.ItemType.ToLower().Contains("servicio"))) ? "S" : "C";
+                    string desc = !string.IsNullOrWhiteSpace(d.Description) 
+                        ? d.Description 
+                        : (d.SparePart?.Name ?? d.PurchaseRequisition?.PartNameOrDescription ?? "SIN DESCRIPCIÓN");
+
+                    string reqNum = d.PurchaseRequisitionId.HasValue 
+                        ? $"R.{d.PurchaseRequisition?.DateRequested:ddMMyy}-{d.PurchaseRequisitionId.Value}" 
+                        : "S/N";
+
+                    decimal cost = d.QuantityReceived * d.UnitCost;
+                    totalSpent += cost;
+                    if (status == "PAGADO")
+                        totalPaid += cost;
+                    else
+                        totalPendingCxp += cost;
+
+                    string pagadoDia = (inv.PaymentDate.HasValue && status == "PAGADO") 
+                        ? inv.PaymentDate.Value.ToString("dd/MM/yyyy") 
+                        : "";
+
+                    string vehPlate = "STOCK / ALMACÉN";
+                    string empName = companyName;
+                    var veh = d.Vehicle ?? d.PurchaseRequisition?.ServiceRequest?.Vehicle;
+                    var trailer = d.Trailer ?? d.PurchaseRequisition?.ServiceRequest?.Trailer;
+
+                    if (veh != null)
+                    {
+                        vehPlate = $"{veh.Brand} {veh.LicensePlate}".Trim();
+                        if (veh.FleetOwner != null) empName = veh.FleetOwner.Name;
+                    }
+                    else if (trailer != null)
+                    {
+                        vehPlate = $"REMOLQUE {trailer.LicensePlate}".Trim();
+                        if (trailer.FleetOwner != null) empName = trailer.FleetOwner.Name;
+                    }
+
+                    items.Add(new ExpensesSheetItemDto
+                    {
+                        InvoiceId = inv.Id,
+                        DetailId = d.Id,
+                        FechaCompra = inv.DateIssued.ToString("dd/MM/yyyy"),
+                        Tipo = tipo,
+                        Estatus = status,
+                        Descripcion = desc,
+                        Modelo = d.SparePart?.Model ?? "S/M",
+                        Marca = d.SparePart?.Brand ?? "S/M",
+                        Cantidad = d.QuantityReceived,
+                        ReqCompra = reqNum,
+                        NumeroFactura = inv.InvoiceNumber,
+                        Proveedor = inv.Supplier?.Name ?? "PROVEEDOR GENERAL",
+                        CostoUnitario = d.UnitCost,
+                        CostoTotal = cost,
+                        FechaRecibido = inv.DateIssued.ToString("dd/MM/yyyy"),
+                        PagadoDia = pagadoDia,
+                        FormaPago = !string.IsNullOrWhiteSpace(inv.PaymentMethod) ? inv.PaymentMethod.ToUpper() : "",
+                        TotalFactura = inv.TotalAmount,
+                        Vehiculo = vehPlate,
+                        Empresa = empName
+                    });
+                }
+            }
+
+            var response = new ExpensesSheetResponseDto
+            {
+                CompanyName = companyName,
+                PeriodText = periodText,
+                Summary = new ExpensesSheetSummaryDto
+                {
+                    TotalItems = items.Count,
+                    TotalInvoices = invoiceIds.Count,
+                    TotalSpent = totalSpent,
+                    TotalPaid = totalPaid,
+                    TotalPendingCxp = totalPendingCxp
+                },
+                Items = items
+            };
+
+            return Ok(response);
+        }
+
         // GET: api/PurchaseInvoices/export-expenses-sheet
         [HttpGet("export-expenses-sheet")]
         public async Task<IActionResult> ExportExpensesSheet(
@@ -514,6 +652,8 @@ namespace TransportManagement.API.Controllers
             [FromQuery] DateTime? endDate)
         {
             var query = _context.PurchaseInvoices
+                .AsNoTracking()
+                .AsSplitQuery()
                 .Include(pi => pi.Supplier)
                 .Include(pi => pi.PurchaseOrder)
                 .Include(pi => pi.Details)
@@ -792,5 +932,46 @@ namespace TransportManagement.API.Controllers
             string fileName = $"Registro_Gastos_Compras_{DateTime.UtcNow:yyyyMMdd_HHmm}.xlsx";
             return File(fileContent, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
         }
+    }
+
+    public class ExpensesSheetItemDto
+    {
+        public int InvoiceId { get; set; }
+        public int DetailId { get; set; }
+        public string FechaCompra { get; set; } = string.Empty;
+        public string Tipo { get; set; } = "C";
+        public string Estatus { get; set; } = "CXP";
+        public string Descripcion { get; set; } = string.Empty;
+        public string Modelo { get; set; } = "S/M";
+        public string Marca { get; set; } = "S/M";
+        public decimal Cantidad { get; set; }
+        public string ReqCompra { get; set; } = "S/N";
+        public string NumeroFactura { get; set; } = string.Empty;
+        public string Proveedor { get; set; } = string.Empty;
+        public decimal CostoUnitario { get; set; }
+        public decimal CostoTotal { get; set; }
+        public string FechaRecibido { get; set; } = string.Empty;
+        public string PagadoDia { get; set; } = string.Empty;
+        public string FormaPago { get; set; } = string.Empty;
+        public decimal TotalFactura { get; set; }
+        public string Vehiculo { get; set; } = "STOCK / ALMACÉN";
+        public string Empresa { get; set; } = string.Empty;
+    }
+
+    public class ExpensesSheetSummaryDto
+    {
+        public int TotalItems { get; set; }
+        public int TotalInvoices { get; set; }
+        public decimal TotalSpent { get; set; }
+        public decimal TotalPaid { get; set; }
+        public decimal TotalPendingCxp { get; set; }
+    }
+
+    public class ExpensesSheetResponseDto
+    {
+        public string CompanyName { get; set; } = string.Empty;
+        public string PeriodText { get; set; } = string.Empty;
+        public ExpensesSheetSummaryDto Summary { get; set; } = new();
+        public List<ExpensesSheetItemDto> Items { get; set; } = new();
     }
 }

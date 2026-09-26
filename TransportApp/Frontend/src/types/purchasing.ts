@@ -88,3 +88,40 @@ export interface PurchaseInvoiceDetail {
   itemType?: string; // "C" | "S"
   description?: string;
 }
+
+
+export interface ExpensesSheetItem {
+  fechaCompra: string;
+  tipo: string;
+  estatus: string;
+  descripcion: string;
+  modelo: string;
+  marca: string;
+  cantidad: number;
+  reqCompra: string;
+  numeroFactura: string;
+  proveedor: string;
+  costoUnitario: number;
+  costoTotal: number;
+  fechaRecibido: string;
+  pagadoDia: string;
+  formaPago: string;
+  totalFactura: number;
+  vehiculo: string;
+  empresa: string;
+}
+
+export interface ExpensesSheetSummary {
+  totalItems: number;
+  totalInvoices: number;
+  totalSpent: number;
+  totalPaid: number;
+  totalPendingCxp: number;
+}
+
+export interface ExpensesSheetResponse {
+  companyName: string;
+  periodText: string;
+  summary: ExpensesSheetSummary;
+  items: ExpensesSheetItem[];
+}

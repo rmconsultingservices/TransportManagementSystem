@@ -1,5 +1,5 @@
 import api from '../lib/api';
-import type { PurchaseRequisition, Supplier, Quotation, PurchaseOrder, PurchaseInvoice } from '../types';
+import type { PurchaseRequisition, Supplier, Quotation, PurchaseOrder, PurchaseInvoice, ExpensesSheetResponse } from '../types';
 
 export const purchasingService = {
   // Suppliers
@@ -80,6 +80,15 @@ export const purchasingService = {
     paymentData: { paymentDate: string; paymentMethod: string; paymentReference?: string; amountPaid: number }
   ): Promise<PurchaseInvoice> => {
     const response = await api.post<PurchaseInvoice>(`/purchaseinvoices/${invoiceId}/record-payment`, paymentData);
+    return response.data;
+  },
+
+  // Get Expenses Sheet Data (Structured for modal & viewer)
+  getExpensesSheet: async (startDate?: string, endDate?: string): Promise<ExpensesSheetResponse> => {
+    const params: Record<string, string> = {};
+    if (startDate) params.startDate = startDate;
+    if (endDate) params.endDate = endDate;
+    const response = await api.get<ExpensesSheetResponse>('/purchaseinvoices/expenses-sheet', { params });
     return response.data;
   },
 
