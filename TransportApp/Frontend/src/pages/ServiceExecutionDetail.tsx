@@ -25,6 +25,13 @@ export default function ServiceExecutionDetail() {
   const [stockQty, setStockQty] = useState(1);
   const [showStockForm, setShowStockForm] = useState(false);
 
+  // Cierre de ticket y modal de reporte
+  const [showCloseModal, setShowCloseModal] = useState(false);
+  const [closeMileage, setCloseMileage] = useState<number | ''>('');
+  const [closeObservations, setCloseObservations] = useState('');
+  const [submittingClose, setSubmittingClose] = useState(false);
+  const [showClosureReportModal, setShowClosureReportModal] = useState(false);
+
   const fetchData = async () => {
     try {
       if (!id) return;
@@ -111,23 +118,33 @@ export default function ServiceExecutionDetail() {
     }
   };
 
-  const handleCompleteFinal = async () => {
+  const handleOpenCloseModal = () => {
     if (!request) return;
-    const mileageStr = prompt('Kilometraje actual de la gandola al finalizar todo el servicio:');
-    if (!mileageStr) return;
-    const mileage = Number(mileageStr);
-    
-    const finalObs = prompt('Conclusión general del servicio prestado:');
+    const currentKm = request.vehicle?.currentMileage || request.trailer?.currentMileage || '';
+    setCloseMileage(currentKm);
+    setCloseObservations(request.execution?.finalObservations || '');
+    setShowCloseModal(true);
+  };
+
+  const handleConfirmClose = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!request) return;
 
     try {
+      setSubmittingClose(true);
+      const mileage = closeMileage !== '' ? Number(closeMileage) : undefined;
       await workshopService.executeService(request.id, {
-        finalObservations: finalObs || undefined,
-        mileageAtService: isNaN(mileage) ? undefined : mileage
+        finalObservations: closeObservations.trim() || undefined,
+        mileageAtService: mileage && !isNaN(mileage) ? mileage : undefined
       });
-      alert('Ticket cerrado con éxito.');
-      navigate('/workshop');
+      setShowCloseModal(false);
+      await fetchData();
+      setShowClosureReportModal(true);
     } catch (error) {
       console.error('Error closing ticket:', error);
+      alert('Error al cerrar el ticket.');
+    } finally {
+      setSubmittingClose(false);
     }
   };
 
@@ -179,19 +196,19 @@ export default function ServiceExecutionDetail() {
         
         {request.status !== 'Completado' ? (
             <button 
-              onClick={handleCompleteFinal}
-              className="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-colors shadow-sm"
+              onClick={handleOpenCloseModal}
+              className="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-colors shadow-sm cursor-pointer"
             >
               <CheckCircle2 size={18} />
               Concluir Servicio Definitivo
             </button>
           ) : (
             <button 
-              onClick={() => window.open(`/print-closure/${request.id}`, '_blank')}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-colors shadow-sm"
+              onClick={() => setShowClosureReportModal(true)}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-colors shadow-sm cursor-pointer"
             >
               <Printer size={18} />
-              Imprimir Reporte de Cierre
+              Ver Reporte de Cierre
             </button>
           )}
       </div>
@@ -463,7 +480,145 @@ export default function ServiceExecutionDetail() {
         </div>
 
       </div>
-    </div>
+    
+      {/* Modal de Confirmación de Cierre del Ticket */}
+      {showCloseModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 w-full max-w-lg overflow-hidden">
+            <div className="p-5 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/60 dark:bg-slate-800/50">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 rounded-xl">
+                  <CheckCircle2 size={20} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 dark:text-white text-base">Concluir Servicio Definitivo</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Ticket #{request.id.toString().padStart(4, '0')}</p>
+                </div>
+              </div>
+              <button onClick={() => setShowCloseModal(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmClose} className="p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                  Kilometraje actual de la unidad ({request.vehicle?.licensePlate || request.trailer?.licensePlate || 'N/A'})
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  required
+                  placeholder="ej. 145200"
+                  value={closeMileage}
+                  onChange={e => setCloseMileage(e.target.value === '' ? '' : Number(e.target.value))}
+                  className="w-full rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-sm text-slate-900 dark:text-white font-mono font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+                <span className="text-[11px] text-slate-400 mt-1 block">
+                  Este kilometraje actualizará el odómetro del vehículo en el catálogo de flota.
+                </span>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                  Conclusión técnica / Observaciones finales
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="Detalles del trabajo final realizado, pruebas operativas, recomendaciones..."
+                  value={closeObservations}
+                  onChange={e => setCloseObservations(e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 p-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setShowCloseModal(false)}
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingClose}
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-2 shadow-sm transition-all cursor-pointer disabled:opacity-60"
+                >
+                  {submittingClose ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
+                  <span>Cerrar Ticket y Ver Reporte</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal del Reporte Oficial de Cierre */}
+      {showClosureReportModal && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-hidden animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-5xl h-[92vh] flex flex-col overflow-hidden">
+            
+            {/* Modal Header */}
+            <div className="p-4 sm:px-6 bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-400">
+                  <Printer size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+                    Reporte Oficial de Cierre de Servicio
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Ticket #{request.id.toString().padStart(4, '0')} &bull; {request.vehicle?.licensePlate || request.trailer?.licensePlate || 'Sin Placa'} &bull; Estatus: Completado
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => window.open(`/print-closure/${request.id}`, '_blank')}
+                  className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-sm shadow-indigo-600/20 active:scale-95 cursor-pointer"
+                  title="Abrir en pestaña de impresión"
+                >
+                  <Printer size={15} />
+                  <span>Imprimir / Abrir PDF</span>
+                </button>
+
+                <button
+                  onClick={() => setShowClosureReportModal(false)}
+                  className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 rounded-xl transition-all cursor-pointer"
+                  title="Cerrar vista previa"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body: Embedded Print View iframe */}
+            <div className="flex-1 bg-slate-100 dark:bg-slate-950 p-2 sm:p-4 overflow-hidden flex justify-center">
+              <iframe
+                src={`/print-closure/${request.id}`}
+                title="Reporte de Cierre"
+                className="w-full h-full rounded-xl bg-white border border-slate-200 shadow-sm"
+              />
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-3 sm:px-6 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs text-slate-500">
+              <span>El servicio ha sido concluido exitosamente y el odómetro de la unidad fue actualizado.</span>
+              <button
+                onClick={() => setShowClosureReportModal(false)}
+                className="px-4 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold transition-all cursor-pointer"
+              >
+                Cerrar Ventana
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+</div>
   );
 }
 
