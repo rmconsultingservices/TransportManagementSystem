@@ -188,10 +188,10 @@ export default function InvoicesTab() {
 
   const handleReactivateInvoice = async (inv: PurchaseInvoice) => {
     if (!inv.isCancelled) return;
-    if (confirm(`¿Está seguro de que desea reactivar la factura ${inv.invoiceNumber}? El inventario será restituido.`)) {
+    if (confirm(`¿Está seguro de que desea reactivar la factura ${inv.invoiceNumber}? La orden de compra, el inventario y la vinculación con el ticket de servicio serán restituidos.`)) {
       try {
         await purchasingService.reactivatePurchaseInvoice(inv.id);
-        alert('Factura reactivada exitosamente.');
+        alert('Factura reactivada exitosamente. Se ha restablecido la orden de compra y el ticket de servicio asociado.');
         fetchData();
       } catch (error) {
         console.error(error);

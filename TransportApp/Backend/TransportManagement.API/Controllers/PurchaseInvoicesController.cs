@@ -158,64 +158,8 @@ namespace TransportManagement.API.Controllers
             _context.PurchaseInvoices.Add(invoice);
             await _context.SaveChangesAsync();
 
-            // Link details to ServiceRequest (ODT) if linked to a PurchaseRequisition with ServiceRequestId
-            foreach (var detail in invoice.Details)
-            {
-                if (detail.PurchaseRequisitionId.HasValue && detail.PurchaseRequisitionId.Value > 0)
-                {
-                    var req = await _context.PurchaseRequisitions
-                        .Include(r => r.ServiceRequest)
-                            .ThenInclude(sr => sr!.Execution)
-                        .FirstOrDefaultAsync(r => r.Id == detail.PurchaseRequisitionId.Value);
-
-                    if (req?.ServiceRequest != null)
-                    {
-                        var sReq = req.ServiceRequest;
-                        if (sReq.Execution == null)
-                        {
-                            sReq.Execution = new ServiceExecution
-                            {
-                                ServiceRequestId = sReq.Id,
-                                CompanyId = invoice.CompanyId
-                            };
-                            _context.ServiceExecutions.Add(sReq.Execution);
-                            await _context.SaveChangesAsync();
-                        }
-
-                        bool isService = (detail.ItemType == "S");
-                        string desc = detail.Description ?? string.Empty;
-                        if (detail.SparePartId.HasValue && detail.SparePartId.Value > 0)
-                        {
-                            var sp = await _context.SpareParts.FindAsync(detail.SparePartId.Value);
-                            if (sp != null)
-                            {
-                                if (string.IsNullOrWhiteSpace(desc)) desc = sp.Name;
-                                if (sp.ItemType == "Servicio") isService = true;
-                            }
-                        }
-                        if (string.IsNullOrWhiteSpace(desc))
-                        {
-                            desc = req.PartNameOrDescription;
-                        }
-
-                        var usedItem = new ServiceExecutionSparePart
-                        {
-                            CompanyId = invoice.CompanyId,
-                            ServiceExecutionId = sReq.Execution.Id,
-                            SparePartId = (detail.SparePartId.HasValue && detail.SparePartId.Value > 0) ? detail.SparePartId : null,
-                            Quantity = detail.QuantityReceived > 0 ? detail.QuantityReceived : 1,
-                            UnitCost = detail.UnitCost,
-                            UnitOfMeasureId = detail.UnitOfMeasureId,
-                            ItemType = isService ? "S" : "C",
-                            Description = desc,
-                            PurchaseInvoiceDetailId = detail.Id
-                        };
-
-                        _context.ServiceExecutionSpareParts.Add(usedItem);
-                    }
-                }
-            }
-            await _context.SaveChangesAsync();
+            // Link details to ServiceRequest (ticket de servicio)
+            await LinkInvoiceDetailsToServiceRequestsAsync(invoice);
 
             return CreatedAtAction("GetPurchaseInvoices", new { id = invoice.Id }, invoice);
         }
@@ -449,8 +393,22 @@ namespace TransportManagement.API.Controllers
             if (invoice == null) return NotFound();
             if (!invoice.IsCancelled) return BadRequest("Invoice is not cancelled.");
 
+            var cleanInvoiceNumber = invoice.InvoiceNumber?.Trim() ?? string.Empty;
+            var duplicateActiveExists = await _context.PurchaseInvoices
+                .AnyAsync(pi => pi.Id != invoice.Id
+                             && pi.CompanyId == invoice.CompanyId 
+                             && pi.SupplierId == invoice.SupplierId 
+                             && pi.InvoiceNumber.Trim().ToLower() == cleanInvoiceNumber.ToLower() 
+                             && !pi.IsCancelled);
+
+            if (duplicateActiveExists)
+            {
+                return BadRequest($"No se puede reactivar: ya existe otra factura activa registrada con el número '{cleanInvoiceNumber}' para este proveedor.");
+            }
+
             invoice.IsCancelled = false;
 
+            // 1. Re-apply inventory stock for physical parts
             foreach (var detail in invoice.Details)
             {
                 bool isService = (detail.ItemType == "S");
@@ -476,8 +434,114 @@ namespace TransportManagement.API.Controllers
                 }
             }
 
+            // 2. Re-mark Purchase Order status back to "Completada"
+            if (invoice.PurchaseOrderId.HasValue && invoice.PurchaseOrderId.Value > 0)
+            {
+                var po = await _context.PurchaseOrders.FindAsync(invoice.PurchaseOrderId.Value);
+                if (po != null)
+                {
+                    po.Status = "Completada";
+                }
+            }
+
             await _context.SaveChangesAsync();
+
+            // 3. Re-inject items and services into Service Requests (tickets)
+            await LinkInvoiceDetailsToServiceRequestsAsync(invoice);
+
             return NoContent();
+        }
+
+        private async Task LinkInvoiceDetailsToServiceRequestsAsync(PurchaseInvoice invoice)
+        {
+            if (invoice.Details == null || !invoice.Details.Any()) return;
+
+            foreach (var detail in invoice.Details)
+            {
+                int? reqId = detail.PurchaseRequisitionId;
+                if (!reqId.HasValue && detail.PurchaseOrderDetailId.HasValue && detail.PurchaseOrderDetailId.Value > 0)
+                {
+                    var pod = await _context.PurchaseOrderDetails.FindAsync(detail.PurchaseOrderDetailId.Value);
+                    if (pod != null && pod.PurchaseRequisitionId > 0)
+                    {
+                        reqId = pod.PurchaseRequisitionId;
+                    }
+                }
+
+                if (!reqId.HasValue && invoice.PurchaseOrderId.HasValue && invoice.PurchaseOrderId.Value > 0)
+                {
+                    var poDetails = await _context.PurchaseOrderDetails
+                        .Where(pod => pod.PurchaseOrderId == invoice.PurchaseOrderId.Value)
+                        .ToListAsync();
+
+                    if (poDetails.Count == 1 && poDetails[0].PurchaseRequisitionId > 0)
+                    {
+                        reqId = poDetails[0].PurchaseRequisitionId;
+                    }
+                }
+
+                if (reqId.HasValue && reqId.Value > 0)
+                {
+                    var req = await _context.PurchaseRequisitions
+                        .Include(r => r.ServiceRequest)
+                            .ThenInclude(sr => sr!.Execution)
+                        .FirstOrDefaultAsync(r => r.Id == reqId.Value);
+
+                    if (req?.ServiceRequest != null)
+                    {
+                        var sReq = req.ServiceRequest;
+                        if (sReq.Execution == null)
+                        {
+                            sReq.Execution = new ServiceExecution
+                            {
+                                ServiceRequestId = sReq.Id,
+                                CompanyId = invoice.CompanyId
+                            };
+                            _context.ServiceExecutions.Add(sReq.Execution);
+                            await _context.SaveChangesAsync();
+                        }
+
+                        // Prevent duplicate injection
+                        bool alreadyLinked = await _context.ServiceExecutionSpareParts
+                            .AnyAsync(sp => sp.PurchaseInvoiceDetailId == detail.Id);
+
+                        if (!alreadyLinked)
+                        {
+                            bool isService = (detail.ItemType == "S");
+                            string desc = detail.Description ?? string.Empty;
+                            if (detail.SparePartId.HasValue && detail.SparePartId.Value > 0)
+                            {
+                                var sp = await _context.SpareParts.FindAsync(detail.SparePartId.Value);
+                                if (sp != null)
+                                {
+                                    if (string.IsNullOrWhiteSpace(desc)) desc = sp.Name;
+                                    if (sp.ItemType == "Servicio") isService = true;
+                                }
+                            }
+                            if (string.IsNullOrWhiteSpace(desc))
+                            {
+                                desc = req.PartNameOrDescription;
+                            }
+
+                            var usedItem = new ServiceExecutionSparePart
+                            {
+                                CompanyId = invoice.CompanyId,
+                                ServiceExecutionId = sReq.Execution.Id,
+                                SparePartId = (detail.SparePartId.HasValue && detail.SparePartId.Value > 0) ? detail.SparePartId : null,
+                                Quantity = detail.QuantityReceived > 0 ? detail.QuantityReceived : 1,
+                                UnitCost = detail.UnitCost,
+                                UnitOfMeasureId = detail.UnitOfMeasureId,
+                                ItemType = isService ? "S" : "C",
+                                Description = desc,
+                                PurchaseInvoiceDetailId = detail.Id
+                            };
+
+                            _context.ServiceExecutionSpareParts.Add(usedItem);
+                        }
+                    }
+                }
+            }
+            await _context.SaveChangesAsync();
         }
 
         // POST: api/PurchaseInvoices/{id}/attachment
