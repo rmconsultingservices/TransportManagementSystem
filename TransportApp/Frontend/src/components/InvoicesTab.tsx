@@ -144,6 +144,10 @@ export default function InvoicesTab() {
           if (match) matchedPartId = match.id;
         }
 
+        const matchedPart = parts.find(p => p.id === matchedPartId);
+        const isPartService = matchedPart?.itemType === 'Servicio';
+        const isTextService = req?.partNameOrDescription?.toLowerCase().includes('servicio') || req?.partNameOrDescription?.toLowerCase().includes('trabajo') || false;
+
         return {
           sparePartId: matchedPartId,
           description: req?.partNameOrDescription || 'Artículo OC',
@@ -158,7 +162,7 @@ export default function InvoicesTab() {
           vehicle: veh,
           trailerId: trailer?.id || null,
           trailer: trailer,
-          itemType: 'C'
+          itemType: (isPartService || isTextService) ? 'S' : 'C'
         };
       });
 
@@ -627,6 +631,10 @@ export default function InvoicesTab() {
                                  if (part) {
                                    if (!d.unitCost) updateLine(index, 'unitCost', part.unitCost || 0);
                                    if (part.unitOfMeasureId && !d.unitOfMeasureId) updateLine(index, 'unitOfMeasureId', part.unitOfMeasureId);
+                                   if (part.itemType === 'Servicio') {
+                                     updateLine(index, 'itemType', 'S');
+                                     if (!d.description) updateLine(index, 'description', part.name);
+                                   }
                                  }
                                }}
                                spareParts={parts}

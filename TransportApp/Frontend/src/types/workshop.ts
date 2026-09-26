@@ -4,11 +4,22 @@ import type { ServiceLog, PurchaseRequisition } from './logs';
 
 export interface ServiceExecutionSparePart {
   id: number;
-  sparePartId: number;
+  sparePartId?: number | null;
   sparePart?: SparePart;
   quantity: number;
-    unitCost?: number;
-    unitOfMeasureId?: number | null;
+  unitCost?: number;
+  unitOfMeasureId?: number | null;
+  itemType?: string;
+  description?: string;
+  purchaseInvoiceDetailId?: number | null;
+  purchaseInvoiceDetail?: {
+    id: number;
+    purchaseInvoice?: {
+      id: number;
+      invoiceNumber: string;
+      supplier?: { id: number; name: string };
+    };
+  };
 }
 
 export interface ServiceExecution {
@@ -54,4 +65,5 @@ export interface MaintenanceOrder {
   mechanicAssigned: string;
   notes: string;
 }
+
 

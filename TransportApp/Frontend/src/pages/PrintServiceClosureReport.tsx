@@ -60,8 +60,13 @@ export default function PrintServiceClosureReport() {
   const formattedDate = reqDate.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
   const startDate = new Date(request.dateRequested).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
-  const usedParts = request.execution?.usedSpareParts || [];
-  const totalCost = usedParts.reduce((acc, part) => acc + (part.quantity * (part.unitCost || part.sparePart?.unitCost || 0)), 0);
+  const allUsedItems = request.execution?.usedSpareParts || [];
+  const physicalParts = allUsedItems.filter(p => p.itemType !== 'S' && p.sparePart?.itemType !== 'Servicio');
+  const externalServices = allUsedItems.filter(p => p.itemType === 'S' || p.sparePart?.itemType === 'Servicio');
+
+  const totalPartsCost = physicalParts.reduce((acc, part) => acc + (part.quantity * (part.unitCost ?? part.sparePart?.unitCost ?? 0)), 0);
+  const totalServicesCost = externalServices.reduce((acc, srv) => acc + (srv.quantity * (srv.unitCost ?? srv.sparePart?.unitCost ?? 0)), 0);
+  const totalCost = totalPartsCost + totalServicesCost;
   const ownerCompanyName = request.vehicle?.fleetOwner?.name || request.trailer?.fleetOwner?.name || selectedCompany?.name || 'N/A';
 
   return (
@@ -162,8 +167,8 @@ export default function PrintServiceClosureReport() {
 
       {/* Spare Parts Consumed */}
       <div className="mb-2 flex items-end justify-between">
-        <h3 className="text-base font-bold text-gray-900">Repuestos y Materiales Utilizados</h3>
-        <span className="text-[10px] font-medium text-gray-500">{usedParts.length} &Iacute;tems</span>
+        <h3 className="text-base font-bold text-gray-900">Repuestos y Materiales de Almac&eacute;n</h3>
+        <span className="text-[10px] font-medium text-gray-500">{physicalParts.length} &Iacute;tems</span>
       </div>
 
       <div className="mb-6 overflow-hidden rounded-t-md bg-gray-50 border border-gray-100">
@@ -178,14 +183,14 @@ export default function PrintServiceClosureReport() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 bg-white">
-            {usedParts.length > 0 ? (
-              usedParts.map((usp, idx) => {
-                const unitCost = usp.unitCost || usp.sparePart?.unitCost || 0;
+            {physicalParts.length > 0 ? (
+              physicalParts.map((usp, idx) => {
+                const unitCost = usp.unitCost ?? usp.sparePart?.unitCost ?? 0;
                 const subTotal = usp.quantity * unitCost;
                 return (
                   <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                    <td className="px-4 py-2 text-xs font-semibold text-gray-800">{usp.sparePart?.code}</td>
-                    <td className="px-4 py-2 text-xs text-gray-800">{formatSparePartName(usp.sparePart)}</td>
+                    <td className="px-4 py-2 text-xs font-semibold text-gray-800">{usp.sparePart?.code || '---'}</td>
+                    <td className="px-4 py-2 text-xs text-gray-800">{usp.description || formatSparePartName(usp.sparePart)}</td>
                     <td className="px-4 py-2 text-xs font-semibold text-gray-800 text-right">{usp.quantity}</td>
                     <td className="px-4 py-2 text-xs text-gray-600 text-right">${unitCost.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
                     <td className="px-4 py-2 text-xs font-bold text-gray-900 text-right">${subTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
@@ -194,19 +199,81 @@ export default function PrintServiceClosureReport() {
               })
             ) : (
               <tr>
-                <td colSpan={5} className="px-4 py-2 text-xs text-gray-500 italic text-center">No se registr&oacute; el uso de repuestos.</td>
+                <td colSpan={5} className="px-4 py-2 text-xs text-gray-500 italic text-center">No se registr&oacute; el uso de repuestos de almac&eacute;n.</td>
               </tr>
             )}
           </tbody>
-          {usedParts.length > 0 && (
+          {physicalParts.length > 0 && (
             <tfoot>
               <tr className="border-t-2 border-gray-200 bg-gray-50">
-                <td colSpan={4} className="px-4 py-2 text-[10px] font-bold text-gray-700 tracking-widest uppercase text-right">Total Repuestos:</td>
-                <td className="px-4 py-2 text-sm font-black text-indigo-700 text-right">${totalCost.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                <td colSpan={4} className="px-4 py-2 text-[10px] font-bold text-gray-700 tracking-widest uppercase text-right">Subtotal Repuestos:</td>
+                <td className="px-4 py-2 text-sm font-black text-indigo-700 text-right">${totalPartsCost.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
               </tr>
             </tfoot>
           )}
         </table>
+      </div>
+
+      {/* External Services Consumed */}
+      {externalServices.length > 0 && (
+        <>
+          <div className="mb-2 mt-4 flex items-end justify-between">
+            <h3 className="text-base font-bold text-gray-900">Servicios y Trabajos Externos</h3>
+            <span className="text-[10px] font-medium text-gray-500">{externalServices.length} &Iacute;tems</span>
+          </div>
+
+          <div className="mb-6 overflow-hidden rounded-t-md bg-gray-50 border border-gray-100">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="border-b border-gray-200 bg-amber-50/60">
+                  <th className="px-4 py-2 text-[9px] font-bold text-amber-900 tracking-widest uppercase">Descripci&oacute;n del Trabajo / Servicio</th>
+                  <th className="px-4 py-2 text-[9px] font-bold text-amber-900 tracking-widest uppercase">Proveedor / Factura</th>
+                  <th className="px-4 py-2 text-[9px] font-bold text-amber-900 tracking-widest uppercase text-right">Cant.</th>
+                  <th className="px-4 py-2 text-[9px] font-bold text-amber-900 tracking-widest uppercase text-right">P. Unit.</th>
+                  <th className="px-4 py-2 text-[9px] font-bold text-amber-900 tracking-widest uppercase text-right">Subtotal</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 bg-white">
+                {externalServices.map((srv, idx) => {
+                  const unitCost = srv.unitCost ?? srv.sparePart?.unitCost ?? 0;
+                  const subTotal = srv.quantity * unitCost;
+                  const supplierName = srv.purchaseInvoiceDetail?.purchaseInvoice?.supplier?.name;
+                  const invNumber = srv.purchaseInvoiceDetail?.purchaseInvoice?.invoiceNumber;
+                  const sourceText = supplierName ? `${supplierName} (Fact. #${invNumber})` : 'Servicio Tercerizado';
+                  return (
+                    <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                      <td className="px-4 py-2 text-xs font-semibold text-gray-800">{srv.description || formatSparePartName(srv.sparePart) || 'Servicio Externo'}</td>
+                      <td className="px-4 py-2 text-xs text-gray-600">{sourceText}</td>
+                      <td className="px-4 py-2 text-xs font-semibold text-gray-800 text-right">{srv.quantity}</td>
+                      <td className="px-4 py-2 text-xs text-gray-600 text-right">${unitCost.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                      <td className="px-4 py-2 text-xs font-bold text-gray-900 text-right">${subTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-gray-200 bg-gray-50">
+                  <td colSpan={4} className="px-4 py-2 text-[10px] font-bold text-gray-700 tracking-widest uppercase text-right">Subtotal Servicios:</td>
+                  <td className="px-4 py-2 text-sm font-black text-amber-800 text-right">${totalServicesCost.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </>
+      )}
+
+      {/* Resumen Total General ODT */}
+      <div className="mb-6 bg-slate-50 border border-slate-200 rounded-lg p-3 flex justify-between items-center">
+        <div className="text-xs text-gray-600 space-y-0.5">
+          <div>Subtotal Repuestos Almac&eacute;n: <span className="font-semibold text-gray-900">${totalPartsCost.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+          {externalServices.length > 0 && (
+            <div>Subtotal Servicios Externos: <span className="font-semibold text-gray-900">${totalServicesCost.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+          )}
+        </div>
+        <div className="text-right">
+          <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Costo Total ODT</p>
+          <p className="text-xl font-black text-indigo-700 font-mono">${totalCost.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
+        </div>
       </div>
 
       {/* Signatures */}

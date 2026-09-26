@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using TransportManagement.API.Data;
 using TransportManagement.API.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -30,7 +30,7 @@ builder.Services.AddCors(options =>
         policy.WithOrigins("https://transportmanagementsystem.pages.dev") // Sin el "/" al final
               .AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowCredentials(); // Necesario si usas cookies o auth específica
+              .AllowCredentials(); // Necesario si usas cookies o auth especÃ­fica
     });
 });
 builder.Services.AddOpenApi();
@@ -72,7 +72,7 @@ using (var scope = app.Services.CreateScope())
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     try
     {
-        // Aplicar migraciones de EF Core automáticamente en el arranque
+        // Aplicar migraciones de EF Core automÃ¡ticamente en el arranque
         try { context.Database.Migrate(); } catch (Exception mEx) { Console.WriteLine("Migrate note: " + mEx.Message); }
         
         context.Database.ExecuteSqlRaw(@"
@@ -122,6 +122,21 @@ using (var scope = app.Services.CreateScope())
 
                 IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('PurchaseInvoiceDetails') AND name = 'Description')
                 ALTER TABLE PurchaseInvoiceDetails ADD Description NVARCHAR(500) NULL;
+
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ServiceExecutionSpareParts') AND name = 'ItemType')
+                ALTER TABLE ServiceExecutionSpareParts ADD ItemType NVARCHAR(10) NOT NULL DEFAULT 'C';
+
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ServiceExecutionSpareParts') AND name = 'Description')
+                ALTER TABLE ServiceExecutionSpareParts ADD Description NVARCHAR(500) NULL;
+
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ServiceExecutionSpareParts') AND name = 'PurchaseInvoiceDetailId')
+                ALTER TABLE ServiceExecutionSpareParts ADD PurchaseInvoiceDetailId INT NULL;
+
+                BEGIN TRY
+                    ALTER TABLE ServiceExecutionSpareParts ALTER COLUMN SparePartId INT NULL;
+                END TRY
+                BEGIN CATCH
+                END CATCH
             ");
 
         Console.WriteLine("Base de datos verificada y actualizada correctamente.");
@@ -150,7 +165,7 @@ else
     app.UseCors("AllowCloudflare");
 }
 
-// 2. Después la redirección (o coméntala si sigues con problemas)
+// 2. DespuÃ©s la redirecciÃ³n (o comÃ©ntala si sigues con problemas)
 // app.UseHttpsRedirection();
 
 // Configure the HTTP request pipeline.
@@ -163,10 +178,10 @@ if (app.Environment.IsDevelopment())
 }
 else 
 {
-    app.MapOpenApi(); // Habilitar OpenAPI también en producción
+    app.MapOpenApi(); // Habilitar OpenAPI tambiÃ©n en producciÃ³n
 }
 
-// 3. Luego la autenticación y autorización
+// 3. Luego la autenticaciÃ³n y autorizaciÃ³n
 app.UseAuthentication();
 app.UseAuthorization();
 

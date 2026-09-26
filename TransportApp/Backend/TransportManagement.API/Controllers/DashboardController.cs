@@ -515,8 +515,8 @@ namespace TransportManagement.API.Controllers
                 .ToListAsync();
 
             var recentUsedPartIds = await _context.ServiceExecutionSpareParts
-                .Where(p => p.ServiceExecution != null && p.ServiceExecution.DateCompleted >= ninetyDaysAgo)
-                .Select(p => p.SparePartId)
+                .Where(p => p.SparePartId.HasValue && p.ServiceExecution != null && p.ServiceExecution.DateCompleted >= ninetyDaysAgo)
+                .Select(p => p.SparePartId!.Value)
                 .Distinct()
                 .ToListAsync();
 
@@ -1058,7 +1058,7 @@ namespace TransportManagement.API.Controllers
 
                         usedPartsDto.Add(new InstalledSparePartDto
                         {
-                            SparePartId = p.SparePartId,
+                            SparePartId = p.SparePartId ?? 0,
                             Code = p.SparePart?.Code ?? "",
                             Name = p.SparePart?.Name ?? "Repuesto",
                             Quantity = Math.Round(p.Quantity, 2),

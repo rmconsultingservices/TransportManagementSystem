@@ -57,6 +57,11 @@ namespace TransportManagement.API.Controllers
                 .Include(s => s.Execution)
                     .ThenInclude(e => e.UsedSpareParts)
                         .ThenInclude(usp => usp.SparePart)
+                .Include(s => s.Execution)
+                    .ThenInclude(e => e.UsedSpareParts)
+                        .ThenInclude(usp => usp.PurchaseInvoiceDetail)
+                            .ThenInclude(pid => pid!.PurchaseInvoice)
+                                .ThenInclude(pi => pi!.Supplier)
                 .AsSplitQuery()
                 .FirstOrDefaultAsync(s => s.Id == id);
 
@@ -216,10 +221,13 @@ namespace TransportManagement.API.Controllers
 
             var usedPart = new ServiceExecutionSparePart
             {
+                CompanyId = request.CompanyId,
                 ServiceExecutionId = request.Execution.Id,
                 SparePartId = dto.SparePartId,
                 Quantity = dto.Quantity,
-                UnitCost = part.UnitCost
+                UnitCost = part.UnitCost,
+                ItemType = part.ItemType == "Servicio" ? "S" : "C",
+                Description = part.Name
             };
 
             // Deduct from stock
@@ -232,6 +240,37 @@ namespace TransportManagement.API.Controllers
             await _context.SaveChangesAsync();
 
             return Ok(usedPart);
+        }
+
+        // DELETE: api/ServiceRequests/5/UsedParts/12
+        [HttpDelete("{id}/UsedParts/{usedPartId}")]
+        public async Task<IActionResult> RemoveUsedPart(int id, int usedPartId)
+        {
+            var request = await _context.ServiceRequests
+                .Include(r => r.Execution)
+                .FirstOrDefaultAsync(r => r.Id == id);
+
+            if (request == null || request.Execution == null) return NotFound();
+
+            var usedPart = await _context.ServiceExecutionSpareParts
+                .FirstOrDefaultAsync(p => p.Id == usedPartId && p.ServiceExecutionId == request.Execution.Id);
+
+            if (usedPart == null) return NotFound("Registro no encontrado.");
+
+            // Restore physical stock if it was not a service
+            if (usedPart.ItemType != "S" && usedPart.SparePartId.HasValue && usedPart.SparePartId.Value > 0)
+            {
+                var part = await _context.SpareParts.FindAsync(usedPart.SparePartId.Value);
+                if (part != null && part.ItemType != "Servicio")
+                {
+                    part.StockQuantity += usedPart.Quantity;
+                }
+            }
+
+            _context.ServiceExecutionSpareParts.Remove(usedPart);
+            await _context.SaveChangesAsync();
+
+            return NoContent();
         }
 
         // POST: api/ServiceRequests/5/Execute

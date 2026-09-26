@@ -99,6 +99,18 @@ export default function ServiceExecutionDetail() {
     }
   };
 
+  const handleRemoveUsedPart = async (usedPartId: number) => {
+    if (!request) return;
+    if (!confirm('¿Desea retirar este ítem del ticket? Si era un repuesto de almacén, se reintegrará al stock.')) return;
+    try {
+      await workshopService.removeUsedPart(request.id, usedPartId);
+      fetchData();
+    } catch (error) {
+      console.error('Error removing used item:', error);
+      alert('Error al retirar el ítem.');
+    }
+  };
+
   const handleCompleteFinal = async () => {
     if (!request) return;
     const mileageStr = prompt('Kilometraje actual de la gandola al finalizar todo el servicio:');
@@ -131,6 +143,11 @@ export default function ServiceExecutionDetail() {
   if (!request) {
     return <div className="p-12 text-center text-red-500">No se encontró la solicitud.</div>;
   }
+
+  const allUsedItems = request.execution?.usedSpareParts || [];
+  const physicalParts = allUsedItems.filter(p => p.itemType !== 'S' && p.sparePart?.itemType !== 'Servicio');
+  const externalServices = allUsedItems.filter(p => p.itemType === 'S' || p.sparePart?.itemType === 'Servicio');
+
 
   return (
     <div className="p-8 max-w-5xl mx-auto space-y-6">
@@ -191,21 +208,85 @@ export default function ServiceExecutionDetail() {
               Bitácora de Progreso y Repuestos Utilizados
             </h2>
             
-            {/* Parts Consumed List */}
-            {request.execution?.usedSpareParts && request.execution.usedSpareParts.length > 0 && (
-              <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-3">
-                 {request.execution.usedSpareParts.map(usp => (
-                   <div key={usp.id} className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 p-3 rounded-xl flex justify-between items-center animate-in fade-in zoom-in-95">
-                      <div className="flex items-center gap-3">
-                         <div className="bg-emerald-500 text-white p-2 rounded-lg"><Box size={16}/></div>
-                         <div>
-                            <div className="text-sm font-bold text-emerald-900 dark:text-emerald-100 uppercase">{usp.sparePart?.code}</div>
-                            <div className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">{formatSparePartName(usp.sparePart)}</div>
-                         </div>
-                      </div>
-                      <div className="text-xl font-black text-emerald-600">x{usp.quantity}</div>
-                   </div>
-                 ))}
+            {/* External Services Consumed List */}
+            {externalServices.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-xs font-bold text-amber-800 dark:text-amber-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <Wrench size={14} className="text-amber-600" />
+                  Servicios y Trabajos Externos Facturados ({externalServices.length})
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                   {externalServices.map(usp => {
+                     const supplier = usp.purchaseInvoiceDetail?.purchaseInvoice?.supplier?.name;
+                     const invNum = usp.purchaseInvoiceDetail?.purchaseInvoice?.invoiceNumber;
+                     return (
+                       <div key={usp.id} className="bg-amber-50/70 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-3 rounded-xl flex justify-between items-center animate-in fade-in zoom-in-95">
+                          <div className="flex items-center gap-3">
+                             <div className="bg-amber-500 text-white p-2 rounded-lg shadow-sm"><Wrench size={16}/></div>
+                             <div>
+                                <div className="text-sm font-bold text-amber-950 dark:text-amber-100 uppercase">{usp.description || usp.sparePart?.name || 'Servicio Externo'}</div>
+                                <div className="text-xs text-amber-700 dark:text-amber-400 font-medium">
+                                  {supplier ? `${supplier} (Fact. #${invNum})` : 'Servicio Facturado'}
+                                </div>
+                                <div className="text-xs font-bold text-amber-900 dark:text-amber-200 mt-0.5">
+                                  ${(usp.unitCost || 0).toLocaleString(undefined, {minimumFractionDigits: 2})} c/u
+                                </div>
+                             </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="text-xl font-black text-amber-700 dark:text-amber-300">x{usp.quantity}</div>
+                            {request.status !== 'Completado' && (
+                              <button 
+                                onClick={() => handleRemoveUsedPart(usp.id)}
+                                className="text-gray-400 hover:text-red-500 p-1.5 hover:bg-white dark:hover:bg-gray-800 rounded-lg transition-all"
+                                title="Retirar del ticket"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            )}
+                          </div>
+                       </div>
+                     );
+                   })}
+                </div>
+              </div>
+            )}
+
+            {/* Physical Parts Consumed List */}
+            {physicalParts.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-xs font-bold text-emerald-800 dark:text-emerald-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <Box size={14} className="text-emerald-600" />
+                  Repuestos Utilizados de Almacén ({physicalParts.length})
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                   {physicalParts.map(usp => (
+                     <div key={usp.id} className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 p-3 rounded-xl flex justify-between items-center animate-in fade-in zoom-in-95">
+                        <div className="flex items-center gap-3">
+                           <div className="bg-emerald-500 text-white p-2 rounded-lg shadow-sm"><Box size={16}/></div>
+                           <div>
+                              <div className="text-sm font-bold text-emerald-900 dark:text-emerald-100 uppercase">{usp.sparePart?.code || '---'}</div>
+                              <div className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">{usp.description || formatSparePartName(usp.sparePart)}</div>
+                              <div className="text-xs font-semibold text-emerald-800 dark:text-emerald-300 mt-0.5">
+                                ${(usp.unitCost || 0).toLocaleString(undefined, {minimumFractionDigits: 2})} c/u
+                              </div>
+                           </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="text-xl font-black text-emerald-600">x{usp.quantity}</div>
+                          {request.status !== 'Completado' && (
+                            <button 
+                              onClick={() => handleRemoveUsedPart(usp.id)}
+                              className="text-gray-400 hover:text-red-500 p-1.5 hover:bg-white dark:hover:bg-gray-800 rounded-lg transition-all"
+                              title="Retirar y devolver a almacén"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+                        </div>
+                     </div>
+                   ))}
+                </div>
               </div>
             )}
             

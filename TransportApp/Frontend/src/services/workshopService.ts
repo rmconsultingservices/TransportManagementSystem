@@ -37,6 +37,10 @@ export const workshopService = {
     await api.post(`/servicerequests/${id}/UsedParts`, { sparePartId, quantity });
   },
 
+  removeUsedPart: async (requestId: number, usedPartId: number): Promise<void> => {
+    await api.delete(`/servicerequests/${requestId}/UsedParts/${usedPartId}`);
+  },
+
   deleteRequisition: async (id: number): Promise<void> => {
     await api.delete(`/purchaserequisitions/${id}`);
   },
@@ -45,5 +49,6 @@ export const workshopService = {
     await api.post(`/servicerequests/${id}/Execute`, execution);
   }
 };
+
 
 

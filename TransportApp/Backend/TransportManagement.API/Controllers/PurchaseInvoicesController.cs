@@ -85,10 +85,21 @@ namespace TransportManagement.API.Controllers
 
             foreach (var detail in invoice.Details)
             {
-                // Only update physical stock if item is a registered physical spare part ("C")
-                if (detail.SparePartId > 0 && (string.IsNullOrEmpty(detail.ItemType) || detail.ItemType == "C"))
+                bool isService = (detail.ItemType == "S");
+                SparePart? sparePart = null;
+                if (detail.SparePartId > 0)
                 {
-                    var sparePart = await _context.SpareParts.FindAsync(detail.SparePartId);
+                    sparePart = await _context.SpareParts.FindAsync(detail.SparePartId);
+                    if (sparePart != null && sparePart.ItemType == "Servicio")
+                    {
+                        isService = true;
+                        detail.ItemType = "S";
+                    }
+                }
+
+                // Only update physical stock if item is a registered physical spare part ("C") and NOT a service
+                if (detail.SparePartId > 0 && !isService && (string.IsNullOrEmpty(detail.ItemType) || detail.ItemType == "C"))
+                {
                     if (sparePart != null)
                     {
                         decimal baseQuantity = await _context.GetBaseQuantityAsync(detail.SparePartId, detail.UnitOfMeasureId, detail.QuantityReceived);
@@ -140,6 +151,65 @@ namespace TransportManagement.API.Controllers
             }
 
             _context.PurchaseInvoices.Add(invoice);
+            await _context.SaveChangesAsync();
+
+            // Link details to ServiceRequest (ODT) if linked to a PurchaseRequisition with ServiceRequestId
+            foreach (var detail in invoice.Details)
+            {
+                if (detail.PurchaseRequisitionId.HasValue && detail.PurchaseRequisitionId.Value > 0)
+                {
+                    var req = await _context.PurchaseRequisitions
+                        .Include(r => r.ServiceRequest)
+                            .ThenInclude(sr => sr!.Execution)
+                        .FirstOrDefaultAsync(r => r.Id == detail.PurchaseRequisitionId.Value);
+
+                    if (req?.ServiceRequest != null)
+                    {
+                        var sReq = req.ServiceRequest;
+                        if (sReq.Execution == null)
+                        {
+                            sReq.Execution = new ServiceExecution
+                            {
+                                ServiceRequestId = sReq.Id,
+                                CompanyId = invoice.CompanyId
+                            };
+                            _context.ServiceExecutions.Add(sReq.Execution);
+                            await _context.SaveChangesAsync();
+                        }
+
+                        bool isService = (detail.ItemType == "S");
+                        string desc = detail.Description ?? string.Empty;
+                        if (detail.SparePartId > 0)
+                        {
+                            var sp = await _context.SpareParts.FindAsync(detail.SparePartId);
+                            if (sp != null)
+                            {
+                                if (string.IsNullOrWhiteSpace(desc)) desc = sp.Name;
+                                if (sp.ItemType == "Servicio") isService = true;
+                            }
+                        }
+                        if (string.IsNullOrWhiteSpace(desc))
+                        {
+                            desc = req.PartNameOrDescription;
+                        }
+
+                        var usedItem = new ServiceExecutionSparePart
+                        {
+                            CompanyId = invoice.CompanyId,
+                            ServiceExecutionId = sReq.Execution.Id,
+                            SparePartId = detail.SparePartId > 0 ? detail.SparePartId : null,
+                            Quantity = detail.QuantityReceived > 0 ? detail.QuantityReceived : 1,
+                            UnitCost = detail.UnitCost,
+                            UnitOfMeasureId = detail.UnitOfMeasureId,
+                            ItemType = isService ? "S" : "C",
+                            Description = desc,
+                            PurchaseInvoiceDetailId = detail.Id
+                        };
+
+                        _context.ServiceExecutionSpareParts.Add(usedItem);
+                    }
+                }
+            }
             await _context.SaveChangesAsync();
 
             return CreatedAtAction("GetPurchaseInvoices", new { id = invoice.Id }, invoice);
@@ -317,17 +387,43 @@ namespace TransportManagement.API.Controllers
 
             invoice.IsCancelled = true;
 
+            // 1. Revert stock for physical parts (not services)
             foreach (var detail in invoice.Details)
             {
-                if (detail.SparePartId > 0 && (string.IsNullOrEmpty(detail.ItemType) || detail.ItemType == "C"))
+                bool isService = (detail.ItemType == "S");
+                if (detail.SparePartId > 0 && !isService && (string.IsNullOrEmpty(detail.ItemType) || detail.ItemType == "C"))
                 {
                     var sparePart = await _context.SpareParts.FindAsync(detail.SparePartId);
-                    if (sparePart != null)
+                    if (sparePart != null && sparePart.ItemType != "Servicio")
                     {
                         decimal baseQuantity = await _context.GetBaseQuantityAsync(detail.SparePartId, detail.UnitOfMeasureId, detail.QuantityReceived);
                         sparePart.StockQuantity -= baseQuantity;
                         if (sparePart.StockQuantity < 0) sparePart.StockQuantity = 0;
                     }
+                }
+            }
+
+            // 2. Remove any items injected into Service Requests (tickets)
+            var detailIds = invoice.Details.Select(d => d.Id).ToList();
+            if (detailIds.Any())
+            {
+                var linkedServiceParts = await _context.ServiceExecutionSpareParts
+                    .Where(sp => sp.PurchaseInvoiceDetailId.HasValue && detailIds.Contains(sp.PurchaseInvoiceDetailId.Value))
+                    .ToListAsync();
+
+                if (linkedServiceParts.Any())
+                {
+                    _context.ServiceExecutionSpareParts.RemoveRange(linkedServiceParts);
+                }
+            }
+
+            // 3. Revert Purchase Order status back to "Pendiente por Recibir"
+            if (invoice.PurchaseOrderId.HasValue && invoice.PurchaseOrderId.Value > 0)
+            {
+                var po = await _context.PurchaseOrders.FindAsync(invoice.PurchaseOrderId.Value);
+                if (po != null)
+                {
+                    po.Status = "Pendiente por Recibir";
                 }
             }
 
