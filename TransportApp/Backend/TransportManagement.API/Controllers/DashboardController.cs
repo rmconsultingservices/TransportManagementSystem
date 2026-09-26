@@ -215,13 +215,15 @@ namespace TransportManagement.API.Controllers
 
             var periodRequests = await periodRequestsQuery.ToListAsync();
 
+            int roadsideCount = periodRequests.Count(r => (r.RepairType ?? "").ToLower().Contains("auxil") || (r.RepairType ?? "").ToLower().Contains("vial"));
             int preventiveCount = periodRequests.Count(r => (r.RepairType ?? "").ToLower().Contains("prev"));
-            int correctiveCount = periodRequests.Count(r => (r.RepairType ?? "").ToLower().Contains("corr"));
-            int otherCount = periodRequests.Count - (preventiveCount + correctiveCount);
+            int correctiveCount = periodRequests.Count(r => (r.RepairType ?? "").ToLower().Contains("corr") && !(r.RepairType ?? "").ToLower().Contains("auxil") && !(r.RepairType ?? "").ToLower().Contains("vial"));
+            int otherCount = Math.Max(0, periodRequests.Count - (preventiveCount + correctiveCount + roadsideCount));
             int totalReqs = periodRequests.Count;
 
             double prevPercent = totalReqs > 0 ? Math.Round((double)preventiveCount / totalReqs * 100, 1) : 0.0;
             double corrPercent = totalReqs > 0 ? Math.Round((double)correctiveCount / totalReqs * 100, 1) : 0.0;
+            double roadsidePercent = totalReqs > 0 ? Math.Round((double)roadsideCount / totalReqs * 100, 1) : 0.0;
 
             // Costo acumulado en repuestos por unidad dentro del período
             var partsInPeriodQuery = _context.ServiceExecutionSpareParts
@@ -263,8 +265,9 @@ namespace TransportManagement.API.Controllers
                         BrandOrType = v?.Brand ?? "",
                         Model = v?.Model ?? "",
                         TotalFailures = g.Count(),
-                        CorrectiveCount = g.Count(x => (x.RepairType ?? "").ToLower().Contains("corr")),
+                        CorrectiveCount = g.Count(x => (x.RepairType ?? "").ToLower().Contains("corr") && !(x.RepairType ?? "").ToLower().Contains("auxil") && !(x.RepairType ?? "").ToLower().Contains("vial")),
                         PreventiveCount = g.Count(x => (x.RepairType ?? "").ToLower().Contains("prev")),
+                        RoadsideCount = g.Count(x => (x.RepairType ?? "").ToLower().Contains("auxil") || (x.RepairType ?? "").ToLower().Contains("vial")),
                         TotalCostAccumulated = Math.Round(costByVehicle.GetValueOrDefault(g.Key, 0m), 2),
                         LastServiceDate = g.Max(x => (DateTime?)x.DateRequested)
                     };
@@ -283,8 +286,9 @@ namespace TransportManagement.API.Controllers
                         BrandOrType = t?.Type ?? "",
                         Model = $"{t?.AxlesCount ?? 0} Ejes",
                         TotalFailures = g.Count(),
-                        CorrectiveCount = g.Count(x => (x.RepairType ?? "").ToLower().Contains("corr")),
+                        CorrectiveCount = g.Count(x => (x.RepairType ?? "").ToLower().Contains("corr") && !(x.RepairType ?? "").ToLower().Contains("auxil") && !(x.RepairType ?? "").ToLower().Contains("vial")),
                         PreventiveCount = g.Count(x => (x.RepairType ?? "").ToLower().Contains("prev")),
+                        RoadsideCount = g.Count(x => (x.RepairType ?? "").ToLower().Contains("auxil") || (x.RepairType ?? "").ToLower().Contains("vial")),
                         TotalCostAccumulated = Math.Round(costByTrailer.GetValueOrDefault(g.Key, 0m), 2),
                         LastServiceDate = g.Max(x => (DateTime?)x.DateRequested)
                     };
@@ -323,10 +327,12 @@ namespace TransportManagement.API.Controllers
                 CompletedOrdersCount = validMttrOrders,
                 PreventiveCount = preventiveCount,
                 CorrectiveCount = correctiveCount,
+                RoadsideCount = roadsideCount,
                 OtherTypeCount = otherCount,
                 TotalRequestsCount = totalReqs,
                 PreventivePercent = prevPercent,
                 CorrectivePercent = corrPercent,
+                RoadsidePercent = roadsidePercent,
                 FailureFrequency = topFailures,
                 FleetOwners = fleetOwnersList
             });
@@ -741,8 +747,9 @@ namespace TransportManagement.API.Controllers
                     DriverName = g.Key.Name,
                     LicenseNumber = g.Key.License,
                     TotalIncidents = g.Count(),
-                    CorrectiveCount = g.Count(x => (x.RepairType ?? "").ToLower().Contains("corr")),
+                    CorrectiveCount = g.Count(x => (x.RepairType ?? "").ToLower().Contains("corr") && !(x.RepairType ?? "").ToLower().Contains("auxil") && !(x.RepairType ?? "").ToLower().Contains("vial")),
                     PreventiveCount = g.Count(x => (x.RepairType ?? "").ToLower().Contains("prev")),
+                    RoadsideCount = g.Count(x => (x.RepairType ?? "").ToLower().Contains("auxil") || (x.RepairType ?? "").ToLower().Contains("vial")),
                     LastIncidentDate = g.Max(x => (DateTime?)x.DateRequested)
                 })
                 .OrderByDescending(d => d.TotalIncidents)
@@ -819,6 +826,7 @@ namespace TransportManagement.API.Controllers
             AddKpiRow(wsSummary, ref row, "Operativo", "Tiempo Medio de Reparación (MTTR)", $"{opKpis.MttrDays} días ({opKpis.MttrHours} hrs)");
             AddKpiRow(wsSummary, ref row, "Operativo", "Servicios Preventivos", $"{opKpis.PreventiveCount} ({opKpis.PreventivePercent}%)");
             AddKpiRow(wsSummary, ref row, "Operativo", "Servicios Correctivos", $"{opKpis.CorrectiveCount} ({opKpis.CorrectivePercent}%)");
+            AddKpiRow(wsSummary, ref row, "Operativo", "Auxilios Viales (En Ruta)", $"{opKpis.RoadsideCount} ({opKpis.RoadsidePercent}%)");
             AddKpiRow(wsSummary, ref row, "Financiero", "Costo Total de Mantenimiento", $"$ {finKpis.TotalMaintenanceCost:N2}");
             AddKpiRow(wsSummary, ref row, "Financiero", "Costo Promedio por Unidad Atendida", $"$ {finKpis.AverageCostPerServicedUnit:N2}");
             AddKpiRow(wsSummary, ref row, "Financiero", "Unidades Atendidas en Período", $"{finKpis.ServicedUnitsCount}");
@@ -1077,6 +1085,7 @@ namespace TransportManagement.API.Controllers
                     DateRequested = r.DateRequested,
                     DateCompleted = r.Execution?.DateCompleted,
                     RepairType = r.RepairType ?? "General",
+                    RoadsideLocation = r.RoadsideLocation,
                     Status = r.Status ?? "Pendiente",
                     ReportedFailureDescription = r.Description ?? "",
                     Observations = r.Execution?.FinalObservations ?? r.Execution?.DiagnosisObservations ?? "",
@@ -1098,8 +1107,9 @@ namespace TransportManagement.API.Controllers
                 FleetOwnerName = fleetOwnerName,
                 CurrentMileage = currentMileage,
                 TotalServicesCount = services.Count,
-                CorrectiveServicesCount = services.Count(s => s.RepairType.ToLower().Contains("corr")),
+                CorrectiveServicesCount = services.Count(s => s.RepairType.ToLower().Contains("corr") && !s.RepairType.ToLower().Contains("auxil") && !s.RepairType.ToLower().Contains("vial")),
                 PreventiveServicesCount = services.Count(s => s.RepairType.ToLower().Contains("prev")),
+                RoadsideServicesCount = services.Count(s => s.RepairType.ToLower().Contains("auxil") || s.RepairType.ToLower().Contains("vial")),
                 TotalCostInPeriod = Math.Round(totalUnitCost, 2),
                 Services = services
             });
@@ -1147,10 +1157,12 @@ namespace TransportManagement.API.Controllers
 
         public int PreventiveCount { get; set; }
         public int CorrectiveCount { get; set; }
+        public int RoadsideCount { get; set; }
         public int OtherTypeCount { get; set; }
         public int TotalRequestsCount { get; set; }
         public double PreventivePercent { get; set; }
         public double CorrectivePercent { get; set; }
+        public double RoadsidePercent { get; set; }
 
         public List<UnitFailureFrequencyDto> FailureFrequency { get; set; } = new();
     }
@@ -1165,6 +1177,7 @@ namespace TransportManagement.API.Controllers
         public int TotalFailures { get; set; }
         public int CorrectiveCount { get; set; }
         public int PreventiveCount { get; set; }
+        public int RoadsideCount { get; set; }
         public decimal TotalCostAccumulated { get; set; }
         public DateTime? LastServiceDate { get; set; }
     }
@@ -1215,6 +1228,7 @@ namespace TransportManagement.API.Controllers
         public int TotalServicesCount { get; set; }
         public int CorrectiveServicesCount { get; set; }
         public int PreventiveServicesCount { get; set; }
+        public int RoadsideServicesCount { get; set; }
         public decimal TotalCostInPeriod { get; set; }
         public List<UnitServiceHistoryDto> Services { get; set; } = new();
     }
@@ -1225,6 +1239,7 @@ namespace TransportManagement.API.Controllers
         public DateTime DateRequested { get; set; }
         public DateTime? DateCompleted { get; set; }
         public string RepairType { get; set; } = string.Empty;
+        public string? RoadsideLocation { get; set; }
         public string Status { get; set; } = string.Empty;
         public string ReportedFailureDescription { get; set; } = string.Empty;
         public string Observations { get; set; } = string.Empty;
@@ -1345,6 +1360,7 @@ namespace TransportManagement.API.Controllers
         public int TotalIncidents { get; set; }
         public int CorrectiveCount { get; set; }
         public int PreventiveCount { get; set; }
+        public int RoadsideCount { get; set; }
         public DateTime? LastIncidentDate { get; set; }
     }
 }

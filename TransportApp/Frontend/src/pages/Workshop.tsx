@@ -51,6 +51,7 @@ export default function Workshop() {
   const [driverId, setDriverId] = useState<number | ''>('');
 
   const [repairType, setRepairType] = useState('Preventiva');
+  const [roadsideLocation, setRoadsideLocation] = useState('');
 
   const [description, setDescription] = useState('');
 
@@ -136,6 +137,8 @@ export default function Workshop() {
 
         repairType,
 
+        roadsideLocation: repairType === 'Auxilio Vial' ? (roadsideLocation.trim() || undefined) : undefined,
+
         description,
 
         activities: activities.filter(a => a.description.trim() !== '')
@@ -189,6 +192,7 @@ export default function Workshop() {
     setDriverId('');
 
     setRepairType('Preventiva');
+    setRoadsideLocation('');
 
     setDescription('');
 
@@ -484,11 +488,32 @@ export default function Workshop() {
 
                 </label>
 
+                <label className="flex items-center gap-2 cursor-pointer">
+
+                  <input type="radio" name="repairType" value="Auxilio Vial" checked={repairType === 'Auxilio Vial'} onChange={e => setRepairType(e.target.value)} className="text-amber-600 focus:ring-amber-500"/>
+
+                  <span className="text-sm font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-1">🚨 Auxilio Vial</span>
+
+                </label>
+
               </div>
 
             </div>
 
-            
+            {repairType === 'Auxilio Vial' && (
+              <div className="md:col-span-2 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg animate-in fade-in">
+                <label className="block text-xs font-bold text-amber-800 dark:text-amber-300 mb-1">
+                  Ubicación / Tramo Vial del Incidente (Opcional):
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ej: Autopista Regional del Centro, Km 72 sentido Valencia..."
+                  value={roadsideLocation}
+                  onChange={e => setRoadsideLocation(e.target.value)}
+                  className="w-full text-sm border border-amber-300 dark:border-amber-700 rounded-md px-3 py-1.5 focus:ring-2 focus:ring-amber-500 dark:bg-gray-800 dark:text-white"
+                />
+              </div>
+            )}
 
             <div className="md:col-span-2 bg-gray-50 dark:bg-gray-900/40 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
 
@@ -638,7 +663,26 @@ export default function Workshop() {
 
                     <td className="px-6 py-4">
 
-                      <div className="font-medium text-gray-900 dark:text-white">#{req.id.toString().padStart(4, '0')}</div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-gray-900 dark:text-white">#{req.id.toString().padStart(4, '0')}</span>
+                        {req.repairType === 'Auxilio Vial' ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                            🚨 Auxilio
+                          </span>
+                        ) : req.repairType === 'Correctiva' ? (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300">
+                            Corr.
+                          </span>
+                        ) : req.repairType === 'Preventiva / Correctiva' ? (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300">
+                            Ambas
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
+                            Prev.
+                          </span>
+                        )}
+                      </div>
 
                       <div className="text-xs text-gray-500">{new Date(req.dateRequested).toLocaleDateString()}</div>
 
@@ -656,10 +700,15 @@ export default function Workshop() {
 
                     </td>
 
-                    <td className="px-6 py-4 text-sm max-w-xs truncate" title={req.description}>
-
-                      {req.description}
-
+                    <td className="px-6 py-4 text-sm max-w-xs">
+                      <div className="truncate font-medium text-gray-800 dark:text-gray-200" title={req.description}>
+                        {req.description}
+                      </div>
+                      {req.roadsideLocation && (
+                        <div className="text-xs text-amber-700 dark:text-amber-400 font-semibold flex items-center gap-1 mt-0.5 truncate" title={req.roadsideLocation}>
+                          <span>📍 {req.roadsideLocation}</span>
+                        </div>
+                      )}
                     </td>
 
                     <td className="px-6 py-4 text-sm font-medium">

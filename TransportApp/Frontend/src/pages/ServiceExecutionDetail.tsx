@@ -186,12 +186,37 @@ export default function ServiceExecutionDetail() {
             ) : (
               <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200"><Clock size={14}/> En Proceso</span>
             )}
+            {request.repairType === 'Auxilio Vial' ? (
+              <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500 text-white shadow-xs">
+                🚨 Auxilio Vial
+              </span>
+            ) : request.repairType === 'Correctiva' ? (
+              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-800 border border-rose-200 dark:bg-rose-950/60 dark:text-rose-300">
+                Correctiva
+              </span>
+            ) : request.repairType === 'Preventiva / Correctiva' ? (
+              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 border border-purple-200 dark:bg-purple-950/60 dark:text-purple-300">
+                Ambas
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-200 dark:bg-blue-900/60 dark:text-blue-300">
+                Preventiva
+              </span>
+            )}
           </h1>
           <div className="text-gray-500 mt-2 flex gap-4 text-sm">
             <span>📅 {new Date(request.dateRequested).toLocaleDateString()}</span>
-            <span>🚛 {request.vehicle?.licensePlate} ({request.vehicle?.brand})</span>
+            <span>🚛 {request.vehicle?.licensePlate || request.trailer?.licensePlate || 'N/A'} ({request.vehicle?.brand || request.trailer?.type || ''})</span>
             <span><Wrench size={16} className="inline mr-1.5 text-gray-400" /> Mecánico: {request.mechanic?.name || 'Varios'}</span>
           </div>
+          {request.roadsideLocation && (
+            <div className="mt-3 text-xs bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 p-2.5 rounded-lg flex items-center gap-2">
+              <span className="font-bold uppercase tracking-wider text-[10px] bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-100 px-2 py-0.5 rounded">
+                📍 Ubicación Vial:
+              </span>
+              <span className="font-semibold">{request.roadsideLocation}</span>
+            </div>
+          )}
         </div>
         
         {request.status !== 'Completado' ? (

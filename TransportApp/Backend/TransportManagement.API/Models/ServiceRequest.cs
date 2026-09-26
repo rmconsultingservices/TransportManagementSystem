@@ -25,6 +25,7 @@ namespace TransportManagement.API.Models
         
         [Required]
         public string RepairType { get; set; } = "Preventiva";
+        public string? RoadsideLocation { get; set; }
         
         public string Description { get; set; } = string.Empty;
         

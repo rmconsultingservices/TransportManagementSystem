@@ -86,10 +86,21 @@ export default function PrintServiceClosureReport() {
         <div className="text-right">
           <p className="text-[9px] font-bold text-gray-500 tracking-widest uppercase mb-0.5">No. Reporte</p>
           <h3 className="text-lg font-bold text-gray-900 mb-1">#{request.id.toString().padStart(4, '0')}</h3>
-          <span className="inline-flex bg-green-100 text-green-800 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase items-center gap-1">
-            <span className="w-1 h-1 rounded-full bg-green-600"></span>
-            {request.status}
-          </span>
+          <div className="flex items-center gap-1.5 justify-end flex-wrap">
+            <span className="inline-flex bg-green-100 text-green-800 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase items-center gap-1">
+              <span className="w-1 h-1 rounded-full bg-green-600"></span>
+              {request.status}
+            </span>
+            <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase items-center gap-1 ${
+              request.repairType === 'Auxilio Vial'
+                ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                : request.repairType === 'Correctiva'
+                  ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                  : 'bg-blue-100 text-blue-800 border border-blue-200'
+            }`}>
+              {request.repairType === 'Auxilio Vial' ? '🚨 Auxilio Vial' : request.repairType || 'Preventiva'}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -116,6 +127,15 @@ export default function PrintServiceClosureReport() {
           <p className="font-bold text-gray-900 uppercase">{request.execution?.mileageAtService ? request.execution.mileageAtService.toLocaleString() : 'N/A'} Km</p>
         </div>
       </div>
+
+      {request.roadsideLocation && (
+        <div className="mb-4 bg-amber-50 border border-amber-200 rounded p-2.5 text-xs text-amber-900 flex items-center gap-2">
+          <span className="font-bold uppercase tracking-wider text-[10px] bg-amber-200 text-amber-900 px-2 py-0.5 rounded">
+            📍 Ubicación / Tramo Vial:
+          </span>
+          <span className="font-semibold">{request.roadsideLocation}</span>
+        </div>
+      )}
 
       {/* Observations Box */}
       <div className="grid grid-cols-2 gap-4 mb-6">

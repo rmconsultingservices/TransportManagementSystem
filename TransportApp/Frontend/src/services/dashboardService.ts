@@ -21,10 +21,12 @@ export interface OperationalKpis {
   completedOrdersCount: number;
   preventiveCount: number;
   correctiveCount: number;
+  roadsideCount?: number;
   otherTypeCount: number;
   totalRequestsCount: number;
   preventivePercent: number;
   correctivePercent: number;
+  roadsidePercent?: number;
   failureFrequency: {
     id: number;
     licensePlate: string;
@@ -34,6 +36,7 @@ export interface OperationalKpis {
     totalFailures: number;
     correctiveCount: number;
     preventiveCount: number;
+    roadsideCount?: number;
     totalCostAccumulated: number;
     lastServiceDate: string | null;
   }[];
@@ -151,6 +154,7 @@ export interface UnitServiceHistory {
   dateRequested: string;
   dateCompleted: string | null;
   repairType: string;
+  roadsideLocation?: string;
   status: string;
   reportedFailureDescription: string;
   observations: string;
@@ -172,6 +176,7 @@ export interface UnitMaintenanceDetail {
   totalServicesCount: number;
   correctiveServicesCount: number;
   preventiveServicesCount: number;
+  roadsideServicesCount?: number;
   totalCostInPeriod: number;
   services: UnitServiceHistory[];
 }
@@ -194,6 +199,7 @@ export interface StaffKpis {
     totalIncidents: number;
     correctiveCount: number;
     preventiveCount: number;
+    roadsideCount?: number;
     lastIncidentDate: string | null;
   }[];
 }

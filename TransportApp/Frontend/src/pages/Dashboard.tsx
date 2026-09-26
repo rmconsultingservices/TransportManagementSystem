@@ -1150,6 +1150,13 @@ export default function Dashboard() {
                             {unit.correctiveCount}
                           </span>
                         </td>
+                        <td className="py-2.5 px-2 text-center">
+                          <span className={`inline-block px-2.5 py-0.5 rounded-full font-bold text-[11px] ${
+                            (unit.roadsideCount ?? 0) > 0 ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 font-black' : 'bg-slate-100 text-slate-400 dark:bg-slate-700/60 dark:text-slate-400'
+                          }`}>
+                            {unit.roadsideCount ?? 0}
+                          </span>
+                        </td>
                         <td className="py-2.5 px-2 text-center text-slate-600 dark:text-slate-300 font-medium">
                           {unit.preventiveCount}
                         </td>

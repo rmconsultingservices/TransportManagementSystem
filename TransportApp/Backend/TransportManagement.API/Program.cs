@@ -84,6 +84,9 @@ using (var scope = app.Services.CreateScope())
         ");
         // Dynamic column migrations
             context.Database.ExecuteSqlRaw(@"
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ServiceRequests') AND name = 'RoadsideLocation')
+                ALTER TABLE ServiceRequests ADD RoadsideLocation NVARCHAR(300) NULL;
+
                 IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('PurchaseInvoices') AND name = 'PurchaseOrderId')
                 ALTER TABLE PurchaseInvoices ADD PurchaseOrderId INT NULL;
 

@@ -41,6 +41,7 @@ export interface ServiceRequest {
   driverId?: number;
   driver?: { id: number, name: string };
   repairType?: string;
+  roadsideLocation?: string;
   description?: string;
   status: string; // 'Pendiente', 'En Revisión', 'Completado'
   mechanicId?: number;

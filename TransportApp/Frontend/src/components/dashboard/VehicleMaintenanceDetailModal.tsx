@@ -77,7 +77,7 @@ export default function VehicleMaintenanceDetailModal({
         </div>
 
         {/* Resumen de Métricas de la Unidad */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-5 sm:px-6 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 p-5 sm:px-6 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800">
           <div className="bg-slate-50 dark:bg-slate-800/60 p-3 rounded-2xl border border-slate-100 dark:border-slate-700/60">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Gasto Total Repuestos</span>
             <p className="text-xl font-black text-slate-900 dark:text-white font-mono mt-0.5">
@@ -96,6 +96,13 @@ export default function VehicleMaintenanceDetailModal({
             <span className="text-[10px] font-bold uppercase tracking-wider text-rose-500">Fallas Correctivas</span>
             <p className="text-xl font-black text-rose-600 dark:text-rose-400 mt-0.5">
               {detail?.correctiveServicesCount ?? 0}
+            </p>
+          </div>
+
+          <div className="bg-slate-50 dark:bg-slate-800/60 p-3 rounded-2xl border border-slate-100 dark:border-slate-700/60">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-500">Auxilios Viales</span>
+            <p className="text-xl font-black text-amber-600 dark:text-amber-400 mt-0.5">
+              {detail?.roadsideServicesCount ?? 0}
             </p>
           </div>
 
@@ -127,7 +134,8 @@ export default function VehicleMaintenanceDetailModal({
               </h3>
 
               {detail.services.map((svc) => {
-                const isCorrective = Boolean((svc.repairType || '').toLowerCase().includes('corr'));
+                const isAuxilio = Boolean((svc.repairType || '').toLowerCase().includes('auxil') || (svc.repairType || '').toLowerCase().includes('vial'));
+                const isCorrective = !isAuxilio && Boolean((svc.repairType || '').toLowerCase().includes('corr'));
                 const isCompleted = Boolean((svc.status || '').toLowerCase().includes('complet'));
 
                 return (
@@ -143,11 +151,13 @@ export default function VehicleMaintenanceDetailModal({
                         </span>
 
                         <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
-                          isCorrective 
-                            ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800' 
-                            : 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                          isAuxilio
+                            ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800'
+                            : isCorrective 
+                              ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800' 
+                              : 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
                         }`}>
-                          {svc.repairType}
+                          {isAuxilio ? '🚨 Auxilio Vial' : svc.repairType}
                         </span>
 
                         <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
@@ -173,6 +183,12 @@ export default function VehicleMaintenanceDetailModal({
                         </div>
                       </div>
                     </div>
+
+                    {svc.roadsideLocation && (
+                      <div className="mt-2 text-xs bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded px-2.5 py-1 text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                        <span>📍 <strong>Ubicación Vial:</strong> {svc.roadsideLocation}</span>
+                      </div>
+                    )}
 
                     {/* Datos descriptivos del Ticket */}
                     <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">

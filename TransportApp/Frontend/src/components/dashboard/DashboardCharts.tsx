@@ -152,6 +152,7 @@ export const Sparkline: React.FC<SparklineProps> = ({
 interface DonutChartProps {
   preventive: number;
   corrective: number;
+  roadside?: number;
   other?: number;
   size?: number;
 }
@@ -159,25 +160,29 @@ interface DonutChartProps {
 export const DonutChart: React.FC<DonutChartProps> = ({
   preventive = 0,
   corrective = 0,
+  roadside = 0,
   other = 0,
   size = 190
 }) => {
-  const total = preventive + corrective + other;
+  const total = preventive + corrective + roadside + other;
   const strokeWidth = 24;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
 
   const prevPct = total > 0 ? (preventive / total) * 100 : 0;
   const corrPct = total > 0 ? (corrective / total) * 100 : 0;
+  const roadPct = total > 0 ? (roadside / total) * 100 : 0;
   const otherPct = total > 0 ? (other / total) * 100 : 0;
 
   const prevStroke = (prevPct / 100) * circumference;
   const corrStroke = (corrPct / 100) * circumference;
+  const roadStroke = (roadPct / 100) * circumference;
   const otherStroke = (otherPct / 100) * circumference;
 
   const prevOffset = 0;
   const corrOffset = -prevStroke;
-  const otherOffset = -(prevStroke + corrStroke);
+  const roadOffset = -(prevStroke + corrStroke);
+  const otherOffset = -(prevStroke + corrStroke + roadStroke);
 
   return (
     <div className="flex flex-col sm:flex-row items-center justify-around gap-6">
@@ -207,7 +212,7 @@ export const DonutChart: React.FC<DonutChartProps> = ({
                 strokeLinecap="round"
                 className="transition-all duration-700 ease-out"
               />
-              {/* Corrective (Rose/Amber) */}
+              {/* Corrective (Rose) */}
               <circle
                 cx={size / 2}
                 cy={size / 2}
@@ -220,6 +225,21 @@ export const DonutChart: React.FC<DonutChartProps> = ({
                 strokeLinecap="round"
                 className="transition-all duration-700 ease-out"
               />
+              {/* Roadside (Amber) */}
+              {roadside > 0 && (
+                <circle
+                  cx={size / 2}
+                  cy={size / 2}
+                  r={radius}
+                  fill="none"
+                  stroke="#f59e0b"
+                  strokeWidth={strokeWidth}
+                  strokeDasharray={`${roadStroke} ${circumference}`}
+                  strokeDashoffset={roadOffset}
+                  strokeLinecap="round"
+                  className="transition-all duration-700 ease-out"
+                />
+              )}
               {other > 0 && (
                 <circle
                   cx={size / 2}
@@ -267,6 +287,17 @@ export const DonutChart: React.FC<DonutChartProps> = ({
             </div>
           </div>
           <span className="text-base font-black text-rose-900 dark:text-rose-200 ml-3">{corrective}</span>
+        </div>
+
+        <div className="flex items-center justify-between p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-800/40">
+          <div className="flex items-center gap-2">
+            <span className="w-3 h-3 rounded-full bg-amber-500 ring-2 ring-amber-200 dark:ring-amber-900" />
+            <div>
+              <p className="text-xs font-bold text-amber-900 dark:text-amber-200">Auxilio Vial</p>
+              <p className="text-[11px] text-amber-700 dark:text-amber-400 font-medium">{roadPct.toFixed(1)}% del total</p>
+            </div>
+          </div>
+          <span className="text-base font-black text-amber-900 dark:text-amber-200 ml-3">{roadside}</span>
         </div>
 
         {other > 0 && (
