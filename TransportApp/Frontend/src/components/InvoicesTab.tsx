@@ -295,7 +295,7 @@ export default function InvoicesTab() {
       taxAmount: totals.taxAmount,
       totalAmount: totals.total,
       details: details.map(d => ({
-        sparePartId: d.sparePartId || 0,
+        sparePartId: (d.sparePartId && Number(d.sparePartId) > 0) ? Number(d.sparePartId) : null,
         unitOfMeasureId: d.unitOfMeasureId || undefined,
         quantityReceived: Number(d.quantityReceived),
         unitCost: Number(d.unitCost),
@@ -326,7 +326,16 @@ export default function InvoicesTab() {
       fetchData();
     } catch (error: any) {
        console.error('Error saving invoice:', error);
-       const errorMsg = error?.response?.data?.message || (typeof error?.response?.data === 'string' ? error.response.data : 'Error guardando la factura.');
+         let errorMsg = 'Error guardando la factura.';
+         if (typeof error?.response?.data === 'string') {
+           errorMsg = error.response.data;
+         } else if (error?.response?.data?.message) {
+           errorMsg = error.response.data.message;
+         } else if (error?.response?.data?.errors) {
+           errorMsg = Object.values(error.response.data.errors).flat().join('\n');
+         } else if (error?.response?.data?.title) {
+           errorMsg = error.response.data.title;
+         }
        alert(errorMsg);
     } finally {
        setIsSavingInvoice(false);

@@ -15,7 +15,7 @@ namespace TransportManagement.API.Models
         [JsonIgnore]
         public PurchaseInvoice? PurchaseInvoice { get; set; }
 
-        public int SparePartId { get; set; }
+        public int? SparePartId { get; set; }
         public SparePart? SparePart { get; set; }
 
         public string? WarehouseCode { get; set; } // e.g. "001"

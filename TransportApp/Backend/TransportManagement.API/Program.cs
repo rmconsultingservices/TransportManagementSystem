@@ -137,6 +137,12 @@ using (var scope = app.Services.CreateScope())
                 END TRY
                 BEGIN CATCH
                 END CATCH
+
+                BEGIN TRY
+                    ALTER TABLE PurchaseInvoiceDetails ALTER COLUMN SparePartId INT NULL;
+                END TRY
+                BEGIN CATCH
+                END CATCH
             ");
 
         Console.WriteLine("Base de datos verificada y actualizada correctamente.");

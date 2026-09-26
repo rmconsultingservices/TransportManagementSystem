@@ -85,11 +85,16 @@ namespace TransportManagement.API.Controllers
 
             foreach (var detail in invoice.Details)
             {
+                if (detail.SparePartId.HasValue && detail.SparePartId.Value <= 0)
+                {
+                    detail.SparePartId = null;
+                }
+
                 bool isService = (detail.ItemType == "S");
                 SparePart? sparePart = null;
-                if (detail.SparePartId > 0)
+                if (detail.SparePartId.HasValue && detail.SparePartId.Value > 0)
                 {
-                    sparePart = await _context.SpareParts.FindAsync(detail.SparePartId);
+                    sparePart = await _context.SpareParts.FindAsync(detail.SparePartId.Value);
                     if (sparePart != null && sparePart.ItemType == "Servicio")
                     {
                         isService = true;
@@ -98,11 +103,11 @@ namespace TransportManagement.API.Controllers
                 }
 
                 // Only update physical stock if item is a registered physical spare part ("C") and NOT a service
-                if (detail.SparePartId > 0 && !isService && (string.IsNullOrEmpty(detail.ItemType) || detail.ItemType == "C"))
+                if (detail.SparePartId.HasValue && detail.SparePartId.Value > 0 && !isService && (string.IsNullOrEmpty(detail.ItemType) || detail.ItemType == "C"))
                 {
                     if (sparePart != null)
                     {
-                        decimal baseQuantity = await _context.GetBaseQuantityAsync(detail.SparePartId, detail.UnitOfMeasureId, detail.QuantityReceived);
+                        decimal baseQuantity = await _context.GetBaseQuantityAsync(detail.SparePartId.Value, detail.UnitOfMeasureId, detail.QuantityReceived);
                         decimal multiplier = detail.QuantityReceived == 0 ? 1 : baseQuantity / detail.QuantityReceived;
                         decimal baseUnitCost = detail.UnitCost / (multiplier == 0 ? 1m : multiplier);
 
@@ -179,9 +184,9 @@ namespace TransportManagement.API.Controllers
 
                         bool isService = (detail.ItemType == "S");
                         string desc = detail.Description ?? string.Empty;
-                        if (detail.SparePartId > 0)
+                        if (detail.SparePartId.HasValue && detail.SparePartId.Value > 0)
                         {
-                            var sp = await _context.SpareParts.FindAsync(detail.SparePartId);
+                            var sp = await _context.SpareParts.FindAsync(detail.SparePartId.Value);
                             if (sp != null)
                             {
                                 if (string.IsNullOrWhiteSpace(desc)) desc = sp.Name;
@@ -197,7 +202,7 @@ namespace TransportManagement.API.Controllers
                         {
                             CompanyId = invoice.CompanyId,
                             ServiceExecutionId = sReq.Execution.Id,
-                            SparePartId = detail.SparePartId > 0 ? detail.SparePartId : null,
+                            SparePartId = (detail.SparePartId.HasValue && detail.SparePartId.Value > 0) ? detail.SparePartId : null,
                             Quantity = detail.QuantityReceived > 0 ? detail.QuantityReceived : 1,
                             UnitCost = detail.UnitCost,
                             UnitOfMeasureId = detail.UnitOfMeasureId,
@@ -251,12 +256,12 @@ namespace TransportManagement.API.Controllers
             // Revert old inventory stock
             foreach (var oldDetail in existingInvoice.Details)
             {
-                if (oldDetail.SparePartId > 0 && (string.IsNullOrEmpty(oldDetail.ItemType) || oldDetail.ItemType == "C"))
+                if (oldDetail.SparePartId.HasValue && oldDetail.SparePartId.Value > 0 && (string.IsNullOrEmpty(oldDetail.ItemType) || oldDetail.ItemType == "C"))
                 {
-                    var sparePart = await _context.SpareParts.FindAsync(oldDetail.SparePartId);
-                    if (sparePart != null)
+                    var sparePart = await _context.SpareParts.FindAsync(oldDetail.SparePartId.Value);
+                    if (sparePart != null && sparePart.ItemType != "Servicio")
                     {
-                        decimal oldBaseQuantity = await _context.GetBaseQuantityAsync(oldDetail.SparePartId, oldDetail.UnitOfMeasureId, oldDetail.QuantityReceived);
+                        decimal oldBaseQuantity = await _context.GetBaseQuantityAsync(oldDetail.SparePartId.Value, oldDetail.UnitOfMeasureId, oldDetail.QuantityReceived);
                         sparePart.StockQuantity -= oldBaseQuantity;
                         if (sparePart.StockQuantity < 0) sparePart.StockQuantity = 0;
                     }
@@ -273,12 +278,14 @@ namespace TransportManagement.API.Controllers
             var newDetails = new List<PurchaseInvoiceDetail>();
             foreach (var detail in updatedInvoice.Details)
             {
-                if (detail.SparePartId > 0 && (string.IsNullOrEmpty(detail.ItemType) || detail.ItemType == "C"))
+                if (detail.SparePartId.HasValue && detail.SparePartId.Value <= 0) detail.SparePartId = null;
+                bool isService = (detail.ItemType == "S");
+                if (detail.SparePartId.HasValue && detail.SparePartId.Value > 0 && !isService && (string.IsNullOrEmpty(detail.ItemType) || detail.ItemType == "C"))
                 {
-                    var sparePart = await _context.SpareParts.FindAsync(detail.SparePartId);
-                    if (sparePart != null)
+                    var sparePart = await _context.SpareParts.FindAsync(detail.SparePartId.Value);
+                    if (sparePart != null && sparePart.ItemType != "Servicio")
                     {
-                        decimal baseQuantity = await _context.GetBaseQuantityAsync(detail.SparePartId, detail.UnitOfMeasureId, detail.QuantityReceived);
+                        decimal baseQuantity = await _context.GetBaseQuantityAsync(detail.SparePartId.Value, detail.UnitOfMeasureId, detail.QuantityReceived);
                         decimal multiplier = detail.QuantityReceived == 0 ? 1 : baseQuantity / detail.QuantityReceived;
                         decimal baseUnitCost = detail.UnitCost / (multiplier == 0 ? 1m : multiplier);
 
@@ -302,7 +309,7 @@ namespace TransportManagement.API.Controllers
 
                 newDetails.Add(new PurchaseInvoiceDetail
                 {
-                    SparePartId = detail.SparePartId,
+                    SparePartId = (detail.SparePartId.HasValue && detail.SparePartId.Value > 0) ? detail.SparePartId : null,
                     QuantityReceived = detail.QuantityReceived,
                     UnitCost = detail.UnitCost,
                     TaxPercentage = detail.TaxPercentage,
@@ -391,12 +398,12 @@ namespace TransportManagement.API.Controllers
             foreach (var detail in invoice.Details)
             {
                 bool isService = (detail.ItemType == "S");
-                if (detail.SparePartId > 0 && !isService && (string.IsNullOrEmpty(detail.ItemType) || detail.ItemType == "C"))
+                if (detail.SparePartId.HasValue && detail.SparePartId.Value > 0 && !isService && (string.IsNullOrEmpty(detail.ItemType) || detail.ItemType == "C"))
                 {
-                    var sparePart = await _context.SpareParts.FindAsync(detail.SparePartId);
+                    var sparePart = await _context.SpareParts.FindAsync(detail.SparePartId.Value);
                     if (sparePart != null && sparePart.ItemType != "Servicio")
                     {
-                        decimal baseQuantity = await _context.GetBaseQuantityAsync(detail.SparePartId, detail.UnitOfMeasureId, detail.QuantityReceived);
+                        decimal baseQuantity = await _context.GetBaseQuantityAsync(detail.SparePartId.Value, detail.UnitOfMeasureId, detail.QuantityReceived);
                         sparePart.StockQuantity -= baseQuantity;
                         if (sparePart.StockQuantity < 0) sparePart.StockQuantity = 0;
                     }
@@ -446,12 +453,13 @@ namespace TransportManagement.API.Controllers
 
             foreach (var detail in invoice.Details)
             {
-                if (detail.SparePartId > 0 && (string.IsNullOrEmpty(detail.ItemType) || detail.ItemType == "C"))
+                bool isService = (detail.ItemType == "S");
+                if (detail.SparePartId.HasValue && detail.SparePartId.Value > 0 && !isService && (string.IsNullOrEmpty(detail.ItemType) || detail.ItemType == "C"))
                 {
-                    var sparePart = await _context.SpareParts.FindAsync(detail.SparePartId);
-                    if (sparePart != null)
+                    var sparePart = await _context.SpareParts.FindAsync(detail.SparePartId.Value);
+                    if (sparePart != null && sparePart.ItemType != "Servicio")
                     {
-                        decimal baseQuantity = await _context.GetBaseQuantityAsync(detail.SparePartId, detail.UnitOfMeasureId, detail.QuantityReceived);
+                        decimal baseQuantity = await _context.GetBaseQuantityAsync(detail.SparePartId.Value, detail.UnitOfMeasureId, detail.QuantityReceived);
                         decimal multiplier = detail.QuantityReceived == 0 ? 1 : baseQuantity / detail.QuantityReceived;
                         decimal baseUnitCost = detail.UnitCost / (multiplier == 0 ? 1m : multiplier);
 

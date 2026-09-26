@@ -527,8 +527,8 @@ namespace TransportManagement.API.Controllers
                 .ToListAsync();
 
             var recentInvoicePartIds = await _context.PurchaseInvoiceDetails
-                .Where(d => d.PurchaseInvoice != null && d.PurchaseInvoice.DateIssued >= ninetyDaysAgo)
-                .Select(d => d.SparePartId)
+                .Where(d => d.SparePartId.HasValue && d.PurchaseInvoice != null && d.PurchaseInvoice.DateIssued >= ninetyDaysAgo)
+                .Select(d => d.SparePartId!.Value)
                 .Distinct()
                 .ToListAsync();
 
@@ -926,7 +926,7 @@ namespace TransportManagement.API.Controllers
 
                     var itemGroups = allDetails
                         .GroupBy(d => new {
-                            PartId = d.SparePartId,
+                            PartId = d.SparePartId ?? 0,
                             Code = d.SparePart?.Code ?? $"ART-{d.SparePartId}",
                             Name = d.SparePart?.Name ?? "Artículo Desconocido",
                             Category = d.SparePart?.Category?.Name ?? "General",
