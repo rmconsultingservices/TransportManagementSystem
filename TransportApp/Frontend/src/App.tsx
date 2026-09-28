@@ -292,6 +292,7 @@ function App() {
           <Route path="/print-closure/:id" element={<PrintServiceClosureReport />} />
           <Route path="/print/order/:id" element={<PrintPurchaseOrder />} />
           <Route path="/print/quotation-request/:id" element={<PrintQuotationRequest />} />
+            <Route path="/print/quotation-request" element={<PrintQuotationRequest />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

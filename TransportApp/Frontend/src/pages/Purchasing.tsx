@@ -248,30 +248,23 @@ export default function Purchasing() {
   };
 
   const handlePrintQuotationRequests = (reqIdsToPrint?: number[], specificServiceRequestId?: number) => {
-    if (reqIdsToPrint && reqIdsToPrint.length > 0 && specificServiceRequestId) {
-      window.open(`/print/quotation-request/${specificServiceRequestId}?reqIds=${reqIdsToPrint.join(',')}`, '_blank');
-      return;
-    }
-
     const ids = reqIdsToPrint && reqIdsToPrint.length > 0 ? reqIdsToPrint : selectedReqIds;
     if (ids.length === 0) return;
 
-    // Group selected requisitions by serviceRequestId
+    if (specificServiceRequestId && (!reqIdsToPrint || reqIdsToPrint.length === 1)) {
+      window.open(`/print/quotation-request/${specificServiceRequestId}?reqIds=${ids.join(',')}`, '_blank');
+      return;
+    }
+
+    // Check if all selected requisitions belong to the same ticket
     const selectedList = requisitions.filter(r => ids.includes(r.id));
-    const byTicket: { [ticketId: number]: number[] } = {};
-    selectedList.forEach(r => {
-      const tId = r.serviceRequestId || 0;
-      if (!byTicket[tId]) byTicket[tId] = [];
-      byTicket[tId].push(r.id);
-    });
+    const ticketIds = Array.from(new Set(selectedList.map(r => r.serviceRequestId).filter(Boolean)));
 
-    const ticketIds = Object.keys(byTicket);
-    if (ticketIds.length === 0) return;
-
-    ticketIds.forEach(tId => {
-      const reqList = byTicket[Number(tId)].join(',');
-      window.open(`/print/quotation-request/${tId}?reqIds=${reqList}`, '_blank');
-    });
+    if (ticketIds.length === 1) {
+      window.open(`/print/quotation-request/${ticketIds[0]}?reqIds=${ids.join(',')}`, '_blank');
+    } else {
+      window.open(`/print/quotation-request/all?reqIds=${ids.join(',')}`, '_blank');
+    }
   };
 
   const handleOpenBulkQuoteModal = () => {
