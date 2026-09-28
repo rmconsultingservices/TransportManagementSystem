@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { workshopService } from '../services/workshopService';
 import { useAuthStore } from '../store/authStore';
@@ -61,6 +61,24 @@ export default function PrintServiceReport() {
 
   return (
     <div className="mx-auto bg-white p-4 max-w-[800px] text-zinc-900 w-full font-sans text-[13px] print:p-0 print:m-0" style={{ pageBreakInside: 'avoid' }}>
+      <style>
+        {`
+          @page {
+            size: portrait;
+            margin: 8mm 10mm;
+          }
+          @media print {
+            body {
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+              background: white !important;
+            }
+            .print-hidden {
+              display: none !important;
+            }
+          }
+        `}
+      </style>
       {/* Header */}
       <div className="flex justify-between items-start mb-6">
         <div className="flex items-center gap-4">

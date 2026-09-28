@@ -167,7 +167,7 @@ export default function ServiceExecutionDetail() {
 
 
   return (
-    <div className="p-8 max-w-5xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl 2xl:max-w-screen-2xl mx-auto space-y-6">
       <button 
         onClick={() => navigate('/workshop')}
         className="text-gray-500 hover:text-gray-900 dark:hover:text-white flex items-center gap-2 mb-4 transition-colors font-medium"
@@ -238,10 +238,10 @@ export default function ServiceExecutionDetail() {
           )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* Left Column: Progress & Requisitions */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-7 xl:col-span-7 space-y-6">
           
           {/* Progress Logs */}
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
@@ -367,7 +367,7 @@ export default function ServiceExecutionDetail() {
         </div>
 
         {/* Right Column: Original Issue & Requisitions */}
-        <div className="space-y-6">
+        <div className="lg:col-span-5 xl:col-span-5 space-y-6">
           
           <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800 p-5">
             <h3 className="font-semibold text-amber-800 dark:text-amber-500 flex items-center gap-2 mb-2">
@@ -379,19 +379,38 @@ export default function ServiceExecutionDetail() {
           </div>
 
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div className="flex justify-between items-center mb-4 border-b border-gray-100 dark:border-gray-700 pb-3">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                <ShoppingCart className="text-blue-500" size={18}/>
-                Requisiciones
-              </h2>
-              {request.status !== 'Completado' && !showReqForm && (
-                <button 
-                  onClick={() => setShowReqForm(true)}
-                  className="text-xs font-medium text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1 rounded"
-                >
-                  + Pedir Repuesto
-                </button>
-              )}
+            <div className="flex justify-between items-center mb-4 border-b border-gray-100 dark:border-gray-700 pb-3 gap-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <ShoppingCart className="text-blue-500 shrink-0" size={18}/>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
+                  Requisiciones
+                </h2>
+                {request.requisitions && request.requisitions.length > 0 && (
+                  <span className="text-xs font-semibold bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-full shrink-0">
+                    {request.requisitions.length}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {request.requisitions && request.requisitions.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => window.open(`/print/quotation-request/${request.id}`, '_blank')}
+                    className="p-1.5 rounded-lg border border-indigo-200 dark:border-indigo-700/60 bg-indigo-50/60 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors shadow-sm flex items-center justify-center cursor-pointer"
+                    title="Imprimir Hoja de Solicitud de Cotización"
+                  >
+                    <Printer size={16} />
+                  </button>
+                )}
+                {request.status !== 'Completado' && !showReqForm && (
+                  <button 
+                    onClick={() => setShowReqForm(true)}
+                    className="text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition-colors shadow-sm whitespace-nowrap cursor-pointer"
+                  >
+                    <Plus size={14} /> Pedir Repuesto
+                  </button>
+                )}
+              </div>
             </div>
 
             {showReqForm && (
@@ -431,6 +450,14 @@ export default function ServiceExecutionDetail() {
                       <div className="text-xs text-gray-500">{new Date(req.dateRequested).toLocaleDateString()}</div>
                     </div>
                     <div className="flex items-center gap-2">
+                      <button 
+                        type="button"
+                        onClick={() => window.open(`/print/quotation-request/${request.id}?reqIds=${req.id}`, '_blank')}
+                        className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-200 transition-colors p-1"
+                        title="Imprimir solicitud de cotización para este repuesto"
+                      >
+                        <Printer size={15} />
+                      </button>
                       <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full ${
                         req.status === 'Pendiente' ? 'bg-amber-100 text-amber-700' :
                         req.status === 'Aprobada' ? 'bg-blue-100 text-blue-700' :
@@ -454,6 +481,17 @@ export default function ServiceExecutionDetail() {
               )}
             </div>
 
+            {request.requisitions && request.requisitions.length > 0 && (
+              <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700">
+                <button
+                  type="button"
+                  onClick={() => window.open(`/print/quotation-request/${request.id}`, '_blank')}
+                  className="w-full bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/50 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 py-2.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-colors shadow-sm cursor-pointer"
+                >
+                  <Printer size={15} /> Imprimir Hoja de Cotización ({request.requisitions.length} {request.requisitions.length === 1 ? 'repuesto' : 'repuestos'})
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">

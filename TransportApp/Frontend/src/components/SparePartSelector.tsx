@@ -81,6 +81,7 @@ export default function SparePartSelector({
       
       {isOpen && (
         <div 
+          onMouseDown={(e) => e.stopPropagation()}
           className="absolute left-0 top-full mt-1.5 w-full min-w-[340px] z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl max-h-72 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-75"
         >
           {/* Header de Búsqueda */}
@@ -118,7 +119,15 @@ export default function SparePartSelector({
                 return (
                   <div 
                     key={p.id}
-                    onClick={() => {
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onChange(p.id);
+                      setIsOpen(false);
+                      setSearchTerm('');
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
                       onChange(p.id);
                       setIsOpen(false);
                       setSearchTerm('');

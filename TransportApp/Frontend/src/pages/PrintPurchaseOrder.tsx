@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { purchasingService } from '../services/purchasingService';
 import type { PurchaseOrder } from '../types';
@@ -47,7 +47,7 @@ export default function PrintPurchaseOrder() {
         {`
           @media print {
             @page {
-              size: letter;
+              size: portrait;
               margin: 10mm;
             }
             body {

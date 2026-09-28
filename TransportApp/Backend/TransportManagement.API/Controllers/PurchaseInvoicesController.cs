@@ -67,6 +67,7 @@ namespace TransportManagement.API.Controllers
             }
 
             var cleanInvoiceNumber = invoice.InvoiceNumber.Trim();
+            var cleanControlNumber = string.IsNullOrWhiteSpace(invoice.ControlNumber) ? null : invoice.ControlNumber.Trim();
 
             // Validate that no active invoice with the same InvoiceNumber exists for this supplier and company
             var duplicateExists = await _context.PurchaseInvoices
@@ -78,6 +79,21 @@ namespace TransportManagement.API.Controllers
             if (duplicateExists)
             {
                 return BadRequest($"Ya existe una factura activa registrada con el número '{cleanInvoiceNumber}' para este proveedor.");
+            }
+
+            if (!string.IsNullOrEmpty(cleanControlNumber))
+            {
+                var duplicateControlExists = await _context.PurchaseInvoices
+                    .AnyAsync(pi => pi.CompanyId == invoice.CompanyId 
+                                 && pi.SupplierId == invoice.SupplierId 
+                                 && pi.ControlNumber != null
+                                 && pi.ControlNumber.Trim().ToLower() == cleanControlNumber.ToLower() 
+                                 && !pi.IsCancelled);
+
+                if (duplicateControlExists)
+                {
+                    return BadRequest($"Ya existe una factura activa registrada con el número de control '{cleanControlNumber}' para este proveedor.");
+                }
             }
             // Calculate totals mathematically
             decimal subTotal = 0;
@@ -184,6 +200,7 @@ namespace TransportManagement.API.Controllers
             }
 
             var cleanInvoiceNumber = updatedInvoice.InvoiceNumber.Trim();
+            var cleanControlNumber = string.IsNullOrWhiteSpace(updatedInvoice.ControlNumber) ? null : updatedInvoice.ControlNumber.Trim();
 
             var duplicateExists = await _context.PurchaseInvoices
                 .AnyAsync(pi => pi.Id != id
@@ -195,6 +212,22 @@ namespace TransportManagement.API.Controllers
             if (duplicateExists)
             {
                 return BadRequest($"Ya existe otra factura activa registrada con el número '{cleanInvoiceNumber}' para este proveedor.");
+            }
+
+            if (!string.IsNullOrEmpty(cleanControlNumber))
+            {
+                var duplicateControlExists = await _context.PurchaseInvoices
+                    .AnyAsync(pi => pi.Id != id
+                                 && pi.CompanyId == updatedInvoice.CompanyId 
+                                 && pi.SupplierId == updatedInvoice.SupplierId 
+                                 && pi.ControlNumber != null
+                                 && pi.ControlNumber.Trim().ToLower() == cleanControlNumber.ToLower() 
+                                 && !pi.IsCancelled);
+
+                if (duplicateControlExists)
+                {
+                    return BadRequest($"Ya existe otra factura activa registrada con el número de control '{cleanControlNumber}' para este proveedor.");
+                }
             }
 
             // Revert old inventory stock
@@ -394,6 +427,8 @@ namespace TransportManagement.API.Controllers
             if (!invoice.IsCancelled) return BadRequest("Invoice is not cancelled.");
 
             var cleanInvoiceNumber = invoice.InvoiceNumber?.Trim() ?? string.Empty;
+            var cleanControlNumber = string.IsNullOrWhiteSpace(invoice.ControlNumber) ? null : invoice.ControlNumber.Trim();
+
             var duplicateActiveExists = await _context.PurchaseInvoices
                 .AnyAsync(pi => pi.Id != invoice.Id
                              && pi.CompanyId == invoice.CompanyId 
@@ -404,6 +439,22 @@ namespace TransportManagement.API.Controllers
             if (duplicateActiveExists)
             {
                 return BadRequest($"No se puede reactivar: ya existe otra factura activa registrada con el número '{cleanInvoiceNumber}' para este proveedor.");
+            }
+
+            if (!string.IsNullOrEmpty(cleanControlNumber))
+            {
+                var duplicateControlExists = await _context.PurchaseInvoices
+                    .AnyAsync(pi => pi.Id != invoice.Id
+                                 && pi.CompanyId == invoice.CompanyId 
+                                 && pi.SupplierId == invoice.SupplierId 
+                                 && pi.ControlNumber != null
+                                 && pi.ControlNumber.Trim().ToLower() == cleanControlNumber.ToLower() 
+                                 && !pi.IsCancelled);
+
+                if (duplicateControlExists)
+                {
+                    return BadRequest($"No se puede reactivar: ya existe otra factura activa registrada con el número de control '{cleanControlNumber}' para este proveedor.");
+                }
             }
 
             invoice.IsCancelled = false;

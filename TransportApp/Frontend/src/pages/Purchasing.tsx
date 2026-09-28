@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { 
   ShoppingCart, Building2, Plus, Loader2, DollarSign, CheckCircle2, 
   Factory, Printer, Search, Calendar, Filter, MoreVertical, Edit, 
-  Trash, Download, Star, Users, Check, X, FileText 
+  Trash, Download, Star, Users, Check, X, FileText, 
+  BarChart3, Zap, Award 
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { purchasingService } from '../services/purchasingService';
@@ -45,6 +46,36 @@ export default function Purchasing() {
   const [editEmail, setEditEmail] = useState('');
   const [editAddress, setEditAddress] = useState('');
   const [editIsActive, setEditIsActive] = useState(true);
+
+  // Quotation Request Selection
+  const [selectedReqIds, setSelectedReqIds] = useState<number[]>([]);
+
+  // Bulk Quotation Modal State
+  const [showBulkQuoteModal, setShowBulkQuoteModal] = useState(false);
+  const [bulkSupplierId, setBulkSupplierId] = useState<number | ''>('');
+  const [bulkGeneralNotes, setBulkGeneralNotes] = useState('');
+  const [bulkItems, setBulkItems] = useState<Array<{
+    requisitionId: number;
+    partName: string;
+    otNumber?: number;
+    unitPlate?: string;
+    unitDesc?: string;
+    quantityRequested: number;
+    included: boolean;
+    quantity: number;
+    unitPrice: number | '';
+    notes: string;
+  }>>([]);
+  const [isSubmittingBulk, setIsSubmittingBulk] = useState(false);
+
+  // Requisitions Filter State ('pending' | 'approved' | 'all')
+  const [reqFilterStatus, setReqFilterStatus] = useState<'pending' | 'approved' | 'all'>('pending');
+
+  // Comparative Matrix Modal State
+  const [showCompareModal, setShowCompareModal] = useState(false);
+  const [compareFilterOt, setCompareFilterOt] = useState<string>('all');
+  const [compareFilterStatus, setCompareFilterStatus] = useState<'pending' | 'approved' | 'all'>('pending');
+  const [isSubmittingCompare, setIsSubmittingCompare] = useState(false);
 
   // Quoting State
   const [quotingReqId, setQuotingReqId] = useState<number | null>(null);
@@ -199,6 +230,254 @@ export default function Purchasing() {
       fetchData();
     } catch (error) {
       console.error('Error adding quote:', error);
+    }
+  };
+
+  const handleToggleSelectReq = (id: number) => {
+    setSelectedReqIds(prev => 
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAllReqs = () => {
+    if (selectedReqIds.length === requisitions.length) {
+      setSelectedReqIds([]);
+    } else {
+      setSelectedReqIds(requisitions.map(r => r.id));
+    }
+  };
+
+  const handlePrintQuotationRequests = (reqIdsToPrint?: number[], specificServiceRequestId?: number) => {
+    if (reqIdsToPrint && reqIdsToPrint.length > 0 && specificServiceRequestId) {
+      window.open(`/print/quotation-request/${specificServiceRequestId}?reqIds=${reqIdsToPrint.join(',')}`, '_blank');
+      return;
+    }
+
+    const ids = reqIdsToPrint && reqIdsToPrint.length > 0 ? reqIdsToPrint : selectedReqIds;
+    if (ids.length === 0) return;
+
+    // Group selected requisitions by serviceRequestId
+    const selectedList = requisitions.filter(r => ids.includes(r.id));
+    const byTicket: { [ticketId: number]: number[] } = {};
+    selectedList.forEach(r => {
+      const tId = r.serviceRequestId || 0;
+      if (!byTicket[tId]) byTicket[tId] = [];
+      byTicket[tId].push(r.id);
+    });
+
+    const ticketIds = Object.keys(byTicket);
+    if (ticketIds.length === 0) return;
+
+    ticketIds.forEach(tId => {
+      const reqList = byTicket[Number(tId)].join(',');
+      window.open(`/print/quotation-request/${tId}?reqIds=${reqList}`, '_blank');
+    });
+  };
+
+  const handleOpenBulkQuoteModal = () => {
+    const sourceReqs = selectedReqIds.length > 0 
+      ? requisitions.filter(r => selectedReqIds.includes(r.id))
+      : requisitions.filter(r => r.status !== 'Comprada');
+
+    if (sourceReqs.length === 0) {
+      alert('No hay requisiciones disponibles para cotizar.');
+      return;
+    }
+
+    const items = sourceReqs.map(r => ({
+      requisitionId: r.id,
+      partName: r.partNameOrDescription,
+      otNumber: r.serviceRequestId,
+      unitPlate: r.serviceRequest?.vehicle?.licensePlate || r.serviceRequest?.trailer?.licensePlate || 'N/A',
+      unitDesc: r.serviceRequest?.vehicle?.brand || r.serviceRequest?.trailer?.type || '',
+      quantityRequested: r.quantity,
+      included: true,
+      quantity: r.quantity,
+      unitPrice: '' as number | '',
+      notes: ''
+    }));
+
+    setBulkItems(items);
+    setBulkSupplierId('');
+    setBulkGeneralNotes('');
+    setShowBulkQuoteModal(true);
+  };
+
+  const updateBulkItem = (index: number, field: string, value: any) => {
+    setBulkItems(prev => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: value };
+      return next;
+    });
+  };
+
+  const handleToggleAllBulkItems = (checked: boolean) => {
+    setBulkItems(prev => prev.map(item => ({ ...item, included: checked })));
+  };
+
+  const handleSubmitBulkQuote = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bulkSupplierId) {
+      alert('Por favor seleccione un proveedor para la cotización.');
+      return;
+    }
+
+    const activeItems = bulkItems.filter(item => 
+      item.included && 
+      item.unitPrice !== '' && 
+      Number(item.unitPrice) > 0
+    );
+
+    if (activeItems.length === 0) {
+      alert('Debe cotizar al menos un repuesto ingresando un precio unitario mayor a 0.');
+      return;
+    }
+
+    try {
+      setIsSubmittingBulk(true);
+      const promises = activeItems.map(item => {
+        const itemNote = [bulkGeneralNotes, item.notes].filter(Boolean).join(' - ');
+        return purchasingService.addQuotation(item.requisitionId, {
+          supplierId: Number(bulkSupplierId),
+          unitPrice: Number(item.unitPrice),
+          quantity: Number(item.quantity) || item.quantityRequested,
+          notes: itemNote || undefined
+        });
+      });
+
+      await Promise.all(promises);
+
+      alert(`Se registraron exitosamente ${activeItems.length} cotizaciones para el proveedor.`);
+      setShowBulkQuoteModal(false);
+      setSelectedReqIds([]);
+      await fetchData();
+    } catch (error) {
+      console.error('Error submitting bulk quotes:', error);
+      alert('Ocurrió un error al registrar las cotizaciones.');
+    } finally {
+      setIsSubmittingBulk(false);
+    }
+  };
+
+  const handleSelectAllForSupplier = async (supplierId: number) => {
+    try {
+      setIsSubmittingCompare(true);
+      const targetReqs = (selectedReqIds.length > 0 
+        ? requisitions.filter(r => selectedReqIds.includes(r.id))
+        : requisitions
+      ).filter(r => {
+        if (compareFilterOt === 'all') return true;
+        return r.serviceRequestId === Number(compareFilterOt);
+      });
+
+      const actions: Promise<void>[] = [];
+
+      targetReqs.forEach(req => {
+        const quotes = req.quotations || [];
+        const targetQuote = quotes.find(q => q.supplierId === supplierId);
+        if (targetQuote) {
+          // Deselect other selected quotes
+          quotes.forEach(q => {
+            if (q.id !== targetQuote.id && q.isSelected) {
+              actions.push(purchasingService.selectQuotation(req.id, q.id));
+            }
+          });
+          // Select target quote if not already selected
+          if (!targetQuote.isSelected) {
+            actions.push(purchasingService.selectQuotation(req.id, targetQuote.id));
+          }
+        }
+      });
+
+      if (actions.length === 0) {
+        alert('Las cotizaciones de este proveedor ya se encuentran seleccionadas.');
+        setIsSubmittingCompare(false);
+        return;
+      }
+
+      await Promise.all(actions);
+      await fetchData();
+    } catch (error) {
+      console.error('Error selecting supplier quotes:', error);
+      alert('Ocurrió un error al seleccionar las cotizaciones del proveedor.');
+    } finally {
+      setIsSubmittingCompare(false);
+    }
+  };
+
+  const handleSelectLowestPrices = async () => {
+    try {
+      setIsSubmittingCompare(true);
+      const targetReqs = (selectedReqIds.length > 0 
+        ? requisitions.filter(r => selectedReqIds.includes(r.id))
+        : requisitions
+      ).filter(r => {
+        if (compareFilterOt === 'all') return true;
+        return r.serviceRequestId === Number(compareFilterOt);
+      });
+
+      const actions: Promise<void>[] = [];
+
+      targetReqs.forEach(req => {
+        const quotes = (req.quotations || []).filter(q => q.unitPrice > 0);
+        if (quotes.length === 0) return;
+
+        const minPrice = Math.min(...quotes.map(q => q.unitPrice));
+        const lowestQuote = quotes.find(q => q.unitPrice === minPrice) || quotes[0];
+
+        // Deselect other quotes
+        quotes.forEach(q => {
+          if (q.id !== lowestQuote.id && q.isSelected) {
+            actions.push(purchasingService.selectQuotation(req.id, q.id));
+          }
+        });
+
+        // Select lowest quote
+        if (!lowestQuote.isSelected) {
+          actions.push(purchasingService.selectQuotation(req.id, lowestQuote.id));
+        }
+      });
+
+      if (actions.length === 0) {
+        alert('No se encontraron cotizaciones con precio para seleccionar.');
+        setIsSubmittingCompare(false);
+        return;
+      }
+
+      await Promise.all(actions);
+      await fetchData();
+    } catch (error) {
+      console.error('Error selecting lowest quotes:', error);
+      alert('Ocurrió un error al seleccionar los menores precios.');
+    } finally {
+      setIsSubmittingCompare(false);
+    }
+  };
+
+  const handleToggleCellQuote = async (req: PurchaseRequisition, quote: any) => {
+    try {
+      setIsSubmittingCompare(true);
+      const actions: Promise<void>[] = [];
+
+      if (quote.isSelected) {
+        actions.push(purchasingService.selectQuotation(req.id, quote.id));
+      } else {
+        // Deselect any other quote currently selected for this requisition
+        (req.quotations || []).forEach(q => {
+          if (q.id !== quote.id && q.isSelected) {
+            actions.push(purchasingService.selectQuotation(req.id, q.id));
+          }
+        });
+        actions.push(purchasingService.selectQuotation(req.id, quote.id));
+      }
+
+      await Promise.all(actions);
+      await fetchData();
+    } catch (error) {
+      console.error('Error toggling quote:', error);
+      alert('Error al actualizar la selección de la cotización.');
+    } finally {
+      setIsSubmittingCompare(false);
     }
   };
 
@@ -781,16 +1060,155 @@ export default function Purchasing() {
           {requisitions.length === 0 ? (
             <div className="py-12 text-center text-gray-500">No hay requisiciones de taller pendientes.</div>
           ) : (
-            <div className="grid grid-cols-1 gap-6">
-              {requisitions.map(req => {
+            <>
+              {/* Batch Action Bar for Quotation Requests */}
+              <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-wrap items-center justify-between gap-4">
+                <div className="flex flex-wrap items-center gap-4">
+                  {/* Status Filter Tabs */}
+                  <div className="flex items-center bg-gray-100 dark:bg-gray-700/60 p-1 rounded-xl text-xs font-medium">
+                    <button
+                      type="button"
+                      onClick={() => setReqFilterStatus('pending')}
+                      className={`px-3 py-1.5 rounded-lg transition font-bold ${
+                        reqFilterStatus === 'pending'
+                          ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-sm'
+                          : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+                      }`}
+                    >
+                      Pendientes de Aprobación ({requisitions.filter(r => !r.quotations?.some(q => q.isSelected) && r.status !== 'Comprada').length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setReqFilterStatus('all')}
+                      className={`px-3 py-1.5 rounded-lg transition font-medium ${
+                        reqFilterStatus === 'all'
+                          ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-sm'
+                          : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+                      }`}
+                    >
+                      Todas ({requisitions.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setReqFilterStatus('approved')}
+                      className={`px-3 py-1.5 rounded-lg transition font-medium ${
+                        reqFilterStatus === 'approved'
+                          ? 'bg-white dark:bg-gray-800 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                          : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+                      }`}
+                    >
+                      Aprobadas ({requisitions.filter(r => r.quotations?.some(q => q.isSelected) || r.status === 'Comprada').length})
+                    </button>
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <input 
+                      type="checkbox" 
+                      checked={requisitions.length > 0 && selectedReqIds.length === requisitions.length}
+                      onChange={handleSelectAllReqs}
+                      className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                    />
+                    <span>Seleccionar todos ({requisitions.length})</span>
+                  </label>
+                  {selectedReqIds.length > 0 && (
+                    <span className="text-xs bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300 font-semibold px-2.5 py-1 rounded-full border border-indigo-200 dark:border-indigo-800">
+                      {selectedReqIds.length} seleccionado{selectedReqIds.length > 1 ? 's' : ''}
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={selectedReqIds.length === 0}
+                    onClick={() => handlePrintQuotationRequests()}
+                    className={`px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition-colors shadow-sm ${
+                      selectedReqIds.length > 0
+                        ? 'bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                    }`}
+                    title="Imprime la hoja de solicitud de cotización para los ítems seleccionados"
+                  >
+                    <Printer size={16} /> 
+                    Imprimir Solicitud de Cotización {selectedReqIds.length > 0 ? `(${selectedReqIds.length})` : ''}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleOpenBulkQuoteModal}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition-colors shadow-sm cursor-pointer"
+                    title="Cargar cotización de un proveedor para múltiples requisiciones simultáneamente"
+                  >
+                    <DollarSign size={16} />
+                    Cargar Cotización de Proveedor {selectedReqIds.length > 0 ? `(${selectedReqIds.length})` : ''}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCompareFilterOt('all');
+                      setShowCompareModal(true);
+                    }}
+                    className="bg-[#2e5b88] hover:bg-[#204467] text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition-colors shadow-sm cursor-pointer"
+                    title="Comparar ofertas recibidas de los proveedores y elegir ganadores en lote"
+                  >
+                    <BarChart3 size={16} />
+                    Cuadro Comparativo {selectedReqIds.length > 0 ? `(${selectedReqIds.length})` : ''}
+                  </button>
+                  {selectedReqIds.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedReqIds([])}
+                      className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 px-2 py-1"
+                    >
+                      Limpiar selección
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-6">
+              {(() => {
+                const displayedReqs = requisitions.filter(r => {
+                  const isApproved = r.status === 'Comprada' || r.quotations?.some(q => q.isSelected);
+                  if (reqFilterStatus === 'pending') return !isApproved;
+                  if (reqFilterStatus === 'approved') return isApproved;
+                  return true;
+                });
+
+                if (displayedReqs.length === 0) {
+                  return (
+                    <div className="py-12 text-center text-gray-400 italic bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+                      {reqFilterStatus === 'pending'
+                        ? 'No hay requisiciones pendientes por aprobar cotización.'
+                        : reqFilterStatus === 'approved'
+                          ? 'No hay requisiciones con cotizaciones aprobadas aún.'
+                          : 'No hay requisiciones registradas.'}
+                    </div>
+                  );
+                }
+
+                return displayedReqs.map(req => {
                 const totalSelectedQty = req.quotations?.filter(q => q.isSelected).reduce((acc, q) => acc + (q.quantity || 0), 0) || 0;
                 
                 return (
-                  <div key={req.id} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden flex flex-col justify-between hover:shadow-md transition-shadow">
+                  <div 
+                    key={req.id} 
+                    className={`bg-white dark:bg-gray-800 rounded-xl border transition-all ${
+                      selectedReqIds.includes(req.id)
+                        ? 'border-indigo-500 ring-2 ring-indigo-500/20 shadow-md' 
+                        : 'border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md'
+                    } overflow-hidden flex flex-col justify-between`}
+                  >
                     <div className="p-6 flex flex-col md:flex-row justify-between items-start gap-4 border-b border-gray-100 dark:border-gray-700">
-                      <div>
-                        <div className="flex items-center gap-3 mb-1">
-                          <span className="font-bold text-gray-900 dark:text-white text-lg">Requisición #{req.id.toString().padStart(4, '0')}</span>
+                      <div className="flex items-start gap-3">
+                        <input 
+                          type="checkbox"
+                          checked={selectedReqIds.includes(req.id)}
+                          onChange={() => handleToggleSelectReq(req.id)}
+                          className="w-5 h-5 mt-1 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                          title="Seleccionar para imprimir solicitud de cotización"
+                        />
+                        <div>
+                          <div className="flex items-center gap-3 mb-1">
+                            <span className="font-bold text-gray-900 dark:text-white text-lg">Requisición #{req.id.toString().padStart(4, '0')}</span>
                           <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase border ${
                              req.status === 'Pendiente' ? 'bg-amber-100 text-amber-800 border-amber-200' :
                              req.status === 'Cotizando' ? 'bg-blue-100 text-blue-800 border-blue-200' :
@@ -819,14 +1237,29 @@ export default function Purchasing() {
                           Vehículo: {req.serviceRequest?.vehicle?.licensePlate || req.serviceRequest?.trailer?.licensePlate || 'Unidad de Flota'} • Solicitado el {new Date(req.dateRequested).toLocaleDateString()}
                         </div>
                       </div>
-                      {quotingReqId !== req.id && (
-                        <button 
-                          onClick={() => handleOpenQuotingForm(req)}
-                          className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-650 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 px-4 py-2 rounded-md font-medium text-sm transition-colors shadow-sm whitespace-nowrap"
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 self-end md:self-start">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (req.serviceRequestId) {
+                              handlePrintQuotationRequests([req.id], req.serviceRequestId);
+                            }
+                          }}
+                          className="bg-white dark:bg-gray-800 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 px-3.5 py-2 rounded-md font-medium text-sm transition-colors shadow-sm flex items-center gap-1.5 whitespace-nowrap"
+                          title="Imprimir hoja de cotización para este repuesto"
                         >
-                          + Ingresar Cotización
+                          <Printer size={15} /> Imprimir Solicitud
                         </button>
-                      )}
+                        {quotingReqId !== req.id && (
+                          <button 
+                            onClick={() => handleOpenQuotingForm(req)}
+                            className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-650 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 px-4 py-2 rounded-md font-medium text-sm transition-colors shadow-sm whitespace-nowrap"
+                          >
+                            + Ingresar Cotización
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     {/* Quotations Form */}
@@ -889,16 +1322,26 @@ export default function Purchasing() {
                                   <span className="block text-[10px] text-gray-500 font-normal uppercase mt-0.5">Costo Total</span>
                                 </div>
                                 
-                                <button 
-                                  onClick={() => handleSelectQuote(req.id, quote.id)}
-                                  className={`ml-4 px-3 py-1.5 rounded text-sm font-medium transition-colors border ${
-                                    quote.isSelected
-                                      ? 'bg-red-50 hover:bg-red-100 text-red-700 border-red-200'
-                                      : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-700 border-emerald-300'
-                                  }`}
-                                >
-                                  {quote.isSelected ? 'Deseleccionar' : 'Elegir y Comprar'}
-                                </button>
+                                {(() => {
+                                  const hasAnyApproved = req.quotations?.some(q => q.isSelected);
+                                  const isAnotherApproved = !quote.isSelected && hasAnyApproved;
+                                  return (
+                                    <button 
+                                      disabled={isAnotherApproved}
+                                      onClick={() => handleSelectQuote(req.id, quote.id)}
+                                      className={`ml-4 px-3 py-1.5 rounded text-sm font-medium transition-colors border ${
+                                        quote.isSelected
+                                          ? 'bg-red-50 hover:bg-red-100 text-red-700 border-red-200 cursor-pointer'
+                                          : isAnotherApproved
+                                            ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 border-gray-200 dark:border-gray-700 cursor-not-allowed opacity-50'
+                                            : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-700 border-emerald-300 cursor-pointer'
+                                      }`}
+                                      title={isAnotherApproved ? 'Ya existe una cotización aprobada para este repuesto. Deselecciónela primero si desea cambiar.' : ''}
+                                    >
+                                      {quote.isSelected ? 'Deseleccionar' : 'Elegir y Comprar'}
+                                    </button>
+                                  );
+                                })()}
                               </div>
                             </div>
                           ))}
@@ -907,8 +1350,10 @@ export default function Purchasing() {
                     )}
                   </div>
                 );
-              })}
+              });
+              })()}
             </div>
+            </>
           )}
         </div>
       )}
@@ -1038,6 +1483,662 @@ export default function Purchasing() {
           </div>
         </div>
       )}
+
+      {/* Modal Carga Masiva de Cotización por Proveedor */}
+      {showBulkQuoteModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-200 print:hidden">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-5xl w-full shadow-2xl border border-gray-200 dark:border-gray-700 animate-in zoom-in-95 duration-200 flex flex-col max-h-[92vh] overflow-hidden">
+            {/* Modal Header */}
+            <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/40">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2.5">
+                  <DollarSign className="text-emerald-600 dark:text-emerald-400" size={24} />
+                  Cargar Cotización por Proveedor
+                </h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Ingresa los precios y condiciones recibidas de un mismo proveedor para múltiples repuestos en un solo paso.
+                </p>
+              </div>
+              <button 
+                type="button"
+                onClick={() => setShowBulkQuoteModal(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={handleSubmitBulkQuote} className="flex flex-col flex-1 overflow-hidden">
+              <div className="p-6 overflow-y-auto space-y-6 flex-1">
+                {/* Supplier & General Terms Header */}
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 bg-emerald-50/50 dark:bg-emerald-950/20 p-4 rounded-xl border border-emerald-100 dark:border-emerald-900/40">
+                  <div className="md:col-span-6">
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1">
+                      Proveedor / Casa Comercial <span className="text-rose-500">*</span>
+                    </label>
+                    <select
+                      required
+                      value={bulkSupplierId}
+                      onChange={e => setBulkSupplierId(e.target.value === '' ? '' : Number(e.target.value))}
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium focus:ring-2 focus:ring-emerald-500 outline-none"
+                    >
+                      <option value="" disabled>-- Seleccione el proveedor que cotizó --</option>
+                      {suppliers.filter(s => s.isActive).map(s => (
+                        <option key={s.id} value={s.id}>
+                          {s.name} {s.taxId ? `(${s.taxId})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="md:col-span-6">
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1">
+                      Condiciones Generales de la Oferta (Opcional)
+                    </label>
+                    <input 
+                      type="text"
+                      value={bulkGeneralNotes}
+                      onChange={e => setBulkGeneralNotes(e.target.value)}
+                      placeholder="Ej. Crédito 15 días, entrega inmediata, validez 7 días..."
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium focus:ring-2 focus:ring-emerald-500 outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Items Table */}
+                <div>
+                  <div className="flex justify-between items-center mb-3">
+                    <h3 className="text-sm font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wider flex items-center gap-2">
+                      <span>Repuestos a Cotizar</span>
+                      <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-full font-mono">
+                        {bulkItems.length}
+                      </span>
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      <button 
+                        type="button" 
+                        onClick={() => handleToggleAllBulkItems(true)} 
+                        className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-semibold"
+                      >
+                        Marcar todos
+                      </button>
+                      <span className="text-gray-300 dark:text-gray-600">|</span>
+                      <button 
+                        type="button" 
+                        onClick={() => handleToggleAllBulkItems(false)} 
+                        className="text-xs text-gray-500 dark:text-gray-400 hover:underline"
+                      >
+                        Desmarcar todos
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead className="bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-300 uppercase tracking-wider font-bold text-[10px] border-b border-gray-200 dark:border-gray-700">
+                        <tr>
+                          <th className="px-3 py-2.5 w-10 text-center">Inc.</th>
+                          <th className="px-4 py-2.5">Artículo / Requisición</th>
+                          <th className="px-3 py-2.5 w-24 text-center">Cant. Req.</th>
+                          <th className="px-3 py-2.5 w-28 text-center">Cant. Cotizada</th>
+                          <th className="px-3 py-2.5 w-32 text-center">Precio Unit. ($)</th>
+                          <th className="px-3 py-2.5 w-28 text-right">Subtotal ($)</th>
+                          <th className="px-3 py-2.5 min-w-[160px]">Marca / Nota Ítem</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                        {bulkItems.map((item, idx) => {
+                          const subtotal = item.included && item.unitPrice !== '' && Number(item.unitPrice) > 0
+                            ? (Number(item.quantity) || item.quantityRequested) * Number(item.unitPrice)
+                            : 0;
+
+                          return (
+                            <tr 
+                              key={item.requisitionId}
+                              className={`transition-colors ${
+                                item.included 
+                                  ? 'bg-white dark:bg-gray-800 hover:bg-slate-50/60 dark:hover:bg-slate-700/40' 
+                                  : 'bg-gray-50/70 dark:bg-gray-900/50 opacity-60'
+                              }`}
+                            >
+                              <td className="px-3 py-2.5 text-center">
+                                <input 
+                                  type="checkbox"
+                                  checked={item.included}
+                                  onChange={e => updateBulkItem(idx, 'included', e.target.checked)}
+                                  className="w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                                />
+                              </td>
+                              <td className="px-4 py-2.5">
+                                <div className="font-bold text-gray-900 dark:text-white text-xs">
+                                  {item.partName}
+                                </div>
+                                <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-2">
+                                  <span>Req #{item.requisitionId.toString().padStart(4, '0')}</span>
+                                  <span>&bull;</span>
+                                  <span>OT #{item.otNumber}</span>
+                                  <span>&bull;</span>
+                                  <span className="font-mono text-indigo-600 dark:text-indigo-400">{item.unitPlate}</span>
+                                </div>
+                              </td>
+                              <td className="px-3 py-2.5 text-center font-mono text-gray-500 dark:text-gray-400">
+                                {item.quantityRequested} und.
+                              </td>
+                              <td className="px-3 py-2.5">
+                                <input 
+                                  type="number"
+                                  min="1"
+                                  disabled={!item.included}
+                                  value={item.quantity}
+                                  onChange={e => updateBulkItem(idx, 'quantity', Number(e.target.value))}
+                                  className="w-full text-center rounded border border-gray-300 dark:border-gray-600 px-2 py-1 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-xs font-semibold focus:ring-2 focus:ring-emerald-500 outline-none disabled:opacity-50"
+                                />
+                              </td>
+                              <td className="px-3 py-2.5">
+                                <div className="relative">
+                                  <span className="absolute left-2 top-1 text-gray-400 text-xs">$</span>
+                                  <input 
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    disabled={!item.included}
+                                    placeholder="0.00"
+                                    value={item.unitPrice}
+                                    onChange={e => updateBulkItem(idx, 'unitPrice', e.target.value === '' ? '' : Number(e.target.value))}
+                                    className="w-full text-right rounded border border-gray-300 dark:border-gray-600 pl-5 pr-2 py-1 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-xs font-bold focus:ring-2 focus:ring-emerald-500 outline-none disabled:opacity-50"
+                                  />
+                                </div>
+                              </td>
+                              <td className="px-3 py-2.5 text-right font-mono font-bold text-xs">
+                                {subtotal > 0 ? (
+                                  <span className="text-emerald-600 dark:text-emerald-400">
+                                    ${subtotal.toFixed(2)}
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-300 dark:text-gray-600">$0.00</span>
+                                )}
+                              </td>
+                              <td className="px-3 py-2.5">
+                                <input 
+                                  type="text"
+                                  disabled={!item.included}
+                                  placeholder="Ej. Marca, disp. 2 días..."
+                                  value={item.notes}
+                                  onChange={e => updateBulkItem(idx, 'notes', e.target.value)}
+                                  className="w-full rounded border border-gray-300 dark:border-gray-600 px-2 py-1 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-xs focus:ring-2 focus:ring-emerald-500 outline-none disabled:opacity-50"
+                                />
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 px-6 border-t border-gray-100 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-900/60 flex flex-wrap justify-between items-center gap-4">
+                <div className="flex items-center gap-4 text-xs">
+                  <div>
+                    <span className="text-gray-500 dark:text-gray-400">Ítems con precio: </span>
+                    <strong className="text-gray-900 dark:text-white font-bold">
+                      {bulkItems.filter(i => i.included && i.unitPrice !== '' && Number(i.unitPrice) > 0).length}
+                    </strong> de {bulkItems.length}
+                  </div>
+                  <div className="border-l border-gray-300 dark:border-gray-600 h-4"></div>
+                  <div>
+                    <span className="text-gray-500 dark:text-gray-400">Total Cotización: </span>
+                    <strong className="text-emerald-600 dark:text-emerald-400 text-sm font-black font-mono">
+                      ${bulkItems.reduce((acc, item) => {
+                        if (item.included && item.unitPrice !== '' && Number(item.unitPrice) > 0) {
+                          return acc + (Number(item.quantity) || item.quantityRequested) * Number(item.unitPrice);
+                        }
+                        return acc;
+                      }, 0).toFixed(2)}
+                    </strong>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button 
+                    type="button"
+                    onClick={() => setShowBulkQuoteModal(false)}
+                    className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 px-4 py-2 rounded-xl text-xs font-bold hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                  >
+                    Cancelar
+                  </button>
+                  <button 
+                    type="submit"
+                    disabled={isSubmittingBulk || !bulkSupplierId || bulkItems.filter(i => i.included && i.unitPrice !== '' && Number(i.unitPrice) > 0).length === 0}
+                    className={`px-6 py-2 rounded-xl text-xs font-bold shadow-lg transition flex items-center gap-2 ${
+                      isSubmittingBulk || !bulkSupplierId || bulkItems.filter(i => i.included && i.unitPrice !== '' && Number(i.unitPrice) > 0).length === 0
+                        ? 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                        : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-900/20 cursor-pointer'
+                    }`}
+                  >
+                    {isSubmittingBulk ? (
+                      <>
+                        <Loader2 size={14} className="animate-spin" /> Registrando Cotizaciones...
+                      </>
+                    ) : (
+                      <>
+                        <Check size={14} /> Registrar Cotizaciones ({bulkItems.filter(i => i.included && i.unitPrice !== '' && Number(i.unitPrice) > 0).length})
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+
+      {/* Modal Cuadro Comparativo General de Proveedores */}
+      {showCompareModal && (() => {
+        const compareBaseReqs = selectedReqIds.length > 0 
+          ? requisitions.filter(r => selectedReqIds.includes(r.id))
+          : requisitions;
+
+        const availableOts = Array.from(new Set(compareBaseReqs.map(r => r.serviceRequestId).filter(Boolean))) as number[];
+
+        const activeCompareReqs = compareBaseReqs.filter(r => {
+          if (compareFilterOt !== 'all' && r.serviceRequestId !== Number(compareFilterOt)) {
+            return false;
+          }
+          const isApproved = r.status === 'Comprada' || r.quotations?.some(q => q.isSelected);
+          if (compareFilterStatus === 'pending') return !isApproved;
+          if (compareFilterStatus === 'approved') return isApproved;
+          return true;
+        });
+
+        // Unique suppliers in this comparison
+        const supplierMap = new Map<number, Supplier>();
+        activeCompareReqs.forEach(r => {
+          r.quotations?.forEach(q => {
+            if (q.supplierId) {
+              const sup = q.supplier || suppliers.find(s => s.id === q.supplierId) || { id: q.supplierId, name: `Prov #${q.supplierId}`, isActive: true };
+              supplierMap.set(q.supplierId, sup);
+            }
+          });
+        });
+        const compareSuppliers = Array.from(supplierMap.values());
+
+        // Approved summary
+        const approvedCount = activeCompareReqs.filter(r => r.quotations?.some(q => q.isSelected)).length;
+        const approvedTotalAmount = activeCompareReqs.reduce((acc, r) => {
+          const selectedQ = r.quotations?.find(q => q.isSelected);
+          if (selectedQ) {
+            return acc + (selectedQ.unitPrice * (selectedQ.quantity || r.quantity));
+          }
+          return acc;
+        }, 0);
+
+        return (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-200 print:hidden">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-7xl w-full shadow-2xl border border-gray-200 dark:border-gray-700 animate-in zoom-in-95 duration-200 flex flex-col max-h-[94vh] overflow-hidden">
+              
+              {/* Header */}
+              <div className="p-5 px-6 border-b border-gray-100 dark:border-gray-700 flex flex-wrap justify-between items-center gap-4 bg-slate-50/70 dark:bg-slate-900/50">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded-xl">
+                    <BarChart3 size={24} />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                      Cuadro Comparativo de Presupuestos
+                      <span className="text-xs bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 px-2.5 py-0.5 rounded-full font-mono font-bold">
+                        {activeCompareReqs.length} {activeCompareReqs.length === 1 ? 'repuesto' : 'repuestos'}
+                      </span>
+                    </h2>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      Evalúa ofertas por proveedor, compara precios y aprueba todas las cotizaciones con 1 clic.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  {/* Status Filter Toggle */}
+                  <div className="flex items-center bg-gray-100 dark:bg-gray-800 p-0.5 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <button
+                      type="button"
+                      onClick={() => setCompareFilterStatus('pending')}
+                      className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
+                        compareFilterStatus === 'pending'
+                          ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-xs'
+                          : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
+                      }`}
+                    >
+                      Solo Pendientes de Aprobación
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCompareFilterStatus('all')}
+                      className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
+                        compareFilterStatus === 'all'
+                          ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-xs'
+                          : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
+                      }`}
+                    >
+                      Ver Todas
+                    </button>
+                  </div>
+
+                  {/* OT Filter */}
+                  {availableOts.length > 1 && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">Filtrar por OT:</span>
+                      <select
+                        value={compareFilterOt}
+                        onChange={e => setCompareFilterOt(e.target.value)}
+                        className="text-xs font-semibold bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 text-gray-800 dark:text-gray-200 outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="all">Todas las OTs ({availableOts.length})</option>
+                        {availableOts.map(ot => (
+                          <option key={ot} value={ot.toString()}>OT #{ot}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Best price quick action */}
+                  <button
+                    type="button"
+                    disabled={isSubmittingCompare || compareSuppliers.length === 0}
+                    onClick={handleSelectLowestPrices}
+                    className="bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer whitespace-nowrap"
+                    title="Selecciona automáticamente la cotización más económica disponible para cada repuesto"
+                  >
+                    <Zap size={14} className="fill-white" />
+                    ⚡ Seleccionar Menor Precio por Ítem
+                  </button>
+
+                  <button 
+                    type="button"
+                    onClick={() => setShowCompareModal(false)}
+                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Matrix Body */}
+              <div className="flex-1 overflow-auto p-6">
+                {compareSuppliers.length === 0 ? (
+                  <div className="py-16 text-center text-gray-400">
+                    <BarChart3 className="mx-auto mb-3 opacity-30" size={48} />
+                    <p className="font-semibold text-base">No hay cotizaciones registradas para estas requisiciones.</p>
+                    <p className="text-xs mt-1">Usa el botón "Cargar Cotización de Proveedor" para ingresar las ofertas recibidas.</p>
+                  </div>
+                ) : (
+                  <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm">
+                    <table className="w-full border-collapse text-left text-xs">
+                      {/* Table Header: Column per Supplier */}
+                      <thead className="bg-slate-100 dark:bg-slate-900 border-b border-gray-200 dark:border-gray-700">
+                        <tr>
+                          {/* Left sticky header: Requisition info */}
+                          <th className="p-4 w-72 min-w-[280px] bg-slate-100 dark:bg-slate-900 border-r border-gray-200 dark:border-gray-700 align-top">
+                            <div className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                              Artículo Solicitado / Destino
+                            </div>
+                            <div className="text-[10px] text-gray-400 mt-1">
+                              Mostrando {activeCompareReqs.length} requerimientos
+                            </div>
+                          </th>
+
+                          {/* Column for each Quoting Supplier */}
+                          {compareSuppliers.map(sup => {
+                            // Calculate total for this supplier in visible requisitions
+                            const supQuotes = activeCompareReqs.flatMap(r => 
+                              (r.quotations || []).filter(q => q.supplierId === sup.id)
+                            );
+                            const totalQuoted = supQuotes.reduce((acc, q) => acc + (q.unitPrice * (q.quantity || 1)), 0);
+                            const quotedCount = supQuotes.length;
+                            const isAllSelected = quotedCount > 0 && supQuotes.every(q => q.isSelected);
+
+                            return (
+                              <th key={sup.id} className="p-4 min-w-[230px] border-r border-gray-200 dark:border-gray-700 last:border-r-0 align-top bg-white dark:bg-gray-800/80">
+                                <div className="flex flex-col justify-between h-full gap-2.5">
+                                  <div>
+                                    <div className="font-extrabold text-sm text-gray-900 dark:text-white uppercase truncate" title={sup.name}>
+                                      {sup.name}
+                                    </div>
+                                    <div className="text-[10px] text-gray-400 font-mono mt-0.5">
+                                      {sup.taxId || 'Sin RIF'} &bull; <strong className="text-gray-600 dark:text-gray-300">{quotedCount} de {activeCompareReqs.length}</strong> cotizados
+                                    </div>
+                                    <div className="mt-1 text-xs">
+                                      <span className="text-gray-500 text-[10px] uppercase font-semibold">Total Oferta: </span>
+                                      <span className="font-mono font-extrabold text-indigo-600 dark:text-indigo-400 text-sm">
+                                        ${totalQuoted.toFixed(2)}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* Select All Button for this Supplier */}
+                                  <button
+                                    type="button"
+                                    disabled={isSubmittingCompare || quotedCount === 0}
+                                    onClick={() => handleSelectAllForSupplier(sup.id)}
+                                    className={`w-full py-2 px-3 rounded-lg text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer ${
+                                      isAllSelected
+                                        ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-900/20'
+                                        : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700'
+                                    }`}
+                                    title={`Aprobar todas las cotizaciones de ${sup.name}`}
+                                  >
+                                    <Award size={14} />
+                                    {isAllSelected ? '✅ Todo Seleccionado' : 'Elegir Todo de este Prov.'}
+                                  </button>
+                                </div>
+                              </th>
+                            );
+                          })}
+                        </tr>
+                      </thead>
+
+                      {/* Table Rows: Each Requisition */}
+                      <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                        {activeCompareReqs.map(req => {
+                          const validQuotes = (req.quotations || []).filter(q => q.unitPrice > 0);
+                          const minPrice = validQuotes.length > 0 
+                            ? Math.min(...validQuotes.map(q => q.unitPrice)) 
+                            : null;
+                          const selectedQuote = (req.quotations || []).find(q => q.isSelected);
+
+                          return (
+                            <tr key={req.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
+                              {/* Left Column: Requisition Details */}
+                              <td className="p-4 bg-slate-50/40 dark:bg-slate-900/40 border-r border-gray-200 dark:border-gray-700">
+                                <div className="font-bold text-gray-900 dark:text-white text-sm">
+                                  {req.partNameOrDescription}
+                                </div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex flex-wrap items-center gap-1.5">
+                                  <span className="font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">
+                                    Cant: {req.quantity} und.
+                                  </span>
+                                  <span>&bull;</span>
+                                  <span>Req #{req.id.toString().padStart(4, '0')}</span>
+                                  <span>&bull;</span>
+                                  <span className="font-mono text-indigo-600 dark:text-indigo-400">
+                                    {req.serviceRequest?.vehicle?.licensePlate || req.serviceRequest?.trailer?.licensePlate || 'Flota'}
+                                  </span>
+                                </div>
+                                {selectedQuote ? (
+                                  <div className="mt-2 text-[10px] text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-1">
+                                    <CheckCircle2 size={12} /> Aprobado: {selectedQuote.supplier?.name || `Prov #${selectedQuote.supplierId}`} (${selectedQuote.unitPrice.toFixed(2)})
+                                  </div>
+                                ) : (
+                                  <div className="mt-2 text-[10px] text-amber-600 dark:text-amber-400 font-medium">
+                                    ⏳ Pendiente por elegir
+                                  </div>
+                                )}
+                              </td>
+
+                              {/* Supplier Columns */}
+                              {compareSuppliers.map(sup => {
+                                const quote = (req.quotations || []).find(q => q.supplierId === sup.id);
+                                if (!quote) {
+                                  return (
+                                    <td key={sup.id} className="p-4 text-center border-r border-gray-200 dark:border-gray-700 last:border-r-0 bg-gray-50/30 dark:bg-gray-900/20 text-gray-400 italic text-[11px]">
+                                      -- No cotizó --
+                                    </td>
+                                  );
+                                }
+
+                                const isLowest = minPrice !== null && quote.unitPrice === minPrice;
+                                const isSelected = quote.isSelected;
+
+                                return (
+                                  <td 
+                                    key={sup.id} 
+                                    className={`p-4 border-r border-gray-200 dark:border-gray-700 last:border-r-0 transition-colors ${
+                                      isSelected 
+                                        ? 'bg-emerald-50/70 dark:bg-emerald-950/30' 
+                                        : 'bg-white dark:bg-gray-800'
+                                    }`}
+                                  >
+                                    <div className="flex flex-col justify-between h-full gap-2">
+                                      <div>
+                                        <div className="flex items-center justify-between gap-1 mb-1">
+                                          <div className="text-base font-extrabold text-gray-900 dark:text-white font-mono">
+                                            ${quote.unitPrice.toFixed(2)}
+                                          </div>
+                                          {isLowest && (
+                                            <span className="bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 font-bold text-[9px] px-1.5 py-0.5 rounded flex items-center gap-0.5 uppercase">
+                                              ⭐ Mejor Precio
+                                            </span>
+                                          )}
+                                        </div>
+                                        <div className="text-[10px] text-gray-500 font-medium">
+                                          Total: <strong className="text-gray-700 dark:text-gray-300 font-mono">${(quote.unitPrice * (quote.quantity || req.quantity)).toFixed(2)}</strong> ({quote.quantity || req.quantity} und.)
+                                        </div>
+                                        {quote.notes && (
+                                          <div className="text-[10px] text-gray-500 dark:text-gray-400 italic mt-1 line-clamp-2" title={quote.notes}>
+                                            "{quote.notes}"
+                                          </div>
+                                        )}
+                                      </div>
+
+                                      {/* Cell Action Button */}
+                                      {(() => {
+                                        const hasAnyApproved = (req.quotations || []).some(q => q.isSelected);
+                                        const isAnotherApproved = !isSelected && hasAnyApproved;
+                                        return (
+                                          <button
+                                            type="button"
+                                            disabled={isSubmittingCompare || isAnotherApproved}
+                                            onClick={() => handleToggleCellQuote(req, quote)}
+                                            className={`w-full py-1.5 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                                              isSelected
+                                                ? 'bg-emerald-600 hover:bg-red-600 text-white shadow-xs group/btn cursor-pointer'
+                                                : isAnotherApproved
+                                                  ? 'bg-gray-100 dark:bg-gray-800/60 text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-gray-700 cursor-not-allowed opacity-50'
+                                                  : 'bg-slate-100 hover:bg-emerald-100 text-slate-700 hover:text-emerald-800 dark:bg-slate-700/60 dark:hover:bg-emerald-950/50 dark:text-slate-200 border border-slate-200 dark:border-slate-600 cursor-pointer'
+                                            }`}
+                                            title={isAnotherApproved ? 'Ya existe una cotización aprobada para este repuesto.' : ''}
+                                          >
+                                            {isSelected ? (
+                                              <>
+                                                <span className="group-hover/btn:hidden flex items-center gap-1"><CheckCircle2 size={13} /> Aprobado</span>
+                                                <span className="hidden group-hover/btn:inline">Deseleccionar</span>
+                                              </>
+                                            ) : (
+                                              <>Elegir y Comprar</>
+                                            )}
+                                          </button>
+                                        );
+                                      })()}
+                                    </div>
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+
+                      {/* Footer Totals Row */}
+                      <tfoot className="bg-slate-100 dark:bg-slate-900 border-t-2 border-gray-300 dark:border-gray-600 font-bold">
+                        <tr>
+                          <td className="p-4 bg-slate-100 dark:bg-slate-900 border-r border-gray-200 dark:border-gray-700">
+                            <div className="text-xs uppercase font-extrabold text-gray-700 dark:text-gray-300">
+                              Total Cotizado por Proveedor
+                            </div>
+                            <div className="text-[10px] text-gray-500 font-normal">
+                              Suma de todos los ítems ofertados
+                            </div>
+                          </td>
+
+                          {compareSuppliers.map(sup => {
+                            const supQuotes = activeCompareReqs.flatMap(r => 
+                              (r.quotations || []).filter(q => q.supplierId === sup.id)
+                            );
+                            const total = supQuotes.reduce((acc, q) => acc + (q.unitPrice * (q.quantity || 1)), 0);
+                            return (
+                              <td key={sup.id} className="p-4 border-r border-gray-200 dark:border-gray-700 last:border-r-0">
+                                <div className="text-base font-extrabold text-gray-900 dark:text-white font-mono">
+                                  ${total.toFixed(2)}
+                                </div>
+                                <div className="text-[10px] text-gray-500 font-medium">
+                                  {supQuotes.length} de {activeCompareReqs.length} ítems
+                                </div>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 px-6 border-t border-gray-100 dark:border-gray-700 bg-gray-50/90 dark:bg-gray-900/70 flex flex-wrap justify-between items-center gap-4">
+                <div className="flex items-center gap-4 text-xs">
+                  <div>
+                    <span className="text-gray-500 dark:text-gray-400">Progreso de Selección: </span>
+                    <strong className="text-gray-900 dark:text-white font-bold">{approvedCount}</strong> de {activeCompareReqs.length} aprobados
+                  </div>
+                  <div className="border-l border-gray-300 dark:border-gray-600 h-4"></div>
+                  <div>
+                    <span className="text-gray-500 dark:text-gray-400">Presupuesto Aprobado: </span>
+                    <strong className="text-emerald-600 dark:text-emerald-400 text-sm font-black font-mono">
+                      ${approvedTotalAmount.toFixed(2)}
+                    </strong>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button 
+                    type="button"
+                    onClick={() => setShowCompareModal(false)}
+                    className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 px-5 py-2 rounded-xl text-xs font-bold hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                  >
+                    Cerrar Cuadro Comparativo
+                  </button>
+                  {approvedCount > 0 && (
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        setShowCompareModal(false);
+                        setActiveTab('orders');
+                      }}
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl text-xs font-bold shadow-md shadow-indigo-900/20 transition flex items-center gap-2 cursor-pointer"
+                    >
+                      <ShoppingCart size={15} /> Ver Órdenes de Compra ({approvedCount} ítems listos)
+                    </button>
+                  )}
+                </div>
+              </div>
+
+            </div>
+          </div>
+        );
+      })()}
+
     </div>
   );
 }

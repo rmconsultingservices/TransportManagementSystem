@@ -20,6 +20,7 @@ import AuditLogs from './pages/AuditLogs';
 import PrintServiceReport from './pages/PrintServiceReport';
 import PrintServiceClosureReport from './pages/PrintServiceClosureReport';
 import PrintPurchaseOrder from './pages/PrintPurchaseOrder';
+import PrintQuotationRequest from './pages/PrintQuotationRequest';
 import InventoryAdjustments from './pages/InventoryAdjustments';
 import InventoryCategories from './pages/InventoryCategories';
 import UnitsOfMeasure from './pages/UnitsOfMeasure';
@@ -290,6 +291,7 @@ function App() {
           <Route path="/print/ticket/:id" element={<PrintServiceReport />} />
           <Route path="/print-closure/:id" element={<PrintServiceClosureReport />} />
           <Route path="/print/order/:id" element={<PrintPurchaseOrder />} />
+          <Route path="/print/quotation-request/:id" element={<PrintQuotationRequest />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

@@ -239,9 +239,19 @@ export default function InvoicesTab() {
   };
 
   const updateLine = (index: number, field: keyof PurchaseInvoiceDetail, value: any) => {
-    const newDetails = [...details];
-    newDetails[index] = { ...newDetails[index], [field]: value };
-    setDetails(newDetails);
+    setDetails(prev => {
+      const newDetails = [...prev];
+      newDetails[index] = { ...newDetails[index], [field]: value };
+      return newDetails;
+    });
+  };
+
+  const updateLineMulti = (index: number, updates: Partial<PurchaseInvoiceDetail>) => {
+    setDetails(prev => {
+      const newDetails = [...prev];
+      newDetails[index] = { ...newDetails[index], ...updates };
+      return newDetails;
+    });
   };
 
   const calculateTotals = () => {
@@ -266,6 +276,37 @@ export default function InvoicesTab() {
     if (!invoiceNumber.trim()) {
       alert('Por favor ingrese el número de factura.');
       return;
+    }
+
+    const cleanInvNumber = invoiceNumber.trim().toLowerCase();
+    const cleanCtrlNumber = controlNumber.trim().toLowerCase();
+    const currentSupId = Number(supplierId);
+
+    const duplicateInvoice = invoices.find(inv => 
+      !inv.isCancelled &&
+      inv.supplierId === currentSupId &&
+      inv.id !== editingInvoiceId &&
+      inv.invoiceNumber.trim().toLowerCase() === cleanInvNumber
+    );
+
+    if (duplicateInvoice) {
+      alert(`Ya existe una factura activa registrada con el número "${invoiceNumber.trim()}" para este proveedor.`);
+      return;
+    }
+
+    if (cleanCtrlNumber) {
+      const duplicateControl = invoices.find(inv => 
+        !inv.isCancelled &&
+        inv.supplierId === currentSupId &&
+        inv.id !== editingInvoiceId &&
+        inv.controlNumber &&
+        inv.controlNumber.trim().toLowerCase() === cleanCtrlNumber
+      );
+
+      if (duplicateControl) {
+        alert(`Ya existe una factura activa registrada con el número de control "${controlNumber.trim()}" para este proveedor.`);
+        return;
+      }
     }
     if (details.length === 0) {
       alert('Debe agregar al menos un artículo a la factura.');
@@ -620,22 +661,23 @@ export default function InvoicesTab() {
                          ) : (
                            <div className="space-y-1">
                              <SparePartSelector
-                               value={d.sparePartId || ''}
-                               onChange={id => {
-                                 updateLine(index, 'sparePartId', id);
-                                 const part = parts.find(p => p.id === id);
-                                 if (part) {
-                                   if (!d.unitCost) updateLine(index, 'unitCost', part.unitCost || 0);
-                                   if (part.unitOfMeasureId && !d.unitOfMeasureId) updateLine(index, 'unitOfMeasureId', part.unitOfMeasureId);
-                                   if (part.itemType === 'Servicio') {
-                                     updateLine(index, 'itemType', 'S');
-                                     if (!d.description) updateLine(index, 'description', part.name);
-                                   }
-                                 }
-                               }}
-                               spareParts={parts}
-                               placeholder="-- Buscar en Catálogo de Repuestos --"
-                             />
+                                value={d.sparePartId || ''}
+                                onChange={id => {
+                                  const part = parts.find(p => p.id === id);
+                                  const updates: Partial<PurchaseInvoiceDetail> = { sparePartId: id };
+                                  if (part) {
+                                    if (!d.unitCost && part.unitCost) updates.unitCost = part.unitCost;
+                                    if (part.unitOfMeasureId && !d.unitOfMeasureId) updates.unitOfMeasureId = part.unitOfMeasureId;
+                                    if (part.itemType === 'Servicio') {
+                                      updates.itemType = 'S';
+                                      if (!d.description) updates.description = part.name;
+                                    }
+                                  }
+                                  updateLineMulti(index, updates);
+                                }}
+                                spareParts={parts}
+                                placeholder="-- Buscar en Catálogo de Repuestos --"
+                              />
                              {d.description && !d.sparePartId && (
                                <div className="text-[10px] text-slate-400 italic">
                                  Texto original OC: {d.description}
