@@ -156,7 +156,7 @@ export default function PrintQuotationRequest() {
     : `COT-LOTE-${currentDate.replace(/\//g, '')}`;
 
   const unitPlateDisplay = distinctVehicles.length === 1
-    ? distinctVehicles[0]
+    ? `Placa: ${distinctVehicles[0]}`
     : distinctVehicles.length > 1
       ? `Múltiples Unidades (${distinctVehicles.join(', ')})`
       : 'Flota General / Taller';
@@ -267,7 +267,7 @@ export default function PrintQuotationRequest() {
               <div className="border border-gray-200 rounded-lg p-3.5 bg-white">
                 <div className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-1">DATOS DE LA UNIDAD Y ORDEN</div>
                 <div className="font-bold text-indigo-900 text-sm flex items-center gap-2">
-                  <span>🚛 {unitPlateDisplay}</span>
+                  <span>{unitPlateDisplay}</span>
                 </div>
                 <div className="text-xs text-gray-500 mt-1.5">
                   Empresa: <strong className="text-gray-700">{ownerNameDisplay}</strong> &bull; Ticket Taller: {ticketDisplay}
@@ -321,7 +321,7 @@ export default function PrintQuotationRequest() {
                             {plate && (
                               <>
                                 <span>&bull;</span>
-                                <span className="font-mono font-semibold text-gray-700">🚛 Placa: {plate}</span>
+                                <span className="font-mono font-semibold text-gray-700">Placa: {plate}</span>
                               </>
                             )}
                           </div>
