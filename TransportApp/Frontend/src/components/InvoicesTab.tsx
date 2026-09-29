@@ -8,6 +8,7 @@ import {
 import { purchasingService } from '../services/purchasingService';
 import { inventoryService } from '../services/inventoryService';
 import SparePartSelector from '../components/SparePartSelector';
+import QuickCreateSparePartModal from './QuickCreateSparePartModal';
 import { formatSparePartName } from '../types';
 import UnitSelector from '../components/UnitSelector';
 import type { 
@@ -55,6 +56,41 @@ export default function InvoicesTab() {
   // File Upload State
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingId, setUploadingId] = useState<number | null>(null);
+
+  // Quick Create Spare Part Modal State
+  const [quickCreateOpen, setQuickCreateOpen] = useState(false);
+  const [quickCreateRowIndex, setQuickCreateRowIndex] = useState<number | null>(null);
+  const [quickCreateInitialName, setQuickCreateInitialName] = useState('');
+  const [quickCreateInitialType, setQuickCreateInitialType] = useState<'Producto' | 'Servicio'>('Producto');
+  const [quickCreateInitialCost, setQuickCreateInitialCost] = useState(0);
+  const [quickCreateInitialUnitId, setQuickCreateInitialUnitId] = useState<number | undefined>(undefined);
+
+  const handleOpenQuickCreate = (rowIndex: number, suggestedName?: string) => {
+    const line = details[rowIndex];
+    setQuickCreateRowIndex(rowIndex);
+    setQuickCreateInitialName(suggestedName || line?.description || '');
+    setQuickCreateInitialType(line?.itemType === 'S' ? 'Servicio' : 'Producto');
+    setQuickCreateInitialCost(line?.unitCost || 0);
+    setQuickCreateInitialUnitId(line?.unitOfMeasureId || undefined);
+    setQuickCreateOpen(true);
+  };
+
+  const handleQuickCreateSuccess = (newPart: SparePart) => {
+    setParts(prev => [newPart, ...prev]);
+
+    if (quickCreateRowIndex !== null && quickCreateRowIndex >= 0 && quickCreateRowIndex < details.length) {
+      const line = details[quickCreateRowIndex];
+      const partUnitId = newPart.unitOfMeasureId || newPart.unitOfMeasure?.id || line?.unitOfMeasureId;
+      const updates: Partial<PurchaseInvoiceDetail> = {
+        sparePartId: newPart.id,
+        description: newPart.name,
+        unitOfMeasureId: partUnitId,
+        unitCost: (line?.unitCost && line.unitCost > 0) ? line.unitCost : (newPart.unitCost || 0),
+        itemType: newPart.itemType === 'Servicio' ? 'S' : 'C'
+      };
+      updateLineMulti(quickCreateRowIndex, updates);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -667,7 +703,8 @@ export default function InvoicesTab() {
                                   const updates: Partial<PurchaseInvoiceDetail> = { sparePartId: id };
                                   if (part) {
                                     if (!d.unitCost && part.unitCost) updates.unitCost = part.unitCost;
-                                    if (part.unitOfMeasureId && !d.unitOfMeasureId) updates.unitOfMeasureId = part.unitOfMeasureId;
+                                    const partUnit = part.unitOfMeasureId || part.unitOfMeasure?.id;
+                                    if (partUnit && !d.unitOfMeasureId) updates.unitOfMeasureId = partUnit;
                                     if (part.itemType === 'Servicio') {
                                       updates.itemType = 'S';
                                       if (!d.description) updates.description = part.name;
@@ -677,10 +714,20 @@ export default function InvoicesTab() {
                                 }}
                                 spareParts={parts}
                                 placeholder="-- Buscar en Catálogo de Repuestos --"
+                                onCreateNew={(suggestedName) => {
+                                  handleOpenQuickCreate(index, suggestedName || d.description || '');
+                                }}
                               />
                              {d.description && !d.sparePartId && (
-                               <div className="text-[10px] text-slate-400 italic">
-                                 Texto original OC: {d.description}
+                               <div className="text-[10px] text-slate-400 italic flex items-center justify-between mt-1">
+                                 <span className="truncate">Texto original OC: {d.description}</span>
+                                 <button
+                                   type="button"
+                                   onClick={() => handleOpenQuickCreate(index, d.description || '')}
+                                   className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 font-semibold underline cursor-pointer ml-2 whitespace-nowrap"
+                                 >
+                                   + Crear este repuesto
+                                 </button>
                                </div>
                              )}
                            </div>
@@ -1253,6 +1300,16 @@ export default function InvoicesTab() {
       )}
     
 
+          {/* Mini-Modal de Carga Rápida de Repuestos / Servicios */}
+      <QuickCreateSparePartModal
+        isOpen={quickCreateOpen}
+        onClose={() => setQuickCreateOpen(false)}
+        onSuccess={handleQuickCreateSuccess}
+        initialName={quickCreateInitialName}
+        initialItemType={quickCreateInitialType}
+        initialCost={quickCreateInitialCost}
+        initialUnitId={quickCreateInitialUnitId}
+      />
     </div>
   );
 }

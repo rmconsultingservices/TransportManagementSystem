@@ -42,7 +42,13 @@ namespace TransportManagement.API.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<SparePart>> GetSparePart(int id)
         {
-            var sparePart = await _context.SpareParts.Include(s => s.SparePartUnits).ThenInclude(u => u.UnitOfMeasure).FirstOrDefaultAsync(s => s.Id == id);
+            var sparePart = await _context.SpareParts
+                .Include(s => s.Location)
+                .Include(s => s.Warehouse)
+                .Include(s => s.Category)
+                .Include(s => s.UnitOfMeasure)
+                .Include(s => s.SparePartUnits).ThenInclude(u => u.UnitOfMeasure)
+                .FirstOrDefaultAsync(s => s.Id == id);
 
             if (sparePart == null || !sparePart.IsActive)
             {
@@ -148,7 +154,15 @@ namespace TransportManagement.API.Controllers
             _context.SpareParts.Add(sparePart);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction("GetSparePart", new { id = sparePart.Id }, sparePart);
+            var createdPart = await _context.SpareParts
+                .Include(s => s.Location)
+                .Include(s => s.Warehouse)
+                .Include(s => s.Category)
+                .Include(s => s.UnitOfMeasure)
+                .Include(s => s.SparePartUnits).ThenInclude(u => u.UnitOfMeasure)
+                .FirstOrDefaultAsync(s => s.Id == sparePart.Id);
+
+            return CreatedAtAction("GetSparePart", new { id = sparePart.Id }, createdPart ?? sparePart);
         }
 
         // DELETE: api/SpareParts/5 (Soft Delete)

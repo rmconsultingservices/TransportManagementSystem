@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Search, ChevronDown, Check } from 'lucide-react';
+import { Search, ChevronDown, Check, Plus } from 'lucide-react';
 import type { SparePart } from '../types';
 import { formatSparePartName } from '../types';
 
@@ -9,6 +9,7 @@ interface SparePartSelectorProps {
   spareParts: SparePart[];
   placeholder?: string;
   disabled?: boolean;
+  onCreateNew?: (suggestedName?: string) => void;
 }
 
 export default function SparePartSelector({ 
@@ -16,7 +17,8 @@ export default function SparePartSelector({
   onChange, 
   spareParts, 
   placeholder = '-- Seleccione --',
-  disabled = false
+  disabled = false,
+  onCreateNew
 }: SparePartSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -110,8 +112,23 @@ export default function SparePartSelector({
           {/* Listado de Artículos */}
           <div className="overflow-y-auto flex-1 divide-y divide-gray-100 dark:divide-gray-700/50">
             {filteredParts.length === 0 ? (
-              <div className="px-4 py-8 text-center text-xs text-gray-400 italic">
-                No se encontraron repuestos con "{searchTerm}"
+              <div className="px-4 py-6 text-center text-xs">
+                <p className="text-gray-400 italic mb-3">No se encontraron repuestos con "{searchTerm}"</p>
+                {onCreateNew && (
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onCreateNew(searchTerm);
+                      setIsOpen(false);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 border border-indigo-200 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    <Plus size={13} />
+                    <span>Crear "{searchTerm || 'Nuevo Repuesto'}"</span>
+                  </button>
+                )}
               </div>
             ) : (
               filteredParts.map(p => {
@@ -165,6 +182,24 @@ export default function SparePartSelector({
               })
             )}
           </div>
+
+          {onCreateNew && (
+            <div className="p-2 border-t border-gray-100 dark:border-gray-700/60 bg-gray-50/80 dark:bg-gray-900/80">
+              <button
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onCreateNew(searchTerm);
+                  setIsOpen(false);
+                }}
+                className="w-full py-1.5 px-3 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/50 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <Plus size={13} />
+                <span>+ Crear nuevo repuesto en catálogo</span>
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
