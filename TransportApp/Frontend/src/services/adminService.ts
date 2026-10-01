@@ -1,4 +1,4 @@
-import api from '../lib/api';
+﻿import api from '../lib/api';
 import type { User, Company } from '../store/authStore';
 
 export interface AuditLog {
@@ -39,6 +39,13 @@ export const adminService = {
   createUser: async (user: any): Promise<User> => {
     const response = await api.post<User>('/users', user);
     return response.data;
+  },
+  toggleUserStatus: async (userId: number): Promise<{ id: number; isActive: boolean; message: string }> => {
+    const response = await api.put<{ id: number; isActive: boolean; message: string }>(`/users/${userId}/toggle-status`);
+    return response.data;
+  },
+  deleteUser: async (userId: number): Promise<void> => {
+    await api.delete(`/users/${userId}`);
   },
   assignCompany: async (userId: number, companyId: number): Promise<void> => {
     await api.post(`/users/${userId}/assign-company/${companyId}`);

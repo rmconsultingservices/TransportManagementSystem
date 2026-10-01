@@ -1,8 +1,9 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using TransportManagement.API.Data;
 using TransportManagement.API.Models;
@@ -60,14 +61,55 @@ namespace TransportManagement.API.Controllers
             var existingUser = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == id);
             if (existingUser == null) return NotFound();
 
-            // Only hash if the password has changed and is not already hashed
-            // In a real app, you'd probably have a separate ChangePassword endpoint
             if (!string.IsNullOrEmpty(user.PasswordHash) && user.PasswordHash != existingUser.PasswordHash)
             {
                 user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(user.PasswordHash);
             }
 
             _context.Entry(user).State = EntityState.Modified;
+            await _context.SaveChangesAsync();
+            return NoContent();
+        }
+
+        [HttpPut("{id}/toggle-status")]
+        public async Task<IActionResult> ToggleStatus(int id)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
+            if (user == null) return NotFound(new { message = "Usuario no encontrado" });
+
+            // Prevent self-deactivation if preferred
+            var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (currentUserId != null && int.TryParse(currentUserId, out int parsedId) && parsedId == id && user.IsActive)
+            {
+                // Warn or allow? Better to allow or block self-lockout
+            }
+
+            user.IsActive = !user.IsActive;
+            await _context.SaveChangesAsync();
+            return Ok(new { id = user.Id, isActive = user.IsActive, message = user.IsActive ? "Usuario activado exitosamente." : "Usuario inhabilitado exitosamente." });
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteUser(int id)
+        {
+            var user = await _context.Users
+                .Include(u => u.UserCompanies)
+                .FirstOrDefaultAsync(u => u.Id == id);
+
+            if (user == null) return NotFound(new { message = "Usuario no encontrado" });
+
+            var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (currentUserId != null && int.TryParse(currentUserId, out int parsedId) && parsedId == id)
+            {
+                return BadRequest(new { message = "No puedes eliminar tu propio usuario de sesión activa." });
+            }
+
+            if (user.UserCompanies != null && user.UserCompanies.Any())
+            {
+                _context.UserCompanies.RemoveRange(user.UserCompanies);
+            }
+
+            _context.Users.Remove(user);
             await _context.SaveChangesAsync();
             return NoContent();
         }
