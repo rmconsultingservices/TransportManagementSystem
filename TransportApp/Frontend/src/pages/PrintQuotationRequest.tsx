@@ -193,7 +193,7 @@ export default function PrintQuotationRequest() {
               box-shadow: none !important;
               padding: 0 !important;
               margin: 0 !important;
-              min-height: auto !important;
+              min-height: 258mm !important;
               width: 100% !important;
               max-width: 100% !important;
             }
@@ -225,10 +225,10 @@ export default function PrintQuotationRequest() {
         </div>
 
         {/* Paper Document */}
-        <div className="printable-sheet bg-white shadow-lg border border-gray-200 rounded-sm">
+        <div className="printable-sheet bg-white shadow-lg border border-gray-200 rounded-sm flex flex-col min-h-[980px]">
           
           {/* Top Header Section */}
-          <div className="bg-slate-50 p-6 sm:p-8 flex justify-between items-start border-b border-gray-200">
+          <div className="bg-slate-50 p-6 sm:p-8 flex justify-between items-start border-b border-gray-200 shrink-0">
             <div className="flex items-start gap-4">
               {selectedCompany?.logoUrl ? (
                 <img 
@@ -262,137 +262,143 @@ export default function PrintQuotationRequest() {
             </div>
           </div>
 
-          <div className="p-6 sm:p-8">
-            {/* Info Cards */}
-            <div className="grid grid-cols-2 gap-4 mb-5">
-              <div className="border border-gray-200 rounded-lg p-3.5 bg-white">
-                <div className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-1">PROVEEDOR / DESTINATARIO</div>
-                <div className="font-bold text-gray-800 text-sm">A QUIEN PUEDA INTERESAR / PROVEEDOR</div>
-                <div className="text-xs text-gray-400 mt-1.5 border-b border-dashed border-gray-300 pb-1">
-                  Nombre Vendedor / Tienda: _____________________________________
+          <div className="p-6 sm:p-8 flex-1 flex flex-col justify-between">
+            {/* Top Content (Cards, Notice, Table) */}
+            <div>
+              {/* Info Cards */}
+              <div className="grid grid-cols-2 gap-4 mb-5">
+                <div className="border border-gray-200 rounded-lg p-3.5 bg-white">
+                  <div className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-1">PROVEEDOR / DESTINATARIO</div>
+                  <div className="font-bold text-gray-800 text-sm">A QUIEN PUEDA INTERESAR / PROVEEDOR</div>
+                  <div className="text-xs text-gray-400 mt-1.5 border-b border-dashed border-gray-300 pb-1">
+                    Nombre Vendedor / Tienda: _____________________________________
+                  </div>
+                </div>
+
+                <div className="border border-gray-200 rounded-lg p-3.5 bg-white">
+                  <div className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-1">DATOS DE LA UNIDAD Y ORDEN</div>
+                  <div className="font-bold text-indigo-900 text-sm flex items-center gap-2">
+                    <span>{unitPlateDisplay}</span>
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1.5">
+                    Empresa: <strong className="text-gray-700">{ownerNameDisplay}</strong> &bull; Ticket Taller: {ticketDisplay}
+                  </div>
                 </div>
               </div>
 
-              <div className="border border-gray-200 rounded-lg p-3.5 bg-white">
-                <div className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-1">DATOS DE LA UNIDAD Y ORDEN</div>
-                <div className="font-bold text-indigo-900 text-sm flex items-center gap-2">
-                  <span>{unitPlateDisplay}</span>
-                </div>
-                <div className="text-xs text-gray-500 mt-1.5">
-                  Empresa: <strong className="text-gray-700">{ownerNameDisplay}</strong> &bull; Ticket Taller: {ticketDisplay}
-                </div>
+              {/* Instruction Notice */}
+              <div className="bg-indigo-50/60 border border-indigo-100 rounded-lg px-4 py-2 mb-5 text-xs text-indigo-900 flex items-center justify-between">
+                <span><strong>Estimado Proveedor:</strong> Favor indicar marca ofrecida, disponibilidad de entrega inmediata o días, precio unitario y tiempo de garantía.</span>
+                <span className="font-bold uppercase text-[10px] bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded ml-2 whitespace-nowrap">Validez: 5 a 15 días</span>
               </div>
-            </div>
 
-            {/* Instruction Notice */}
-            <div className="bg-indigo-50/60 border border-indigo-100 rounded-lg px-4 py-2 mb-5 text-xs text-indigo-900 flex items-center justify-between">
-              <span><strong>Estimado Proveedor:</strong> Favor indicar marca ofrecida, disponibilidad de entrega inmediata o días, precio unitario y tiempo de garantía.</span>
-              <span className="font-bold uppercase text-[10px] bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded ml-2 whitespace-nowrap">Validez: 5 a 15 días</span>
-            </div>
+              {/* Table */}
+              <div className="rounded-lg overflow-hidden border border-gray-300 mb-6">
+                <table className="w-full text-xs text-left border-collapse table-fixed">
+                  <thead className="bg-slate-100 text-slate-700 uppercase tracking-wider font-extrabold text-[10px] border-b border-gray-300">
+                    <tr>
+                      <th className="px-3 py-2.5 w-12 text-center border-r border-gray-200">#</th>
+                      <th className="px-4 py-2.5 w-[42%] border-r border-gray-200">ARTÍCULO / REPUESTO REQUERIDO</th>
+                      <th className="px-3 py-2.5 w-24 text-center border-r border-gray-200">CANT. REQ.</th>
+                      <th className="px-4 py-2.5">OBSERVACIONES / ESPECIFICACIONES</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {filteredRequisitions.map((req, index) => {
+                      const t = req.serviceRequestId ? ticketsMap[req.serviceRequestId] : null;
+                      const veh = t?.vehicle || req.serviceRequest?.vehicle;
+                      const trailer = t?.trailer || req.serviceRequest?.trailer;
+                      const plate = veh?.licensePlate || trailer?.licensePlate;
 
-            {/* Table */}
-            <div className="rounded-lg overflow-hidden border border-gray-300 mb-6">
-              <table className="w-full text-xs text-left border-collapse table-fixed">
-                <thead className="bg-slate-100 text-slate-700 uppercase tracking-wider font-extrabold text-[10px] border-b border-gray-300">
-                  <tr>
-                    <th className="px-3 py-2.5 w-12 text-center border-r border-gray-200">#</th>
-                    <th className="px-4 py-2.5 w-[42%] border-r border-gray-200">ARTÍCULO / REPUESTO REQUERIDO</th>
-                    <th className="px-3 py-2.5 w-24 text-center border-r border-gray-200">CANT. REQ.</th>
-                    <th className="px-4 py-2.5">OBSERVACIONES / ESPECIFICACIONES</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {filteredRequisitions.map((req, index) => {
-                    const t = req.serviceRequestId ? ticketsMap[req.serviceRequestId] : null;
-                    const veh = t?.vehicle || req.serviceRequest?.vehicle;
-                    const trailer = t?.trailer || req.serviceRequest?.trailer;
-                    const plate = veh?.licensePlate || trailer?.licensePlate;
-
-                    return (
-                      <tr key={req.id} className="bg-white hover:bg-slate-50/50 break-inside-avoid">
-                        <td className="px-3 py-3 text-center text-gray-500 font-bold border-r border-gray-200">
-                          {String(index + 1).padStart(2, '0')}
-                        </td>
-                        <td className="px-4 py-3 border-r border-gray-200">
-                          <div className="font-bold text-gray-900 text-xs">
-                            {req.partNameOrDescription}
-                          </div>
-                          <div className="text-[10px] text-gray-500 mt-0.5 flex items-center gap-1.5 flex-wrap">
-                            <span>Req #{req.id.toString().padStart(4, '0')}</span>
-                            {req.serviceRequestId && (
-                              <>
-                                <span>&bull;</span>
-                                <span className="font-medium text-indigo-700">OT #{req.serviceRequestId.toString().padStart(4, '0')}</span>
-                              </>
+                      return (
+                        <tr key={req.id} className="bg-white hover:bg-slate-50/50 break-inside-avoid">
+                          <td className="px-3 py-3 text-center text-gray-500 font-bold border-r border-gray-200">
+                            {String(index + 1).padStart(2, '0')}
+                          </td>
+                          <td className="px-4 py-3 border-r border-gray-200">
+                            <div className="font-bold text-gray-900 text-xs">
+                              {req.partNameOrDescription}
+                            </div>
+                            <div className="text-[10px] text-gray-500 mt-0.5 flex items-center gap-1.5 flex-wrap">
+                              <span>Req #{req.id.toString().padStart(4, '0')}</span>
+                              {req.serviceRequestId && (
+                                <>
+                                  <span>&bull;</span>
+                                  <span className="font-medium text-indigo-700">OT #{req.serviceRequestId.toString().padStart(4, '0')}</span>
+                                </>
+                              )}
+                              {plate && (
+                                <>
+                                  <span>&bull;</span>
+                                  <span className="font-mono font-semibold text-gray-700">Placa: {plate}</span>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 text-center border-r border-gray-200 font-extrabold text-gray-900 text-xs">
+                            <span className="bg-slate-100 text-slate-800 px-2 py-0.5 rounded font-mono">
+                              {req.quantity} {(req as any).unitOfMeasure?.code || 'und'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-gray-800 text-xs">
+                            {req.observations ? (
+                              <span className="font-medium text-gray-900 leading-relaxed">{req.observations}</span>
+                            ) : (
+                              <span className="text-gray-400 italic text-[11px]">Sin observaciones</span>
                             )}
-                            {plate && (
-                              <>
-                                <span>&bull;</span>
-                                <span className="font-mono font-semibold text-gray-700">Placa: {plate}</span>
-                              </>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-3 py-3 text-center border-r border-gray-200 font-extrabold text-gray-900 text-xs">
-                          <span className="bg-slate-100 text-slate-800 px-2 py-0.5 rounded font-mono">
-                            {req.quantity} {(req as any).unitOfMeasure?.code || 'und'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-gray-800 text-xs">
-                          {req.observations ? (
-                            <span className="font-medium text-gray-900 leading-relaxed">{req.observations}</span>
-                          ) : (
-                            <span className="text-gray-400 italic text-[11px]">Sin observaciones</span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Signatures */}
-            <div className="grid grid-cols-3 gap-8 mb-8 mt-10 break-inside-avoid">
-              <div>
-                <div className="border-b border-gray-300 pb-2 mb-2 min-h-[40px] flex items-end"></div>
-                <div className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-0.5">AUTORIZADO POR</div>
-                <div className="font-bold text-sm text-gray-800">Gerencia de Mantenimiento</div>
-              </div>
-              <div>
-                <div className="border-b border-gray-300 pb-2 mb-2 min-h-[40px] flex items-end"></div>
-                <div className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-0.5">MECÁNICO SOLICITANTE</div>
-                <div className="font-bold text-sm text-gray-800"></div>
-              </div>
-              <div>
-                <div className="border-b border-gray-300 pb-2 mb-2 min-h-[40px] flex items-end"></div>
-                <div className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-0.5">CHOFER / ALMACÉN</div>
-                <div className="font-bold text-sm text-gray-800"></div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             </div>
 
-            {/* Provider Box */}
-            <div className="bg-slate-50 border border-gray-200 rounded-lg p-5 flex gap-6 break-inside-avoid">
-              <div className="flex-1">
-                <h3 className="font-bold text-gray-800 text-sm mb-1">Uso Exclusivo del Proveedor</h3>
-                <p className="text-xs text-gray-500 leading-relaxed">Sello, Firma y Teléfono requerido para validar entrega en almacén.</p>
-              </div>
-              <div className="w-32 h-20 border-2 border-dashed border-gray-300 flex justify-center items-center text-gray-400 text-xs font-medium uppercase tracking-widest bg-white rounded">
-                Sello Aquí
-              </div>
-              <div className="flex-1 flex flex-col justify-end space-y-3">
-                <div className="border-b border-gray-300 flex items-end pb-1">
-                  <span className="text-xs text-gray-500 w-16">Firma:</span>
+            {/* Bottom Footer Section (Signatures & Provider Box anchored at bottom) */}
+            <div className="mt-auto pt-4 break-inside-avoid">
+              {/* Signatures */}
+              <div className="grid grid-cols-3 gap-8 mb-6">
+                <div>
+                  <div className="border-b border-gray-300 pb-2 mb-2 min-h-[35px] flex items-end"></div>
+                  <div className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-0.5">AUTORIZADO POR</div>
+                  <div className="font-bold text-sm text-gray-800">Gerencia de Mantenimiento</div>
                 </div>
-                <div className="border-b border-gray-300 flex items-end pb-1">
-                  <span className="text-xs text-gray-500 w-16">Teléfono:</span>
+                <div>
+                  <div className="border-b border-gray-300 pb-2 mb-2 min-h-[35px] flex items-end"></div>
+                  <div className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-0.5">MECÁNICO SOLICITANTE</div>
+                  <div className="font-bold text-sm text-gray-800"></div>
+                </div>
+                <div>
+                  <div className="border-b border-gray-300 pb-2 mb-2 min-h-[35px] flex items-end"></div>
+                  <div className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-0.5">CHOFER / ALMACÉN</div>
+                  <div className="font-bold text-sm text-gray-800"></div>
                 </div>
               </div>
-            </div>
 
-            {/* Footer Notice */}
-            <div className="text-center text-[10px] text-gray-400 mt-6 pt-3 border-t border-gray-100 break-inside-avoid">
-              Este documento representa una solicitud formal de cotización de repuestos e insumos para el mantenimiento de flota.
+              {/* Provider Box */}
+              <div className="bg-slate-50 border border-gray-200 rounded-lg p-4 flex gap-6">
+                <div className="flex-1">
+                  <h3 className="font-bold text-gray-800 text-sm mb-1">Uso Exclusivo del Proveedor</h3>
+                  <p className="text-xs text-gray-500 leading-relaxed">Sello, Firma y Teléfono requerido para validar entrega en almacén.</p>
+                </div>
+                <div className="w-32 h-16 border-2 border-dashed border-gray-300 flex justify-center items-center text-gray-400 text-xs font-medium uppercase tracking-widest bg-white rounded">
+                  Sello Aquí
+                </div>
+                <div className="flex-1 flex flex-col justify-end space-y-2.5">
+                  <div className="border-b border-gray-300 flex items-end pb-1">
+                    <span className="text-xs text-gray-500 w-16">Firma:</span>
+                  </div>
+                  <div className="border-b border-gray-300 flex items-end pb-1">
+                    <span className="text-xs text-gray-500 w-16">Teléfono:</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer Notice */}
+              <div className="text-center text-[10px] text-gray-400 mt-4 pt-2 border-t border-gray-100">
+                Este documento representa una solicitud formal de cotización de repuestos e insumos para el mantenimiento de flota.
+              </div>
             </div>
 
           </div>

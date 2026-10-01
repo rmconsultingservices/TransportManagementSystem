@@ -63,7 +63,7 @@ export default function PrintPurchaseOrder() {
               box-shadow: none !important;
               padding: 0 !important;
               margin: 0 !important;
-              min-height: auto !important;
+              min-height: 258mm !important;
               width: 100% !important;
               max-width: 100% !important;
             }
@@ -89,10 +89,10 @@ export default function PrintPurchaseOrder() {
         </div>
 
         {/* Paper Document */}
-        <div className="printable-sheet bg-white shadow-lg border border-gray-200 rounded-sm">
+        <div className="printable-sheet bg-white shadow-lg border border-gray-200 rounded-sm flex flex-col min-h-[980px]">
           
           {/* Top Section */}
-          <div className="bg-slate-50 p-6 sm:p-8 flex justify-between items-start border-b border-gray-200">
+          <div className="bg-slate-50 p-6 sm:p-8 flex justify-between items-start border-b border-gray-200 shrink-0">
             <div className="flex items-start gap-4">
               {selectedCompany?.logoUrl ? (
                 <img 
@@ -126,103 +126,109 @@ export default function PrintPurchaseOrder() {
             </div>
           </div>
 
-          <div className="p-6 sm:p-8">
-            {/* Info Cards */}
-            <div className="grid grid-cols-2 gap-4 mb-6">
-               <div className="border border-gray-200 rounded-lg p-3.5 bg-white">
-                  <div className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-1">PROVEEDOR</div>
-                  <div className="font-bold text-gray-800 text-sm">{order.supplier?.name || 'Proveedor General'}</div>
-                  {order.supplier?.taxId && (
-                    <div className="text-xs text-gray-500 mt-0.5">RIF / ID: {order.supplier.taxId}</div>
-                  )}
-               </div>
-               <div className="border border-gray-200 rounded-lg p-3.5 bg-white">
-                  <div className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-1">DEPARTAMENTO / DESTINO</div>
-                  <div className="font-bold text-gray-800 text-sm">Mantenimiento y Taller</div>
-                  <div className="text-xs text-gray-500 mt-0.5">Unidad: <span className="font-semibold text-gray-700">{vehicleText}</span></div>
-               </div>
+          <div className="p-6 sm:p-8 flex-1 flex flex-col justify-between">
+            {/* Top Content */}
+            <div>
+              {/* Info Cards */}
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                 <div className="border border-gray-200 rounded-lg p-3.5 bg-white">
+                    <div className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-1">PROVEEDOR</div>
+                    <div className="font-bold text-gray-800 text-sm">{order.supplier?.name || 'Proveedor General'}</div>
+                    {order.supplier?.taxId && (
+                      <div className="text-xs text-gray-500 mt-0.5">RIF / ID: {order.supplier.taxId}</div>
+                    )}
+                 </div>
+                 <div className="border border-gray-200 rounded-lg p-3.5 bg-white">
+                    <div className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-1">DEPARTAMENTO / DESTINO</div>
+                    <div className="font-bold text-gray-800 text-sm">Mantenimiento y Taller</div>
+                    <div className="text-xs text-gray-500 mt-0.5">Unidad: <span className="font-semibold text-gray-700">{vehicleText}</span></div>
+                 </div>
+              </div>
+
+              {/* Table */}
+              <div className="rounded-lg overflow-hidden border border-gray-300 mb-6">
+                 <table className="w-full text-xs text-left border-collapse table-fixed">
+                    <thead className="bg-slate-100 text-slate-700 uppercase tracking-wider font-extrabold text-[10px] border-b border-gray-300">
+                       <tr>
+                          <th className="px-3 py-2.5 w-12 text-center border-r border-gray-200">#</th>
+                          <th className="px-4 py-2.5 w-[42%] border-r border-gray-200">ARTÍCULOS / REPUESTOS</th>
+                          <th className="px-3 py-2.5 w-24 text-center border-r border-gray-200">CANTIDAD</th>
+                          <th className="px-4 py-2.5">OBSERVACIÓN / DESTINO</th>
+                       </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                       {order.details?.map((d, index) => (
+                          <tr key={d.id} className="bg-white hover:bg-slate-50/50 break-inside-avoid">
+                             <td className="px-3 py-3 text-center text-gray-500 font-bold border-r border-gray-200">{String(index + 1).padStart(2, '0')}</td>
+                             <td className="px-4 py-3 border-r border-gray-200 font-semibold text-gray-800 text-xs">
+                               {d.purchaseRequisition?.partNameOrDescription || 'Repuesto'}
+                             </td>
+                             <td className="px-3 py-3 text-center border-r border-gray-200">
+                                <span className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded font-bold text-xs font-mono">
+                                  {d.quantityOrdered} {(d.purchaseRequisition as any)?.unitOfMeasure?.code || 'und'}
+                                </span>
+                             </td>
+                             <td className="px-4 py-3 text-gray-500 text-xs">
+                                {d.purchaseRequisition?.observations ? (
+                                  <span className="text-gray-800 font-medium">{d.purchaseRequisition.observations}</span>
+                                ) : d.purchaseRequisition?.serviceRequest?.description ? (
+                                  <span className="italic">{d.purchaseRequisition.serviceRequest.description.substring(0, 60)}</span>
+                                ) : (
+                                  <span className="italic text-gray-400">Requisición aprobada</span>
+                                )}
+                             </td>
+                          </tr>
+                       ))}
+                    </tbody>
+                 </table>
+              </div>
             </div>
 
-            {/* Table */}
-            <div className="rounded-lg overflow-hidden border border-gray-300 mb-6">
-               <table className="w-full text-xs text-left border-collapse table-fixed">
-                  <thead className="bg-slate-100 text-slate-700 uppercase tracking-wider font-extrabold text-[10px] border-b border-gray-300">
-                     <tr>
-                        <th className="px-3 py-2.5 w-12 text-center border-r border-gray-200">#</th>
-                        <th className="px-4 py-2.5 w-[42%] border-r border-gray-200">ARTÍCULOS / REPUESTOS</th>
-                        <th className="px-3 py-2.5 w-24 text-center border-r border-gray-200">CANTIDAD</th>
-                        <th className="px-4 py-2.5">OBSERVACIÓN / DESTINO</th>
-                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                     {order.details?.map((d, index) => (
-                        <tr key={d.id} className="bg-white hover:bg-slate-50/50 break-inside-avoid">
-                           <td className="px-3 py-3 text-center text-gray-500 font-bold border-r border-gray-200">{String(index + 1).padStart(2, '0')}</td>
-                           <td className="px-4 py-3 border-r border-gray-200 font-semibold text-gray-800 text-xs">
-                             {d.purchaseRequisition?.partNameOrDescription || 'Repuesto'}
-                           </td>
-                           <td className="px-3 py-3 text-center border-r border-gray-200">
-                              <span className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded font-bold text-xs font-mono">
-                                {d.quantityOrdered} {(d.purchaseRequisition as any)?.unitOfMeasure?.code || 'und'}
-                              </span>
-                           </td>
-                           <td className="px-4 py-3 text-gray-500 text-xs">
-                              {d.purchaseRequisition?.observations ? (
-                                <span className="text-gray-800 font-medium">{d.purchaseRequisition.observations}</span>
-                              ) : d.purchaseRequisition?.serviceRequest?.description ? (
-                                <span className="italic">{d.purchaseRequisition.serviceRequest.description.substring(0, 60)}</span>
-                              ) : (
-                                <span className="italic text-gray-400">Requisición aprobada</span>
-                              )}
-                           </td>
-                        </tr>
-                     ))}
-                  </tbody>
-               </table>
-            </div>
+            {/* Bottom Footer Section (Signatures & Provider Box anchored at bottom) */}
+            <div className="mt-auto pt-4 break-inside-avoid">
+              {/* Signatures */}
+              <div className="grid grid-cols-3 gap-8 mb-6">
+                 <div>
+                    <div className="border-b border-gray-300 pb-2 mb-2 min-h-[35px] flex items-end">
+                    </div>
+                    <div className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-0.5">AUTORIZADO POR</div>
+                    <div className="font-bold text-sm text-gray-800">Gerencia de Mantenimiento</div>
+                 </div>
+                 <div>
+                    <div className="border-b border-gray-300 pb-2 mb-2 min-h-[35px] flex items-end"></div>
+                    <div className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-0.5">MECÁNICO SOLICITANTE</div>
+                    <div className="font-bold text-sm text-gray-800"></div>
+                 </div>
+                 <div>
+                    <div className="border-b border-gray-300 pb-2 mb-2 min-h-[35px] flex items-end"></div>
+                    <div className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-0.5">CHOFER / ALMACÉN</div>
+                    <div className="font-bold text-sm text-gray-800"></div>
+                 </div>
+              </div>
 
-            {/* Signatures */}
-            <div className="grid grid-cols-3 gap-8 mb-8 mt-10 break-inside-avoid">
-               <div>
-                  <div className="border-b border-gray-300 pb-2 mb-2 min-h-[40px] flex items-end">
-                  </div>
-                  <div className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-0.5">AUTORIZADO POR</div>
-                  <div className="font-bold text-sm text-gray-800">Gerencia de Mantenimiento</div>
-               </div>
-               <div>
-                  <div className="border-b border-gray-300 pb-2 mb-2 min-h-[40px] flex items-end"></div>
-                  <div className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-0.5">MECÁNICO SOLICITANTE</div>
-                  <div className="font-bold text-sm text-gray-800"></div>
-               </div>
-               <div>
-                  <div className="border-b border-gray-300 pb-2 mb-2 min-h-[40px] flex items-end"></div>
-                  <div className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-0.5">CHOFER / ALMACÉN</div>
-                  <div className="font-bold text-sm text-gray-800"></div>
-               </div>
-            </div>
+              {/* Provider Box */}
+              <div className="bg-slate-50 border border-gray-200 rounded-lg p-4 flex gap-6">
+                 <div className="flex-1">
+                    <h3 className="font-bold text-gray-800 text-sm mb-1">Uso Exclusivo del Proveedor</h3>
+                    <p className="text-xs text-gray-500 leading-relaxed">Sello, Firma y Teléfono requerido para validar entrega en almacén.</p>
+                 </div>
+                 <div className="w-32 h-16 border-2 border-dashed border-gray-300 flex justify-center items-center text-gray-400 text-xs font-medium uppercase tracking-widest bg-white rounded">
+                    Sello Aquí
+                 </div>
+                 <div className="flex-1 flex flex-col justify-end space-y-2.5">
+                    <div className="border-b border-gray-300 flex items-end pb-1">
+                       <span className="text-xs text-gray-500 w-16">Firma:</span>
+                    </div>
+                    <div className="border-b border-gray-300 flex items-end pb-1">
+                       <span className="text-xs text-gray-500 w-16">Teléfono:</span>
+                    </div>
+                 </div>
+              </div>
 
-            {/* Provider Box */}
-            <div className="bg-slate-50 border border-gray-200 rounded-lg p-5 flex gap-6 break-inside-avoid">
-               <div className="flex-1">
-                  <h3 className="font-bold text-gray-800 text-sm mb-1">Uso Exclusivo del Proveedor</h3>
-                  <p className="text-xs text-gray-500 leading-relaxed">Sello, Firma y Teléfono requerido para validar entrega en almacén.</p>
-               </div>
-               <div className="w-32 h-20 border-2 border-dashed border-gray-300 flex justify-center items-center text-gray-400 text-xs font-medium uppercase tracking-widest bg-white rounded">
-                  Sello Aquí
-               </div>
-               <div className="flex-1 flex flex-col justify-end space-y-3">
-                  <div className="border-b border-gray-300 flex items-end pb-1">
-                     <span className="text-xs text-gray-500 w-16">Firma:</span>
-                  </div>
-                  <div className="border-b border-gray-300 flex items-end pb-1">
-                     <span className="text-xs text-gray-500 w-16">Teléfono:</span>
-                  </div>
-               </div>
-            </div>
-
-            {/* Footer Notice */}
-            <div className="text-center text-[10px] text-gray-400 mt-6 pt-3 border-t border-gray-100 break-inside-avoid">
-              Documento emitido formalmente por el sistema de compras y mantenimiento.
+              {/* Footer Notice */}
+              <div className="text-center text-[10px] text-gray-400 mt-4 pt-2 border-t border-gray-100">
+                Documento emitido formalmente por el sistema de compras y mantenimiento.
+              </div>
             </div>
 
           </div>
