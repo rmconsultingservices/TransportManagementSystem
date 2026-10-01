@@ -1,3 +1,4 @@
+import { ReportPreviewModal } from '../components/ReportPreviewModal';
 ﻿import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { workshopService } from '../services/workshopService';
@@ -31,7 +32,19 @@ export default function ServiceExecutionDetail() {
   const [closeMileage, setCloseMileage] = useState<number | ''>('');
   const [closeObservations, setCloseObservations] = useState('');
   const [submittingClose, setSubmittingClose] = useState(false);
-  const [showClosureReportModal, setShowClosureReportModal] = useState(false);
+  const [previewModal, setPreviewModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    subtitle?: string;
+    src: string;
+    footerText?: string;
+  }>({
+    isOpen: false,
+    title: '',
+    subtitle: '',
+    src: '',
+    footerText: ''
+  });
 
   const fetchData = async () => {
     try {
@@ -141,7 +154,13 @@ export default function ServiceExecutionDetail() {
       });
       setShowCloseModal(false);
       await fetchData();
-      setShowClosureReportModal(true);
+      setPreviewModal({
+        isOpen: true,
+        title: 'Reporte Oficial de Cierre de Servicio',
+        subtitle: `Ticket #${request.id.toString().padStart(4, '0')} • ${request.vehicle?.licensePlate || request.trailer?.licensePlate || 'Sin Placa'} • Estatus: Completado`,
+        src: `/print-closure/${request.id}`,
+        footerText: 'El servicio ha sido concluido exitosamente y el odómetro de la unidad fue actualizado.'
+      });
     } catch (error) {
       console.error('Error closing ticket:', error);
       alert('Error al cerrar el ticket.');
@@ -231,7 +250,13 @@ export default function ServiceExecutionDetail() {
             </button>
           ) : (
             <button 
-              onClick={() => setShowClosureReportModal(true)}
+              onClick={() => setPreviewModal({
+                isOpen: true,
+                title: 'Reporte Oficial de Cierre de Servicio',
+                subtitle: `Ticket #${request.id.toString().padStart(4, '0')} • ${request.vehicle?.licensePlate || request.trailer?.licensePlate || 'Sin Placa'} • Estatus: Completado`,
+                src: `/print-closure/${request.id}`,
+                footerText: 'El servicio ha sido concluido exitosamente y el odómetro de la unidad fue actualizado.'
+              })}
               className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-colors shadow-sm cursor-pointer"
             >
               <Printer size={18} />
@@ -397,7 +422,13 @@ export default function ServiceExecutionDetail() {
                 {request.requisitions && request.requisitions.length > 0 && (
                   <button
                     type="button"
-                    onClick={() => window.open(`/print/quotation-request/${request.id}`, '_blank')}
+                    onClick={() => setPreviewModal({
+                    isOpen: true,
+                    title: 'Solicitud Oficial de Cotización',
+                    subtitle: `Ticket OT #${request.id.toString().padStart(4, '0')} • ${request.vehicle?.licensePlate || request.trailer?.licensePlate || 'Sin Placa'}`,
+                    src: `/print/quotation-request/${request.id}`,
+                    footerText: 'Solicitud formal de cotización de repuestos para orden de trabajo.'
+                  })}
                     className="p-1.5 rounded-lg border border-indigo-200 dark:border-indigo-700/60 bg-indigo-50/60 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors shadow-sm flex items-center justify-center cursor-pointer"
                     title="Imprimir Hoja de Solicitud de Cotización"
                   >
@@ -487,7 +518,13 @@ export default function ServiceExecutionDetail() {
                     <div className="flex items-center gap-2">
                       <button 
                         type="button"
-                        onClick={() => window.open(`/print/quotation-request/${request.id}?reqIds=${req.id}`, '_blank')}
+                        onClick={() => setPreviewModal({
+                        isOpen: true,
+                        title: 'Solicitud Oficial de Cotización',
+                        subtitle: `Ticket OT #${request.id.toString().padStart(4, '0')} • Requisición #${req.id.toString().padStart(4, '0')}`,
+                        src: `/print/quotation-request/${request.id}?reqIds=${req.id}`,
+                        footerText: 'Solicitud formal de cotización de repuestos para orden de trabajo.'
+                      })}
                         className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-200 transition-colors p-1"
                         title="Imprimir solicitud de cotización para este repuesto"
                       >
@@ -520,7 +557,13 @@ export default function ServiceExecutionDetail() {
               <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700">
                 <button
                   type="button"
-                  onClick={() => window.open(`/print/quotation-request/${request.id}`, '_blank')}
+                  onClick={() => setPreviewModal({
+                    isOpen: true,
+                    title: 'Solicitud Oficial de Cotización',
+                    subtitle: `Ticket OT #${request.id.toString().padStart(4, '0')} • ${request.vehicle?.licensePlate || request.trailer?.licensePlate || 'Sin Placa'}`,
+                    src: `/print/quotation-request/${request.id}`,
+                    footerText: 'Solicitud formal de cotización de repuestos para orden de trabajo.'
+                  })}
                   className="w-full bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/50 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 py-2.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-colors shadow-sm cursor-pointer"
                 >
                   <Printer size={15} /> Imprimir Hoja de Cotización ({request.requisitions.length} {request.requisitions.length === 1 ? 'repuesto' : 'repuestos'})
@@ -652,72 +695,15 @@ export default function ServiceExecutionDetail() {
         </div>
       )}
 
-      {/* Modal del Reporte Oficial de Cierre */}
-      {showClosureReportModal && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-hidden animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-5xl h-[92vh] flex flex-col overflow-hidden">
-            
-            {/* Modal Header */}
-            <div className="p-4 sm:px-6 bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-400">
-                  <Printer size={20} />
-                </div>
-                <div>
-                  <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
-                    Reporte Oficial de Cierre de Servicio
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Ticket #{request.id.toString().padStart(4, '0')} &bull; {request.vehicle?.licensePlate || request.trailer?.licensePlate || 'Sin Placa'} &bull; Estatus: Completado
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => window.open(`/print-closure/${request.id}`, '_blank')}
-                  className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-sm shadow-indigo-600/20 active:scale-95 cursor-pointer"
-                  title="Abrir en pestaña de impresión"
-                >
-                  <Printer size={15} />
-                  <span>Imprimir / Abrir PDF</span>
-                </button>
-
-                <button
-                  onClick={() => setShowClosureReportModal(false)}
-                  className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 rounded-xl transition-all cursor-pointer"
-                  title="Cerrar vista previa"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-            </div>
-
-            {/* Modal Body: Embedded Print View iframe */}
-            <div className="flex-1 bg-slate-100 dark:bg-slate-950 p-2 sm:p-4 overflow-hidden flex justify-center">
-              <iframe
-                src={`/print-closure/${request.id}`}
-                title="Reporte de Cierre"
-                className="w-full h-full rounded-xl bg-white border border-slate-200 shadow-sm"
-              />
-            </div>
-
-            {/* Modal Footer */}
-            <div className="p-3 sm:px-6 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs text-slate-500">
-              <span>El servicio ha sido concluido exitosamente y el odómetro de la unidad fue actualizado.</span>
-              <button
-                onClick={() => setShowClosureReportModal(false)}
-                className="px-4 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold transition-all cursor-pointer"
-              >
-                Cerrar Ventana
-              </button>
-            </div>
-
-          </div>
-        </div>
-      )}
-</div>
+      {/* Universal Report Preview Modal */}
+      <ReportPreviewModal
+        isOpen={previewModal.isOpen}
+        onClose={() => setPreviewModal(prev => ({ ...prev, isOpen: false }))}
+        title={previewModal.title}
+        subtitle={previewModal.subtitle}
+        src={previewModal.src}
+        footerText={previewModal.footerText}
+      />
+    </div>
   );
 }
-
-

@@ -9,6 +9,7 @@ import { Link } from 'react-router-dom';
 import { purchasingService } from '../services/purchasingService';
 import type { PurchaseRequisition, Supplier, PurchaseOrder } from '../types';
 import InvoicesTab from '../components/InvoicesTab';
+import { ReportPreviewModal } from '../components/ReportPreviewModal';
 
 export default function Purchasing() {
   const [activeTab, setActiveTab] = useState<'requisitions' | 'orders' | 'invoices' | 'suppliers'>('requisitions');
@@ -17,6 +18,19 @@ export default function Purchasing() {
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [previewModal, setPreviewModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    subtitle?: string;
+    src: string;
+    footerText?: string;
+  }>({
+    isOpen: false,
+    title: '',
+    subtitle: '',
+    src: '',
+    footerText: ''
+  });
 
   // Supplier Form (Creation)
   const [showSupplierForm, setShowSupplierForm] = useState(false);
@@ -251,20 +265,31 @@ export default function Purchasing() {
     const ids = reqIdsToPrint && reqIdsToPrint.length > 0 ? reqIdsToPrint : selectedReqIds;
     if (ids.length === 0) return;
 
+    let url = '';
+    let subtitle = `${ids.length} ítem(s) de requisición seleccionados`;
+
     if (specificServiceRequestId && (!reqIdsToPrint || reqIdsToPrint.length === 1)) {
-      window.open(`/print/quotation-request/${specificServiceRequestId}?reqIds=${ids.join(',')}`, '_blank');
-      return;
-    }
-
-    // Check if all selected requisitions belong to the same ticket
-    const selectedList = requisitions.filter(r => ids.includes(r.id));
-    const ticketIds = Array.from(new Set(selectedList.map(r => r.serviceRequestId).filter(Boolean)));
-
-    if (ticketIds.length === 1) {
-      window.open(`/print/quotation-request/${ticketIds[0]}?reqIds=${ids.join(',')}`, '_blank');
+      url = `/print/quotation-request/${specificServiceRequestId}?reqIds=${ids.join(',')}`;
+      subtitle = `Ticket OT #${specificServiceRequestId} • ${ids.length} ítem(s)`;
     } else {
-      window.open(`/print/quotation-request/all?reqIds=${ids.join(',')}`, '_blank');
+      const selectedList = requisitions.filter(r => ids.includes(r.id));
+      const ticketIds = Array.from(new Set(selectedList.map(r => r.serviceRequestId).filter(Boolean)));
+      if (ticketIds.length === 1) {
+        url = `/print/quotation-request/${ticketIds[0]}?reqIds=${ids.join(',')}`;
+        subtitle = `Ticket OT #${ticketIds[0]} • ${ids.length} ítem(s)`;
+      } else {
+        url = `/print/quotation-request/all?reqIds=${ids.join(',')}`;
+        subtitle = `Lote de Múltiples OTs • ${ids.length} ítem(s)`;
+      }
     }
+
+    setPreviewModal({
+      isOpen: true,
+      title: 'Solicitud Oficial de Cotización',
+      subtitle,
+      src: url,
+      footerText: 'Solicitud de cotización emitida formalmente para proveedores.'
+    });
   };
 
   const handleOpenBulkQuoteModal = () => {
@@ -1013,13 +1038,20 @@ export default function Purchasing() {
                               <div className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Costo Total</div>
                               <div className="text-xl font-bold text-emerald-600">${po.orderTotal.toFixed(2)}</div>
                             </div>
-                            <Link 
-                              to={`/print/order/${po.id}`}
-                              target="_blank"
-                              className="p-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-500 hover:text-emerald-600 hover:border-emerald-300 dark:hover:bg-gray-700/50 transition-colors shadow-sm"
+                            <button
+                              type="button"
+                              onClick={() => setPreviewModal({
+                                isOpen: true,
+                                title: 'Orden de Compra',
+                                subtitle: `Documento ID #${po.orderNumber} • Proveedor: ${po.supplier?.name || 'General'}`,
+                                src: `/print/order/${po.id}`,
+                                footerText: 'Orden formal de compra de insumos y servicios de mantenimiento.'
+                              })}
+                              className="p-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-500 hover:text-indigo-600 hover:border-indigo-300 dark:hover:bg-gray-700/50 transition-colors shadow-sm cursor-pointer"
+                              title="Ver / Imprimir Orden de Compra"
                             >
                               <Printer size={18} />
-                            </Link>
+                            </button>
                           </div>
                         </div>
 
@@ -2132,6 +2164,16 @@ export default function Purchasing() {
         );
       })()}
 
+
+      {/* Universal Report Preview Modal */}
+      <ReportPreviewModal
+        isOpen={previewModal.isOpen}
+        onClose={() => setPreviewModal(prev => ({ ...prev, isOpen: false }))}
+        title={previewModal.title}
+        subtitle={previewModal.subtitle}
+        src={previewModal.src}
+        footerText={previewModal.footerText}
+      />
     </div>
   );
 }

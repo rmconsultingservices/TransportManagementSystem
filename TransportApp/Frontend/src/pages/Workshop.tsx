@@ -1,3 +1,4 @@
+import { ReportPreviewModal } from '../components/ReportPreviewModal';
 import { useAuthStore } from '../store/authStore';
 ﻿import { toast } from 'react-hot-toast';
 
@@ -18,6 +19,20 @@ import type { ServiceRequest, Vehicle, Driver, Mechanic, Trailer } from '../type
 
 
 export default function Workshop() {
+  const [previewModal, setPreviewModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    subtitle?: string;
+    src: string;
+    footerText?: string;
+  }>({
+    isOpen: false,
+    title: '',
+    subtitle: '',
+    src: '',
+    footerText: ''
+  });
+
   const { selectedCompany } = useAuthStore();
 
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
@@ -801,21 +816,20 @@ export default function Workshop() {
 
                         )}
 
-                        <Link 
-
-                          to={`/print/ticket/${req.id}`}
-
-                          target="_blank"
-
-                          className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs px-3 py-1.5 rounded-md font-medium transition-colors flex items-center gap-1 border border-gray-200"
-
-                          title="Imprimir Reporte"
-
+                        <button
+                          type="button"
+                          onClick={() => setPreviewModal({
+                            isOpen: true,
+                            title: 'Resumen de Reporte de Averías',
+                            subtitle: `Ticket #${req.id.toString().padStart(4, '0')} • ${req.vehicle?.licensePlate || req.trailer?.licensePlate || 'Sin Placa'} • ${req.vehicle?.brand || ''} ${req.vehicle?.model || ''}`,
+                            src: `/print/ticket/${req.id}`,
+                            footerText: 'Documento técnico oficial de averías y mantenimiento.'
+                          })}
+                          className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs px-3 py-1.5 rounded-md font-medium transition-colors flex items-center gap-1 border border-gray-200 cursor-pointer shadow-xs"
+                          title="Ver / Imprimir Reporte de Averías"
                         >
-
                           <Printer size={14} /> Imprimir
-
-                        </Link>
+                        </button>
 
                         
 
@@ -989,7 +1003,17 @@ export default function Workshop() {
 
 
 
-    </div>
+    
+      {/* Universal Report Preview Modal */}
+      <ReportPreviewModal
+        isOpen={previewModal.isOpen}
+        onClose={() => setPreviewModal(prev => ({ ...prev, isOpen: false }))}
+        title={previewModal.title}
+        subtitle={previewModal.subtitle}
+        src={previewModal.src}
+        footerText={previewModal.footerText}
+      />
+</div>
 
   );
 
