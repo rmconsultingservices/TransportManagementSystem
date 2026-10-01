@@ -16,6 +16,7 @@ export interface PurchaseRequisition {
   dateRequested: string;
   partNameOrDescription: string;
   quantity: number;
+  observations?: string;
   status: string; // 'Pendiente', 'Cotizando', 'Aprobada', 'Comprada', 'Rechazada'
   quotations?: Quotation[];
 }

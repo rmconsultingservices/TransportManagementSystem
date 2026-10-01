@@ -286,12 +286,10 @@ export default function PrintQuotationRequest() {
               <table className="w-full text-xs text-left border-collapse">
                 <thead className="bg-slate-100 text-slate-700 uppercase tracking-wider font-extrabold text-[10px] border-b border-gray-300">
                   <tr>
-                    <th className="px-3 py-3 w-10 text-center border-r border-gray-200">#</th>
-                    <th className="px-4 py-3 border-r border-gray-200">ARTÍCULO / REPUESTO REQUERIDO</th>
-                    <th className="px-3 py-3 w-24 text-center border-r border-gray-200">CANT. REQ.</th>
-                    <th className="px-3 py-3 w-40 text-center border-r border-gray-200">MARCA / DISPONIBILIDAD<br/><span className="text-[8px] font-normal lowercase">(llenar por proveedor)</span></th>
-                    <th className="px-3 py-3 w-28 text-center border-r border-gray-200">PRECIO UNIT. ($)<br/><span className="text-[8px] font-normal lowercase">(llenar por proveedor)</span></th>
-                    <th className="px-3 py-3 w-28 text-center">TOTAL ($)<br/><span className="text-[8px] font-normal lowercase">(llenar por proveedor)</span></th>
+                    <th className="px-3 py-3 w-12 text-center border-r border-gray-200">#</th>
+                    <th className="px-4 py-3 w-[45%] border-r border-gray-200">ARTÍCULO / REPUESTO REQUERIDO</th>
+                    <th className="px-3 py-3 w-28 text-center border-r border-gray-200">CANT. REQ.</th>
+                    <th className="px-4 py-3">OBSERVACIONES / ESPECIFICACIONES</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -331,8 +329,12 @@ export default function PrintQuotationRequest() {
                             {req.quantity} {(req as any).unitOfMeasure?.code || 'und'}
                           </span>
                         </td>
-                        <td className="px-3 py-3.5 text-center border-r border-gray-200 bg-slate-50/40">
-                          <div className="h-6 border-b border-dashed border-gray-400"></div>
+                        <td className="px-4 py-3.5 text-gray-800 text-xs">
+                          {req.observations ? (
+                            <span className="font-medium text-gray-900 leading-relaxed">{req.observations}</span>
+                          ) : (
+                            <span className="text-gray-400 italic text-[11px]">Sin observaciones</span>
+                          )}
                         </td>
                         <td className="px-3 py-3.5 text-center border-r border-gray-200 bg-slate-50/40">
                           <div className="h-6 border-b border-dashed border-gray-400"></div>

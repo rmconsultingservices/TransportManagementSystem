@@ -19,6 +19,7 @@ export default function ServiceExecutionDetail() {
   const [showReqForm, setShowReqForm] = useState(false);
   const [reqDesc, setReqDesc] = useState('');
   const [reqQty, setReqQty] = useState(1);
+  const [reqObs, setReqObs] = useState('');
   // Stock Consumption State
   const [spareParts, setSpareParts] = useState<SparePart[]>([]);
   const [selectedPartId, setSelectedPartId] = useState<number | ''>('');
@@ -69,10 +70,11 @@ export default function ServiceExecutionDetail() {
     e.preventDefault();
     if (!reqDesc.trim() || !request) return;
     try {
-      await workshopService.addRequisition(request.id, reqDesc, reqQty);
+      await workshopService.addRequisition(request.id, reqDesc, reqQty, reqObs.trim() || undefined);
       setShowReqForm(false);
       setReqDesc('');
       setReqQty(1);
+      setReqObs('');
       fetchData();
     } catch (error) {
       console.error('Error adding req:', error);
@@ -414,26 +416,54 @@ export default function ServiceExecutionDetail() {
             </div>
 
             {showReqForm && (
-              <form onSubmit={handleAddRequisition} className="mb-4 bg-gray-50 dark:bg-gray-900 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre o Número de Parte</label>
-                <input 
-                  type="text" required
-                  value={reqDesc} onChange={e => setReqDesc(e.target.value)}
-                  className="w-full text-sm rounded border border-gray-300 dark:border-gray-600 px-2 py-1 mb-2 bg-white dark:bg-gray-800 outline-none"
-                  placeholder="ej. Filtro Aire F150"
-                />
-                <div className="flex gap-2">
-                   <div className="flex-1">
-                     <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Cant.</label>
+              <form onSubmit={handleAddRequisition} className="mb-4 bg-gray-50 dark:bg-gray-900 p-3.5 rounded-xl border border-gray-200 dark:border-gray-700 shadow-xs space-y-2.5">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                    Nombre o Número de Parte <span className="text-red-500">*</span>
+                  </label>
+                  <input 
+                    type="text" required
+                    value={reqDesc} onChange={e => setReqDesc(e.target.value)}
+                    className="w-full text-sm rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-white outline-none focus:border-indigo-500"
+                    placeholder="ej. Filtro Aire F150"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                    Observaciones / Especificaciones <span className="text-gray-400 font-normal">(Opcional)</span>
+                  </label>
+                  <input 
+                    type="text"
+                    value={reqObs} onChange={e => setReqObs(e.target.value)}
+                    className="w-full text-sm rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-white outline-none focus:border-indigo-500"
+                    placeholder="ej. Medida, marca de preferencia, referencia o detalles"
+                  />
+                </div>
+
+                <div className="flex items-end gap-3 pt-1">
+                   <div className="w-28">
+                     <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Cant.</label>
                      <input 
                         type="number" min="1" required
                         value={reqQty} onChange={e => setReqQty(Number(e.target.value))}
-                        className="w-full text-sm rounded border border-gray-300 dark:border-gray-600 px-2 py-1 bg-white dark:bg-gray-800 outline-none"
+                        className="w-full text-sm rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-white outline-none focus:border-indigo-500 text-center font-bold"
                       />
                    </div>
-                   <div className="flex items-end gap-1">
-                     <button type="submit" className="bg-blue-600 text-white text-xs px-3 py-1.5 rounded font-medium">Pedir</button>
-                     <button type="button" onClick={() => setShowReqForm(false)} className="bg-gray-200 text-gray-700 text-xs px-2 py-1.5 rounded font-medium">X</button>
+                   <div className="flex-1 flex items-center justify-end gap-2">
+                     <button 
+                       type="button" 
+                       onClick={() => { setShowReqForm(false); setReqObs(''); }} 
+                       className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs px-3.5 py-2 rounded-lg font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors cursor-pointer"
+                     >
+                       Cancelar
+                     </button>
+                     <button 
+                       type="submit" 
+                       className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-4 py-2 rounded-lg font-bold transition-colors shadow-xs cursor-pointer"
+                     >
+                       Pedir
+                     </button>
                    </div>
                 </div>
               </form>
@@ -447,7 +477,12 @@ export default function ServiceExecutionDetail() {
                   <div key={req.id} className="flex justify-between items-center p-3 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
                     <div>
                       <div className="font-medium text-sm">{req.partNameOrDescription} <span className="text-gray-500 font-normal">x{req.quantity}</span></div>
-                      <div className="text-xs text-gray-500">{new Date(req.dateRequested).toLocaleDateString()}</div>
+                      {req.observations && (
+                        <div className="text-xs text-indigo-600 dark:text-indigo-400 font-medium italic mt-0.5">
+                          Obs: {req.observations}
+                        </div>
+                      )}
+                      <div className="text-xs text-gray-500 mt-0.5">{new Date(req.dateRequested).toLocaleDateString()}</div>
                     </div>
                     <div className="flex items-center gap-2">
                       <button 
