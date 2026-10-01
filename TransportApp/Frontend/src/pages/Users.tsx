@@ -129,8 +129,8 @@ export default function UsersAdmin() {
       setUsers(prev => prev.filter(u => u.id !== userToDelete.id));
       setUserToDelete(null);
     } catch (error: any) {
-      const msg = error.response?.data?.message || 'Error al eliminar el usuario.';
-      toast.error(msg);
+      const msg = error.response?.data?.message || (typeof error.response?.data === 'string' ? error.response.data : null) || error.message || 'Error al eliminar el usuario.';
+      toast.error(msg, { duration: 5000 });
     } finally {
       setIsDeleting(false);
     }

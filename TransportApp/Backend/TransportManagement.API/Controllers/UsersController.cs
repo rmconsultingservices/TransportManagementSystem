@@ -89,29 +89,40 @@ namespace TransportManagement.API.Controllers
             return Ok(new { id = user.Id, isActive = user.IsActive, message = user.IsActive ? "Usuario activado exitosamente." : "Usuario inhabilitado exitosamente." });
         }
 
-        [HttpDelete("{id}")]
+                [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteUser(int id)
         {
-            var user = await _context.Users
-                .Include(u => u.UserCompanies)
-                .FirstOrDefaultAsync(u => u.Id == id);
-
-            if (user == null) return NotFound(new { message = "Usuario no encontrado" });
-
-            var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (currentUserId != null && int.TryParse(currentUserId, out int parsedId) && parsedId == id)
+            try
             {
-                return BadRequest(new { message = "No puedes eliminar tu propio usuario de sesión activa." });
-            }
+                var user = await _context.Users
+                    .Include(u => u.UserCompanies)
+                    .FirstOrDefaultAsync(u => u.Id == id);
 
-            if (user.UserCompanies != null && user.UserCompanies.Any())
+                if (user == null) return NotFound(new { message = "Usuario no encontrado" });
+
+                var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (currentUserId != null && int.TryParse(currentUserId, out int parsedId) && parsedId == id)
+                {
+                    return BadRequest(new { message = "No puedes eliminar tu propio usuario de sesion activa." });
+                }
+
+                if (user.UserCompanies != null && user.UserCompanies.Any())
+                {
+                    _context.UserCompanies.RemoveRange(user.UserCompanies);
+                }
+
+                _context.Users.Remove(user);
+                await _context.SaveChangesAsync();
+                return Ok(new { message = "Usuario eliminado exitosamente." });
+            }
+            catch (DbUpdateException)
             {
-                _context.UserCompanies.RemoveRange(user.UserCompanies);
+                return BadRequest(new { message = "No se puede eliminar el usuario porque tiene registros historicos vinculados en la base de datos. Se recomienda inhabilitar el usuario para bloquear su acceso sin perder la integridad de datos." });
             }
-
-            _context.Users.Remove(user);
-            await _context.SaveChangesAsync();
-            return NoContent();
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = $"Error al eliminar el usuario: {ex.Message}" });
+            }
         }
 
         [HttpPost("{userId}/assign-company/{companyId}")]
