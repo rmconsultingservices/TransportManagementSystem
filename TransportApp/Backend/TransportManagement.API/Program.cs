@@ -149,8 +149,6 @@ using (var scope = app.Services.CreateScope())
 
                 IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('PurchaseRequisitions') AND name = 'Observations')
                 ALTER TABLE PurchaseRequisitions ADD Observations NVARCHAR(500) NULL;
-
-                BEGIN TRY
             ");
 
         Console.WriteLine("Base de datos verificada y actualizada correctamente.");
