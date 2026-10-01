@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { workshopService } from '../services/workshopService';
 import { purchasingService } from '../services/purchasingService';
@@ -51,8 +51,6 @@ export default function PrintQuotationRequest() {
             const matchedInTicket = ticketReqs.filter(r => reqIdSet.has(r.id));
             reqsToShow = matchedInTicket;
 
-            // If there were requested IDs that were NOT in this ticket (e.g. selected across multiple tickets),
-            // fetch all requisitions to ensure all requested IDs are included!
             const missingIds = reqIdList.filter(rid => !matchedInTicket.some(r => r.id === rid));
             if (missingIds.length > 0) {
               const allReqs = await purchasingService.getRequisitions();
@@ -62,7 +60,6 @@ export default function PrintQuotationRequest() {
             reqsToShow = ticketReqs;
           }
         } else {
-          // No single ticket or 'all' passed: fetch all requisitions
           const allReqs = await purchasingService.getRequisitions();
           if (reqIdSet.size > 0) {
             reqsToShow = allReqs.filter(r => reqIdSet.has(r.id));
@@ -172,30 +169,44 @@ export default function PrintQuotationRequest() {
     : (selectedCompany?.name || 'Transporte');
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-4 sm:p-8 font-sans print:p-0 print:bg-white text-gray-900">
+    <div className="min-h-screen bg-slate-100 p-4 sm:p-8 font-sans print:p-0 print:m-0 print:bg-white text-gray-900">
       <style>
         {`
           @page {
-            size: portrait;
-            margin: 10mm;
+            size: letter portrait;
+            margin: 8mm 10mm;
           }
           @media print {
-            body {
-              background: white;
+            html, body {
+              background: #ffffff !important;
+              color: #000000 !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
             }
             .print-hidden {
               display: none !important;
+            }
+            .printable-sheet {
+              border: none !important;
+              box-shadow: none !important;
+              padding: 0 !important;
+              margin: 0 !important;
+              min-height: auto !important;
+              width: 100% !important;
+              max-width: 100% !important;
             }
           }
         `}
       </style>
 
-      <div className="max-w-[850px] mx-auto">
+      <div className="max-w-[850px] mx-auto print:max-w-none print:w-full">
         {/* Web Only Action Bar */}
         <div className="flex justify-between items-center gap-3 mb-6 print:hidden">
           <button 
             onClick={() => window.history.length > 1 ? navigate(-1) : navigate('/purchasing')}
-            className="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-700 px-4 py-2 rounded-md font-medium text-sm hover:bg-gray-50 transition-colors flex items-center gap-2 cursor-pointer shadow-xs"
+            className="bg-white text-gray-700 border border-gray-300 px-4 py-2 rounded-md font-medium text-sm hover:bg-gray-50 transition-colors flex items-center gap-2 cursor-pointer shadow-xs"
           >
             <ArrowLeft size={16} /> Volver
           </button>
@@ -214,51 +225,49 @@ export default function PrintQuotationRequest() {
         </div>
 
         {/* Paper Document */}
-        <div className="bg-white print:shadow-none shadow-lg print:border-0 border border-gray-200 text-gray-900" style={{ minHeight: '1056px', position: 'relative' }}>
-          <div className="p-8">
-            {/* Header */}
-            <div className="flex justify-between items-start border-b border-gray-200 pb-6 mb-6">
-              <div className="flex items-center gap-4">
-                {selectedCompany?.logoUrl ? (
-                  <img src={selectedCompany.logoUrl} alt="Logo" className="w-16 h-16 object-contain" />
-                ) : (
-                  <div className="w-14 h-14 bg-indigo-900 text-white flex items-center justify-center font-bold text-xl rounded">
-                    {selectedCompany?.name ? selectedCompany.name.substring(0, 2).toUpperCase() : 'TR'}
-                  </div>
-                )}
-                <div>
-                  <h1 className="text-xl font-black text-indigo-950 uppercase tracking-tight">
-                    {selectedCompany?.name || 'EMPRESA DE TRANSPORTE'}
-                  </h1>
-                  {selectedCompany?.rif && (
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      RIF: {selectedCompany.rif}
-                    </p>
-                  )}
-                  <h2 className="text-base font-bold text-gray-800 mt-1">
-                    SOLICITUD DE COTIZACIÓN DE REPUESTOS / SERVICIOS
-                  </h2>
+        <div className="printable-sheet bg-white shadow-lg border border-gray-200 rounded-sm">
+          
+          {/* Top Header Section */}
+          <div className="bg-slate-50 p-6 sm:p-8 flex justify-between items-start border-b border-gray-200">
+            <div className="flex items-start gap-4">
+              {selectedCompany?.logoUrl ? (
+                <img 
+                  src={selectedCompany.logoUrl} 
+                  alt={selectedCompany.name || 'Logo'} 
+                  className="h-14 w-auto object-contain print:h-12"
+                />
+              ) : (
+                <div className="h-12 w-12 rounded bg-indigo-700 text-white flex items-center justify-center font-black text-xl">
+                  {ownerNameDisplay.substring(0, 2).toUpperCase()}
                 </div>
-              </div>
-
-              <div className="text-right">
-                <div className="inline-block bg-indigo-50 border border-indigo-200 rounded px-3 py-1.5 text-right">
-                  <div className="text-[10px] font-bold text-indigo-800 uppercase tracking-widest">DOCUMENTO NO.</div>
-                  <div className="text-base font-black text-indigo-950 font-mono tracking-tight">
-                    {docNumber}
-                  </div>
-                </div>
-                <div className="text-xs text-gray-500 font-medium mt-1.5">
-                  Fecha Emisión: <strong>{currentDate}</strong>
+              )}
+              <div>
+                <h1 className="text-2xl font-black text-slate-800 tracking-tight uppercase">Solicitud de Cotización</h1>
+                <p className="text-slate-500 text-xs mt-0.5">
+                  Departamento de Compras y Suministros &bull; {ownerNameDisplay}
+                </p>
+                <div className="mt-1 flex items-center gap-2 text-xs font-semibold text-indigo-700">
+                  <span>Documento Oficial de Requerimientos</span>
                 </div>
               </div>
             </div>
 
+            <div className="bg-white p-3 rounded-lg border border-gray-200 text-right min-w-[150px] shadow-xs">
+              <div className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-0.5">N° REFERENCIA</div>
+              <div className="text-base font-extrabold text-indigo-700 font-mono">{docNumber}</div>
+              <div className="text-[11px] text-gray-500 mt-1 flex items-center justify-end gap-1 font-medium">
+                <span>Fecha:</span>
+                <span>{currentDate}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-6 sm:p-8">
             {/* Info Cards */}
-            <div className="grid grid-cols-2 gap-4 mb-6">
+            <div className="grid grid-cols-2 gap-4 mb-5">
               <div className="border border-gray-200 rounded-lg p-3.5 bg-white">
-                <div className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-1">PROVEEDOR / CASA COMERCIAL</div>
-                <div className="font-semibold text-gray-800 text-sm">A QUIEN PUEDA INTERESAR / PROVEEDOR GENERAL</div>
+                <div className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-1">PROVEEDOR / DESTINATARIO</div>
+                <div className="font-bold text-gray-800 text-sm">A QUIEN PUEDA INTERESAR / PROVEEDOR</div>
                 <div className="text-xs text-gray-400 mt-1.5 border-b border-dashed border-gray-300 pb-1">
                   Nombre Vendedor / Tienda: _____________________________________
                 </div>
@@ -276,20 +285,20 @@ export default function PrintQuotationRequest() {
             </div>
 
             {/* Instruction Notice */}
-            <div className="bg-indigo-50/60 border border-indigo-100 rounded-lg px-4 py-2.5 mb-6 text-xs text-indigo-900 flex items-center justify-between">
+            <div className="bg-indigo-50/60 border border-indigo-100 rounded-lg px-4 py-2 mb-5 text-xs text-indigo-900 flex items-center justify-between">
               <span><strong>Estimado Proveedor:</strong> Favor indicar marca ofrecida, disponibilidad de entrega inmediata o días, precio unitario y tiempo de garantía.</span>
               <span className="font-bold uppercase text-[10px] bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded ml-2 whitespace-nowrap">Validez: 5 a 15 días</span>
             </div>
 
             {/* Table */}
-            <div className="rounded-lg overflow-hidden border border-gray-300">
-              <table className="w-full text-xs text-left border-collapse">
+            <div className="rounded-lg overflow-hidden border border-gray-300 mb-6">
+              <table className="w-full text-xs text-left border-collapse table-fixed">
                 <thead className="bg-slate-100 text-slate-700 uppercase tracking-wider font-extrabold text-[10px] border-b border-gray-300">
                   <tr>
-                    <th className="px-3 py-3 w-12 text-center border-r border-gray-200">#</th>
-                    <th className="px-4 py-3 w-[45%] border-r border-gray-200">ARTÍCULO / REPUESTO REQUERIDO</th>
-                    <th className="px-3 py-3 w-28 text-center border-r border-gray-200">CANT. REQ.</th>
-                    <th className="px-4 py-3">OBSERVACIONES / ESPECIFICACIONES</th>
+                    <th className="px-3 py-2.5 w-12 text-center border-r border-gray-200">#</th>
+                    <th className="px-4 py-2.5 w-[42%] border-r border-gray-200">ARTÍCULO / REPUESTO REQUERIDO</th>
+                    <th className="px-3 py-2.5 w-24 text-center border-r border-gray-200">CANT. REQ.</th>
+                    <th className="px-4 py-2.5">OBSERVACIONES / ESPECIFICACIONES</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -300,16 +309,16 @@ export default function PrintQuotationRequest() {
                     const plate = veh?.licensePlate || trailer?.licensePlate;
 
                     return (
-                      <tr key={req.id} className="bg-white hover:bg-slate-50/50">
-                        <td className="px-3 py-3.5 text-center text-gray-500 font-bold border-r border-gray-200">
+                      <tr key={req.id} className="bg-white hover:bg-slate-50/50 break-inside-avoid">
+                        <td className="px-3 py-3 text-center text-gray-500 font-bold border-r border-gray-200">
                           {String(index + 1).padStart(2, '0')}
                         </td>
-                        <td className="px-4 py-3.5 border-r border-gray-200">
-                          <div className="font-bold text-gray-900 text-[13px]">
+                        <td className="px-4 py-3 border-r border-gray-200">
+                          <div className="font-bold text-gray-900 text-xs">
                             {req.partNameOrDescription}
                           </div>
                           <div className="text-[10px] text-gray-500 mt-0.5 flex items-center gap-1.5 flex-wrap">
-                            <span>Requisición #{req.id.toString().padStart(4, '0')}</span>
+                            <span>Req #{req.id.toString().padStart(4, '0')}</span>
                             {req.serviceRequestId && (
                               <>
                                 <span>&bull;</span>
@@ -324,23 +333,17 @@ export default function PrintQuotationRequest() {
                             )}
                           </div>
                         </td>
-                        <td className="px-3 py-3.5 text-center border-r border-gray-200 font-extrabold text-gray-900 text-sm">
-                          <span className="bg-slate-100 text-slate-800 px-2.5 py-1 rounded font-mono">
+                        <td className="px-3 py-3 text-center border-r border-gray-200 font-extrabold text-gray-900 text-xs">
+                          <span className="bg-slate-100 text-slate-800 px-2 py-0.5 rounded font-mono">
                             {req.quantity} {(req as any).unitOfMeasure?.code || 'und'}
                           </span>
                         </td>
-                        <td className="px-4 py-3.5 text-gray-800 text-xs">
+                        <td className="px-4 py-3 text-gray-800 text-xs">
                           {req.observations ? (
                             <span className="font-medium text-gray-900 leading-relaxed">{req.observations}</span>
                           ) : (
                             <span className="text-gray-400 italic text-[11px]">Sin observaciones</span>
                           )}
-                        </td>
-                        <td className="px-3 py-3.5 text-center border-r border-gray-200 bg-slate-50/40">
-                          <div className="h-6 border-b border-dashed border-gray-400"></div>
-                        </td>
-                        <td className="px-3 py-3.5 text-center bg-slate-50/40">
-                          <div className="h-6 border-b border-dashed border-gray-400"></div>
                         </td>
                       </tr>
                     );
@@ -349,46 +352,47 @@ export default function PrintQuotationRequest() {
               </table>
             </div>
 
-            {/* Provider Notes & Condition */}
-            <div className="mt-8 border border-gray-200 rounded-lg p-4 bg-slate-50 text-xs">
-              <div className="font-bold text-gray-700 uppercase tracking-wider text-[10px] mb-1">
-                Condiciones Comerciales del Proveedor (Llenar al cotizar):
+            {/* Signatures */}
+            <div className="grid grid-cols-3 gap-8 mb-8 mt-10 break-inside-avoid">
+              <div>
+                <div className="border-b border-gray-300 pb-2 mb-2 min-h-[40px] flex items-end"></div>
+                <div className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-0.5">AUTORIZADO POR</div>
+                <div className="font-bold text-sm text-gray-800">Gerencia de Mantenimiento</div>
               </div>
-              <div className="grid grid-cols-3 gap-4 mt-2">
-                <div className="border-b border-gray-300 pb-1 text-gray-500">
-                  Forma de Pago: ____________________
-                </div>
-                <div className="border-b border-gray-300 pb-1 text-gray-500">
-                  Tiempo de Garantía: _______________
-                </div>
-                <div className="border-b border-gray-300 pb-1 text-gray-500">
-                  Validez Oferta (Días): _____________
-                </div>
+              <div>
+                <div className="border-b border-gray-300 pb-2 mb-2 min-h-[40px] flex items-end"></div>
+                <div className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-0.5">MECÁNICO SOLICITANTE</div>
+                <div className="font-bold text-sm text-gray-800"></div>
+              </div>
+              <div>
+                <div className="border-b border-gray-300 pb-2 mb-2 min-h-[40px] flex items-end"></div>
+                <div className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-0.5">CHOFER / ALMACÉN</div>
+                <div className="font-bold text-sm text-gray-800"></div>
               </div>
             </div>
 
-            {/* Signatures & Seal */}
-            <div className="grid grid-cols-2 gap-8 mt-16 mb-4">
-              <div>
-                <div className="border-b border-gray-400 pb-2 mb-2 min-h-[45px] flex items-end">
-                </div>
-                <div className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-0.5">SOLICITADO POR</div>
-                <div className="font-bold text-xs text-gray-800">Departamento de Compras / Taller Mecánico</div>
-                <div className="text-[10px] text-gray-500">Firma del Asistente / Responsable</div>
+            {/* Provider Box */}
+            <div className="bg-slate-50 border border-gray-200 rounded-lg p-5 flex gap-6 break-inside-avoid">
+              <div className="flex-1">
+                <h3 className="font-bold text-gray-800 text-sm mb-1">Uso Exclusivo del Proveedor</h3>
+                <p className="text-xs text-gray-500 leading-relaxed">Sello, Firma y Teléfono requerido para validar entrega en almacén.</p>
               </div>
-
-              <div>
-                <div className="border-b border-gray-400 pb-2 mb-2 min-h-[45px] flex items-end">
+              <div className="w-32 h-20 border-2 border-dashed border-gray-300 flex justify-center items-center text-gray-400 text-xs font-medium uppercase tracking-widest bg-white rounded">
+                Sello Aquí
+              </div>
+              <div className="flex-1 flex flex-col justify-end space-y-3">
+                <div className="border-b border-gray-300 flex items-end pb-1">
+                  <span className="text-xs text-gray-500 w-16">Firma:</span>
                 </div>
-                <div className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-0.5">COTIZADO POR (PROVEEDOR)</div>
-                <div className="font-bold text-xs text-gray-800">Firma, Nombre y Sello de la Empresa</div>
-                <div className="text-[10px] text-gray-500">Teléfono / Persona de Contacto: ___________________</div>
+                <div className="border-b border-gray-300 flex items-end pb-1">
+                  <span className="text-xs text-gray-500 w-16">Teléfono:</span>
+                </div>
               </div>
             </div>
 
             {/* Footer Notice */}
-            <div className="text-center text-[10px] text-gray-400 mt-12 pt-4 border-t border-gray-100">
-              Este documento representa una solicitud de precios y condiciones comerciales, no constituye un compromiso de compra hasta la emisión formal de la correspondiente Orden de Compra.
+            <div className="text-center text-[10px] text-gray-400 mt-6 pt-3 border-t border-gray-100 break-inside-avoid">
+              Este documento representa una solicitud formal de cotización de repuestos e insumos para el mantenimiento de flota.
             </div>
 
           </div>
