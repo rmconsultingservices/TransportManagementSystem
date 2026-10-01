@@ -432,7 +432,7 @@ export const LineTrendChart: React.FC<LineTrendChartProps> = ({ data = [] }) => 
   const svgWidth = 560;
   const svgHeight = 200;
   const paddingX = 45;
-  const paddingY = 30;
+  const paddingY = 32;
 
   const maxCost = Math.max(...data.map(d => d.totalCost), 100);
   const minCost = 0;
@@ -447,8 +447,20 @@ export const LineTrendChart: React.FC<LineTrendChartProps> = ({ data = [] }) => 
   const pathD = `M ${points.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' L ')}`;
   const areaD = `${pathD} L ${points[points.length - 1].x.toFixed(1)},${svgHeight - paddingY} L ${points[0].x.toFixed(1)},${svgHeight - paddingY} Z`;
 
+  // Determine dynamic placement for hovered tooltip
+  const curPoint = hoveredIndex !== null ? points[hoveredIndex] : null;
+  const isUpper = curPoint ? curPoint.y < 95 : false;
+  const isNearLeft = hoveredIndex === 0;
+  const isNearRight = hoveredIndex === points.length - 1;
+
+  let xTransform = '-translate-x-1/2';
+  if (isNearLeft) xTransform = 'translate-x-0';
+  else if (isNearRight) xTransform = '-translate-x-full';
+
+  const yTransform = isUpper ? 'translate-y-3' : '-translate-y-full -mt-2';
+
   return (
-    <div className="relative w-full overflow-hidden">
+    <div className="relative w-full overflow-visible">
       <svg
         viewBox={`0 0 ${svgWidth} ${svgHeight}`}
         className="w-full h-auto overflow-visible select-none"
@@ -509,7 +521,7 @@ export const LineTrendChart: React.FC<LineTrendChartProps> = ({ data = [] }) => 
             onMouseLeave={() => setHoveredIndex(null)}
           >
             {/* Hover hit area */}
-            <circle cx={p.x} cy={p.y} r="14" fill="transparent" />
+            <circle cx={p.x} cy={p.y} r="16" fill="transparent" />
             <circle
               cx={p.x}
               cy={p.y}
@@ -537,35 +549,36 @@ export const LineTrendChart: React.FC<LineTrendChartProps> = ({ data = [] }) => 
       </svg>
 
       {/* Floating tooltip for hovered point */}
-      {hoveredIndex !== null && points[hoveredIndex] && (
+      {hoveredIndex !== null && curPoint && (
         <div
-          className="absolute z-10 p-2.5 bg-slate-900 text-white rounded-xl shadow-2xl border border-slate-700 text-xs pointer-events-none transition-all transform -translate-x-1/2 -translate-y-full"
+          className={`absolute z-30 p-2.5 bg-slate-900/95 dark:bg-slate-900/95 backdrop-blur-md text-white rounded-xl shadow-2xl border border-slate-700/80 text-xs pointer-events-none transition-all duration-150 min-w-[170px] ${xTransform} ${yTransform}`}
           style={{
-            left: `${(points[hoveredIndex].x / svgWidth) * 100}%`,
-            top: `${(points[hoveredIndex].y / svgHeight) * 100 - 8}%`
+            left: `${(curPoint.x / svgWidth) * 100}%`,
+            top: `${(curPoint.y / svgHeight) * 100}%`
           }}
         >
-          <p className="font-black border-b border-slate-700 pb-1 mb-1 text-slate-200">
-            {points[hoveredIndex].data.monthLabel} {points[hoveredIndex].data.year}
-          </p>
-          <p className="flex justify-between gap-4">
-            <span className="text-slate-400">Total Gasto:</span>
-            <span className="font-mono font-black text-emerald-400">
-              ${points[hoveredIndex].data.totalCost.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+          <div className="flex items-center justify-between gap-3 border-b border-slate-700/80 pb-1 mb-1.5">
+            <span className="font-black text-slate-100 uppercase tracking-wide">
+              {curPoint.data.monthLabel} {curPoint.data.year}
             </span>
-          </p>
-          <p className="flex justify-between gap-4">
-            <span className="text-slate-400">Costo Promedio:</span>
-            <span className="font-mono font-bold text-blue-300">
-              ${points[hoveredIndex].data.averageCost.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+            <span className="text-[10px] bg-blue-950 text-blue-300 font-bold px-1.5 py-0.5 rounded border border-blue-800">
+              {curPoint.data.servicedUnitsCount} {curPoint.data.servicedUnitsCount === 1 ? 'servicio' : 'servicios'}
             </span>
-          </p>
-          <p className="flex justify-between gap-4">
-            <span className="text-slate-400">Unidades Atendidas:</span>
-            <span className="font-bold text-slate-200">
-              {points[hoveredIndex].data.servicedUnitsCount}
-            </span>
-          </p>
+          </div>
+          <div className="space-y-1">
+            <div className="flex justify-between items-center gap-4">
+              <span className="text-slate-400 font-medium">Gasto Total:</span>
+              <span className="font-mono font-black text-emerald-400">
+                ${curPoint.data.totalCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+            <div className="flex justify-between items-center gap-4">
+              <span className="text-slate-400">Costo Promedio:</span>
+              <span className="font-mono font-bold text-blue-300">
+                ${curPoint.data.averageCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+          </div>
         </div>
       )}
     </div>
