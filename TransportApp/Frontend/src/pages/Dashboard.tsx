@@ -295,7 +295,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="p-4 sm:p-8 max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 print:p-0 print:m-0 print:max-w-none print:w-full">
+    <div className="w-full p-4 sm:p-6 lg:p-8 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 print:p-0 print:m-0 print:max-w-none print:w-full">
       
       {/* ========================================================================= */}
       {/* CABECERA EXCLUSIVA PARA IMPRESIÓN (REPORT HEADER)                         */}
