@@ -612,7 +612,7 @@ export default function Purchasing() {
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto print:p-0 print:max-w-full">
+    <div className="w-full px-4 sm:px-6 lg:px-8 py-6 print:p-0 print:max-w-full">
       {/* Printable Report Header */}
       <div className="hidden print:block mb-8 border-b-2 border-gray-300 pb-4">
         <div className="flex justify-between items-start">

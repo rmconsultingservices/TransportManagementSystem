@@ -360,7 +360,7 @@ export default function Workshop() {
 
   return (
 
-    <div className="p-8 max-w-7xl mx-auto">
+    <div className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
       <div className="flex justify-between items-center mb-8">
 
@@ -630,17 +630,17 @@ export default function Workshop() {
 
               <tr className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-500 uppercase tracking-wider">
 
-                <th className="px-6 py-4">Ticket</th>
+                <th className="px-4 py-3.5 whitespace-nowrap">Ticket</th>
 
-                <th className="px-6 py-4">Vehículo</th>
+                <th className="px-4 py-3.5 whitespace-nowrap">Vehículo</th>
 
-                <th className="px-6 py-4">Falla Reportada</th>
+                <th className="px-4 py-3.5">Falla Reportada</th>
 
-                <th className="px-6 py-4">Mecánico Asignado</th>
+                <th className="px-4 py-3.5 whitespace-nowrap">Mecánico Asignado</th>
 
-                <th className="px-6 py-4">Estatus</th>
+                <th className="px-4 py-3.5 whitespace-nowrap">Estatus</th>
 
-                <th className="px-6 py-4 text-right">Acciones</th>
+                <th className="px-4 py-3.5 text-right whitespace-nowrap">Acciones</th>
 
               </tr>
 
@@ -680,7 +680,7 @@ export default function Workshop() {
 
                   <tr key={req.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
 
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-3.5 whitespace-nowrap">
 
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-gray-900 dark:text-white">#{req.id.toString().padStart(4, '0')}</span>
@@ -707,7 +707,7 @@ export default function Workshop() {
 
                     </td>
 
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-3.5 whitespace-nowrap">
 
                       <div className="font-bold text-gray-900 dark:text-white uppercase">
 
@@ -719,7 +719,7 @@ export default function Workshop() {
 
                     </td>
 
-                    <td className="px-6 py-4 text-sm max-w-xs">
+                    <td className="px-4 py-3.5 text-sm max-w-md">
                       <div className="truncate font-medium text-gray-800 dark:text-gray-200" title={req.description}>
                         {req.description}
                       </div>
@@ -730,7 +730,7 @@ export default function Workshop() {
                       )}
                     </td>
 
-                    <td className="px-6 py-4 text-sm font-medium">
+                    <td className="px-4 py-3.5 text-sm font-medium whitespace-nowrap">
 
                       {req.mechanic ? (
 
@@ -794,13 +794,13 @@ export default function Workshop() {
 
                     </td>
 
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-3.5 whitespace-nowrap">
 
                       {getStatusBadge(req.status)}
 
                     </td>
 
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-4 py-3.5 text-right whitespace-nowrap">
 
                        <div className="flex justify-end gap-2">
 

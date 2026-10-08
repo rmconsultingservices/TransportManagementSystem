@@ -213,7 +213,7 @@ export default function UsersAdmin() {
   const adminCount = users.filter(u => u.role === 'Admin' || u.isSuperAdmin).length;
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto px-2 sm:px-4 py-4">
+    <div className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-gray-200 dark:border-gray-700 pb-4">
         <div>
