@@ -504,7 +504,7 @@ export default function UsersAdmin() {
                                 key={c.id || c.companyId}
                                 className="px-2 py-0.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded text-xs border border-indigo-100 dark:border-indigo-800"
                               >
-                                {c.commercialName || c.legalName || c.name || 'Empresa'}
+                                {c.name || c.commercialName || c.legalName || 'Empresa'}
                               </span>
                             ))
                           ) : (
@@ -615,10 +615,10 @@ export default function UsersAdmin() {
                       className="flex items-center justify-between p-2.5 bg-gray-50 dark:bg-gray-700/60 rounded-xl border border-gray-200 dark:border-gray-600 text-sm"
                     >
                       <span className="font-medium text-gray-800 dark:text-gray-200">
-                        {c.commercialName || c.legalName || c.name}
+                        {c.name || c.commercialName || c.legalName || 'Empresa'}
                       </span>
                       <button 
-                        onClick={() => handleRemoveCompany(Number(c.id || c.companyId))}
+                        onClick={() => handleRemoveCompany(Number(c.companyId !== undefined ? c.companyId : c.id))}
                         className="text-red-500 hover:text-red-700 dark:hover:text-red-400 p-1 text-xs font-medium flex items-center gap-1 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
                         title="Desvincular empresa"
                       >
@@ -642,7 +642,7 @@ export default function UsersAdmin() {
                 Asignar Nueva Empresa
               </label>
               {(() => {
-                const assignedIds = new Set((selectedUser.companies || []).map((c: any) => c.id || c.companyId));
+                const assignedIds = new Set((selectedUser.companies || []).map((c: any) => c.companyId !== undefined ? c.companyId : c.id));
                 const availableCompanies = companies.filter(c => !assignedIds.has(c.id));
 
                 if (availableCompanies.length === 0) {
@@ -662,7 +662,7 @@ export default function UsersAdmin() {
                       <option value="">-- Seleccionar Empresa --</option>
                       {availableCompanies.map(c => (
                         <option key={c.id} value={c.id}>
-                          {c.commercialName || c.legalName}
+                          {c.name || c.commercialName || c.legalName || ("Empresa #" + c.id)} {c.rif ? ("(" + c.rif + ")") : ""}
                         </option>
                       ))}
                     </select>
