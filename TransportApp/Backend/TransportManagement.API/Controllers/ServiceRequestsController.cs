@@ -338,44 +338,57 @@ namespace TransportManagement.API.Controllers
         }
     
         // DELETE: api/ServiceRequests/5
+                // DELETE: api/ServiceRequests/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteServiceRequest(int id)
         {
-            var request = await _context.ServiceRequests
-                .Include(s => s.Activities)
-                .Include(s => s.Logs)
-                .Include(s => s.Requisitions)
-                .Include(s => s.Execution)
-                .FirstOrDefaultAsync(s => s.Id == id);
-
-            if (request == null) return NotFound(new { message = "Solicitud no encontrada." });
-
-            if (request.Execution != null || request.Status == "Completado" || request.Status == "Cerrado")
+            try
             {
-                return BadRequest(new { message = "No se puede eliminar una solicitud que ya tiene ejecución de servicio registrada o está completada." });
-            }
+                var request = await _context.ServiceRequests
+                    .IgnoreQueryFilters()
+                    .Include(s => s.Activities)
+                    .Include(s => s.Logs)
+                    .Include(s => s.Requisitions)
+                    .Include(s => s.Execution)
+                    .FirstOrDefaultAsync(s => s.Id == id);
 
-            if (request.Requisitions != null && request.Requisitions.Any())
+                if (request == null) 
+                    return NotFound(new { message = $"Solicitud #{id} no encontrada en la base de datos." });
+
+                if (request.Execution != null || request.Status == "Completado" || request.Status == "Cerrado")
+                {
+                    return BadRequest(new { message = "No se puede eliminar una solicitud que ya tiene ejecución de servicio registrada o está completada." });
+                }
+
+                if (request.Requisitions != null && request.Requisitions.Any())
+                {
+                    return BadRequest(new { message = "No se puede eliminar la solicitud porque tiene requisiciones de repuestos vinculadas." });
+                }
+
+                if (request.Activities != null && request.Activities.Any())
+                {
+                    _context.ServiceRequestActivities.RemoveRange(request.Activities);
+                }
+
+                if (request.Logs != null && request.Logs.Any())
+                {
+                    _context.ServiceLogs.RemoveRange(request.Logs);
+                }
+
+                _context.ServiceRequests.Remove(request);
+                await _context.SaveChangesAsync();
+
+                return Ok(new { message = $"Solicitud #{id} eliminada exitosamente." });
+            }
+            catch (DbUpdateException dbEx)
             {
-                return BadRequest(new { message = "No se puede eliminar la solicitud porque tiene requisiciones de repuestos vinculadas." });
+                return BadRequest(new { message = $"No se pudo eliminar la solicitud #{id} debido a dependencias en la base de datos: {dbEx.InnerException?.Message ?? dbEx.Message}" });
             }
-
-            if (request.Activities != null && request.Activities.Any())
+            catch (Exception ex)
             {
-                _context.ServiceRequestActivities.RemoveRange(request.Activities);
+                return StatusCode(500, new { message = $"Error al procesar la eliminación: {ex.Message}" });
             }
-
-            if (request.Logs != null && request.Logs.Any())
-            {
-                _context.ServiceLogs.RemoveRange(request.Logs);
-            }
-
-            _context.ServiceRequests.Remove(request);
-            await _context.SaveChangesAsync();
-
-            return Ok(new { message = "Solicitud eliminada exitosamente." });
         }
-
 }
 }
 

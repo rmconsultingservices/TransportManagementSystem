@@ -171,7 +171,8 @@ export default function Workshop() {
       setRequestToDelete(null);
     } catch (error: any) {
       console.error('Error deleting service request:', error);
-      toast.error(error.response?.data?.message || 'Error al eliminar la solicitud.');
+      const msg = error.response?.data?.message || (typeof error.response?.data === 'string' ? error.response.data : null) || error.message || 'Error al eliminar la solicitud.';
+      toast.error(msg, { duration: 5000 });
     } finally {
       setIsDeleting(false);
     }
