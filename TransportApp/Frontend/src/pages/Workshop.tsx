@@ -48,6 +48,9 @@ export default function Workshop() {
   const [loading, setLoading] = useState(true);
 
   const [showForm, setShowForm] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [requestToDelete, setRequestToDelete] = useState<ServiceRequest | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   
 
@@ -126,55 +129,53 @@ export default function Workshop() {
 
 
 
-  const handleSubmit = async (e: React.FormEvent) => {
-
+    const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
 
     let vId: number | undefined;
-
     let tId: number | undefined;
-
     if (affectedUnit.startsWith('v-')) vId = parseInt(affectedUnit.substring(2));
-
     if (affectedUnit.startsWith('t-')) tId = parseInt(affectedUnit.substring(2));
 
-
-
+    setIsSubmitting(true);
     try {
-
       await workshopService.createRequest({
-
         vehicleId: vId,
-
         trailerId: tId,
-
         driverId: driverId === '' ? undefined : Number(driverId),
-
         repairType,
-
         roadsideLocation: repairType === 'Auxilio Vial' ? (roadsideLocation.trim() || undefined) : undefined,
-
         description,
-
         activities: activities.filter(a => a.description.trim() !== '')
-
       });
-
+      toast.success('Ticket de taller generado exitosamente.');
       setShowForm(false);
-
       resetForm();
-
       fetchData();
-
-    } catch (error) {
-
+    } catch (error: any) {
       console.error('Error creating service request:', error);
-
+      toast.error(error.response?.data?.message || 'Error al generar ticket de taller.');
+    } finally {
+      setIsSubmitting(false);
     }
-
   };
 
-
+  const handleDeleteRequest = async () => {
+    if (!requestToDelete || isDeleting) return;
+    setIsDeleting(true);
+    try {
+      await workshopService.deleteRequest(requestToDelete.id);
+      toast.success(`Solicitud #${requestToDelete.id.toString().padStart(4, '0')} eliminada exitosamente.`);
+      setRequests(prev => prev.filter(r => r.id !== requestToDelete.id));
+      setRequestToDelete(null);
+    } catch (error: any) {
+      console.error('Error deleting service request:', error);
+      toast.error(error.response?.data?.message || 'Error al eliminar la solicitud.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const submitAssignMechanic = async (id: number) => {
 
@@ -594,16 +595,19 @@ export default function Workshop() {
 
             <div className="flex justify-end md:col-span-2">
 
-              <button 
-
+                            <button 
                 type="submit"
-
-                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2 rounded-md font-medium transition-colors"
-
+                disabled={isSubmitting}
+                className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white px-8 py-2.5 rounded-md font-medium transition-colors flex items-center gap-2"
               >
-
-                Generar Ticket de Taller
-
+                {isSubmitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                    <span>Generando Ticket...</span>
+                  </>
+                ) : (
+                  <span>Generar Ticket de Taller</span>
+                )}
               </button>
 
             </div>
@@ -800,6 +804,16 @@ export default function Workshop() {
 
                        <div className="flex justify-end gap-2">
 
+                        {req.status === 'Pendiente' && (
+                          <button
+                            type="button"
+                            onClick={() => setRequestToDelete(req)}
+                            className="bg-red-50 hover:bg-red-100 text-red-600 text-xs px-2.5 py-1.5 rounded-md font-medium transition-colors flex items-center gap-1 border border-red-200 cursor-pointer shadow-xs"
+                            title="Eliminar Solicitud Pendiente"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
                         {req.status === 'Pendiente' && assigningReqId !== req.id && (
 
                           <button 
@@ -1005,6 +1019,63 @@ export default function Workshop() {
 
     
       {/* Universal Report Preview Modal */}
+      
+      {/* Modal de Confirmación para Eliminar Solicitud */}
+      {requestToDelete && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl w-full max-w-md shadow-2xl border border-red-100 dark:border-gray-700">
+            <div className="flex items-center gap-3 text-red-600 dark:text-red-400 mb-3">
+              <div className="p-2.5 bg-red-100 dark:bg-red-900/40 rounded-xl">
+                <Trash2 size={24} />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Eliminar Solicitud de Servicio</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Esta acción no se puede deshacer.</p>
+              </div>
+            </div>
+
+            <div className="bg-red-50 dark:bg-red-950/30 p-3.5 rounded-xl border border-red-200 dark:border-red-900/50 text-xs text-red-700 dark:text-red-300 my-4 space-y-1">
+              <p className="font-semibold">¿Estás seguro de que deseas eliminar permanentemente el ticket:</p>
+              <p className="font-bold text-sm text-red-900 dark:text-red-200">
+                #{requestToDelete.id.toString().padStart(4, '0')} • {requestToDelete.vehicle?.licensePlate || requestToDelete.trailer?.licensePlate || 'Sin Placa'}
+              </p>
+              <p className="text-[11px] text-gray-600 dark:text-gray-400 pt-1 line-clamp-2">
+                Motivo: {requestToDelete.description}
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setRequestToDelete(null)}
+                disabled={isDeleting}
+                className="px-4 py-2 text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700 rounded-xl text-sm font-medium transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteRequest}
+                disabled={isDeleting}
+                className="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-50 flex items-center gap-1.5 shadow-sm cursor-pointer"
+              >
+                {isDeleting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                    <span>Eliminando...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={16} />
+                    <span>Eliminar Definitivamente</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <ReportPreviewModal
         isOpen={previewModal.isOpen}
         onClose={() => setPreviewModal(prev => ({ ...prev, isOpen: false }))}

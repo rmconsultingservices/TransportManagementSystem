@@ -336,6 +336,46 @@ namespace TransportManagement.API.Controllers
             await _context.SaveChangesAsync();
             return NoContent();
         }
-    }
+    
+        // DELETE: api/ServiceRequests/5
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteServiceRequest(int id)
+        {
+            var request = await _context.ServiceRequests
+                .Include(s => s.Activities)
+                .Include(s => s.Logs)
+                .Include(s => s.Requisitions)
+                .Include(s => s.Execution)
+                .FirstOrDefaultAsync(s => s.Id == id);
+
+            if (request == null) return NotFound(new { message = "Solicitud no encontrada." });
+
+            if (request.Execution != null || request.Status == "Completado" || request.Status == "Cerrado")
+            {
+                return BadRequest(new { message = "No se puede eliminar una solicitud que ya tiene ejecución de servicio registrada o está completada." });
+            }
+
+            if (request.Requisitions != null && request.Requisitions.Any())
+            {
+                return BadRequest(new { message = "No se puede eliminar la solicitud porque tiene requisiciones de repuestos vinculadas." });
+            }
+
+            if (request.Activities != null && request.Activities.Any())
+            {
+                _context.ServiceRequestActivities.RemoveRange(request.Activities);
+            }
+
+            if (request.Logs != null && request.Logs.Any())
+            {
+                _context.ServiceLogs.RemoveRange(request.Logs);
+            }
+
+            _context.ServiceRequests.Remove(request);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Solicitud eliminada exitosamente." });
+        }
+
+}
 }
 

@@ -17,6 +17,10 @@ export const workshopService = {
     return response.data;
   },
 
+  deleteRequest: async (id: number): Promise<void> => {
+    await api.delete(`/servicerequests/${id}`);
+  },
+
     updateActivities: async (id: number, activities: string[]) => {
     const response = await api.put('/ServiceRequests/' + id + '/Activities', { activities });
     return response.data;
