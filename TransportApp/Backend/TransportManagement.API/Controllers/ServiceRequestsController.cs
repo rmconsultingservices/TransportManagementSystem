@@ -340,6 +340,8 @@ namespace TransportManagement.API.Controllers
         // DELETE: api/ServiceRequests/5
                 // DELETE: api/ServiceRequests/5
         [HttpDelete("{id}")]
+        [HttpPost("{id}/delete")]
+        [HttpPost("delete/{id}")]
         public async Task<IActionResult> DeleteServiceRequest(int id)
         {
             try

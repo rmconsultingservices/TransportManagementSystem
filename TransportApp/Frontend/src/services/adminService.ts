@@ -45,7 +45,7 @@ export const adminService = {
     return response.data;
   },
   deleteUser: async (userId: number): Promise<void> => {
-    await api.delete(`/users/${userId}`);
+    await api.post(`/users/${userId}/delete`);
   },
   assignCompany: async (userId: number, companyId: number): Promise<void> => {
     await api.post(`/users/${userId}/assign-company/${companyId}`);

@@ -90,6 +90,8 @@ namespace TransportManagement.API.Controllers
         }
 
                 [HttpDelete("{id}")]
+        [HttpPost("{id}/delete")]
+        [HttpPost("delete/{id}")]
         public async Task<IActionResult> DeleteUser(int id)
         {
             try

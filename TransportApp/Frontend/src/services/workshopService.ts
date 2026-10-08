@@ -18,7 +18,7 @@ export const workshopService = {
   },
 
   deleteRequest: async (id: number): Promise<void> => {
-    await api.delete(`/servicerequests/${id}`);
+    await api.post(`/servicerequests/${id}/delete`);
   },
 
     updateActivities: async (id: number, activities: string[]) => {
