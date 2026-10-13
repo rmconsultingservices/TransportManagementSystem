@@ -588,6 +588,18 @@ namespace TransportManagement.API.Controllers
                             };
 
                             _context.ServiceExecutionSpareParts.Add(usedItem);
+
+                            // Deduct from physical stock since this purchased part is directly consumed into the service ticket
+                            if (detail.SparePartId.HasValue && detail.SparePartId.Value > 0 && !isService)
+                            {
+                                var spToDeduct = await _context.SpareParts.FindAsync(detail.SparePartId.Value);
+                                if (spToDeduct != null && spToDeduct.ItemType != "Servicio")
+                                {
+                                    decimal baseQuantity = await _context.GetBaseQuantityAsync(detail.SparePartId.Value, detail.UnitOfMeasureId, usedItem.Quantity);
+                                    spToDeduct.StockQuantity -= baseQuantity;
+                                    if (spToDeduct.StockQuantity < 0) spToDeduct.StockQuantity = 0;
+                                }
+                            }
                         }
                     }
                 }
