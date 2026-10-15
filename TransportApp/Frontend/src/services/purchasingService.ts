@@ -27,6 +27,10 @@ export const purchasingService = {
     const response = await api.post<Quotation>(`/purchaserequisitions/${requisitionId}/Quotes`, quotation);
     return response.data;
   },
+  deleteRequisition: async (id: number): Promise<void> => {
+    await api.delete(`/purchaserequisitions/${id}`);
+  },
+
   selectQuotation: async (requisitionId: number, quotationId: number): Promise<void> => {
     await api.put(`/purchaserequisitions/${requisitionId}/SelectQuote/${quotationId}`);
   },

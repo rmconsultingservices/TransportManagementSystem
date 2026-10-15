@@ -499,6 +499,19 @@ export default function Purchasing() {
     }
   };
 
+  const handleDeleteRequisition = async (reqId: number, partDesc?: string) => {
+    const itemLabel = partDesc ? `"${partDesc}"` : 'esta requisición';
+    if (!confirm(`¿Estás seguro de que deseas eliminar la requisición de ${itemLabel}?`)) return;
+    try {
+      await purchasingService.deleteRequisition(reqId);
+      alert('Requisición eliminada con éxito.');
+      fetchData();
+    } catch (error: any) {
+      alert(error.response?.data?.message || error.response?.data || 'Error al eliminar la requisición.');
+      console.error('Error deleting req:', error);
+    }
+  };
+
   const handleCancelPO = async (poId: number, orderNum: string) => {
     if (!confirm(`¿Está seguro de anular la orden de compra ${orderNum}? Las requisiciones asociadas volverán a estar pendientes para cotizar o comprar.`)) {
       return;

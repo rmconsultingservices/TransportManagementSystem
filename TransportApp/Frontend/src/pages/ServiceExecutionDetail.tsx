@@ -112,13 +112,14 @@ export default function ServiceExecutionDetail() {
   };
 
 
-  const handleDeleteRequisition = async (reqId: number) => {
-    if (!confirm('¿Estás seguro de que deseas eliminar esta requisición?')) return;
+    const handleDeleteRequisition = async (reqId: number, partDesc?: string) => {
+    const itemLabel = partDesc ? `"${partDesc}"` : 'esta requisición';
+    if (!confirm(`¿Estás seguro de que deseas eliminar la requisición de ${itemLabel}?`)) return;
     try {
       await workshopService.deleteRequisition(reqId);
       fetchData();
     } catch (error: any) {
-      alert(error.response?.data?.message || 'Error al eliminar la requisición.');
+      alert(error.response?.data?.message || error.response?.data || 'Error al eliminar la requisición.');
       console.error('Error deleting req:', error);
     }
   };
@@ -568,9 +569,9 @@ export default function ServiceExecutionDetail() {
                       }`}>
                         {req.status}
                       </span>
-                      {req.status === 'Pendiente' && (
+                      {request.status !== 'Completado' && (
                         <button 
-                          onClick={() => handleDeleteRequisition(req.id)}
+                          onClick={() => handleDeleteRequisition(req.id, req.partNameOrDescription)}
                           className="text-red-400 hover:text-red-600 transition-colors p-1"
                           title="Eliminar requisición"
                         >
