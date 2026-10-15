@@ -30,6 +30,8 @@ namespace TransportManagement.API.Models
         public string ItemType { get; set; } = "C";
         public string? Description { get; set; }
 
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
         public int? PurchaseInvoiceDetailId { get; set; }
         public PurchaseInvoiceDetail? PurchaseInvoiceDetail { get; set; }
     }

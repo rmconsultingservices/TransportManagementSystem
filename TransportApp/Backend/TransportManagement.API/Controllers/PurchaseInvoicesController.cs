@@ -617,6 +617,7 @@ namespace TransportManagement.API.Controllers
                                     UnitOfMeasureId = detail.UnitOfMeasureId,
                                     ItemType = isService ? "S" : "C",
                                     Description = desc,
+                                    CreatedAt = invoice.DateIssued > DateTime.MinValue ? invoice.DateIssued : DateTime.UtcNow,
                                     PurchaseInvoiceDetailId = detail.Id
                                 };
 

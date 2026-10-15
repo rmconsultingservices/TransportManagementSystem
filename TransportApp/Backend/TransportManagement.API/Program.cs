@@ -135,6 +135,9 @@ using (var scope = app.Services.CreateScope())
                 IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ServiceExecutionSpareParts') AND name = 'PurchaseInvoiceDetailId')
                 ALTER TABLE ServiceExecutionSpareParts ADD PurchaseInvoiceDetailId INT NULL;
 
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ServiceExecutionSpareParts') AND name = 'CreatedAt')
+                ALTER TABLE ServiceExecutionSpareParts ADD CreatedAt DATETIME2 NOT NULL DEFAULT GETUTCDATE();
+
                 BEGIN TRY
                     ALTER TABLE ServiceExecutionSpareParts ALTER COLUMN SparePartId INT NULL;
                 END TRY

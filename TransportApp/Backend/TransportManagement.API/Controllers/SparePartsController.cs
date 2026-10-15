@@ -192,7 +192,7 @@ namespace TransportManagement.API.Controllers
             var purchases = await _context.PurchaseInvoiceDetails
                 .Include(d => d.PurchaseInvoice)
                     .ThenInclude(i => i.Supplier)
-                .Where(d => d.SparePartId == id)
+                .Where(d => d.SparePartId == id && !d.PurchaseInvoice.IsCancelled)
                 .Select(d => new
                 {
                     Type = "ENTRADA",
@@ -224,7 +224,7 @@ namespace TransportManagement.API.Controllers
                 return new
                 {
                     Type = "SALIDA",
-                    Date = d.ServiceExecution?.DateCompleted ?? sr?.DateRequested ?? DateTime.UtcNow,
+                    Date = d.CreatedAt,
                     Reference = sr != null ? $"ODT #{sr.Id}" : "Servicio",
                     Source = dest,
                     Quantity = d.Quantity,

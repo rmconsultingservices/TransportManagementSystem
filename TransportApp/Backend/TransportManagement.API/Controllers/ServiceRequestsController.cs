@@ -257,13 +257,27 @@ namespace TransportManagement.API.Controllers
 
             if (usedPart == null) return NotFound("Registro no encontrado.");
 
-            // Restore physical stock if it was not a service
+            // Restore physical stock if it was not a service and not from a cancelled invoice
             if (usedPart.ItemType != "S" && usedPart.SparePartId.HasValue && usedPart.SparePartId.Value > 0)
             {
                 var part = await _context.SpareParts.FindAsync(usedPart.SparePartId.Value);
                 if (part != null && part.ItemType != "Servicio")
                 {
-                    part.StockQuantity += usedPart.Quantity;
+                    bool isCancelledPurchase = false;
+                    if (usedPart.PurchaseInvoiceDetailId.HasValue)
+                    {
+                        var invDetail = await _context.PurchaseInvoiceDetails
+                            .Include(pid => pid.PurchaseInvoice)
+                            .FirstOrDefaultAsync(pid => pid.Id == usedPart.PurchaseInvoiceDetailId.Value);
+                        if (invDetail?.PurchaseInvoice?.IsCancelled == true)
+                        {
+                            isCancelledPurchase = true;
+                        }
+                    }
+                    if (!isCancelledPurchase)
+                    {
+                        part.StockQuantity += usedPart.Quantity;
+                    }
                 }
             }
 
