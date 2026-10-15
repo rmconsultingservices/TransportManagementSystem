@@ -51,6 +51,10 @@ export const workshopService = {
 
   executeService: async (id: number, execution: Partial<ServiceExecution>): Promise<void> => {
     await api.post(`/servicerequests/${id}/Execute`, execution);
+  },
+
+  reopenService: async (id: number): Promise<void> => {
+    await api.post(`/servicerequests/${id}/reopen`);
   }
 };
 

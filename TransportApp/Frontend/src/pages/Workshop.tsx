@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 
 import { Link } from 'react-router-dom';
 
-import { Wrench, Plus, Loader2, PenTool, CheckCircle2, Clock, UserCheck, Trash2, Printer , Edit } from 'lucide-react';
+import { Wrench, Plus, Loader2, PenTool, CheckCircle2, Clock, UserCheck, Trash2, Printer, Edit, RotateCcw } from 'lucide-react';
 
 import { workshopService } from '../services/workshopService';
 
@@ -76,6 +76,18 @@ export default function Workshop() {
   const [activities, setActivities] = useState<{ description: string }[]>([{ description: '' }]);
 
 
+
+  const handleReopenService = async (id: number) => {
+    if (!confirm(`¿Estás seguro de reabrir el Ticket #${id.toString().padStart(4, '0')}?\n\nEl estatus cambiará a 'En Revisión'.`)) return;
+    try {
+      await workshopService.reopenService(id);
+      toast.success('Servicio reabierto exitosamente.');
+      fetchData();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Error al reabrir el servicio.');
+    }
+  };
 
   const fetchData = async () => {
 
@@ -879,7 +891,17 @@ export default function Workshop() {
                             Ver Expediente
 
                           </Link>
+                        )}
 
+                        {req.status === 'Completado' && (
+                          <button
+                            type="button"
+                            onClick={() => handleReopenService(req.id)}
+                            className="bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs px-2.5 py-1.5 rounded-md font-medium transition-colors border border-amber-200 flex items-center gap-1 cursor-pointer"
+                            title="Reabrir servicio"
+                          >
+                            <RotateCcw size={12} /> Reabrir
+                          </button>
                         )}
 
                        </div>

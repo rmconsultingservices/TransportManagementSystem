@@ -3,7 +3,7 @@ import { ReportPreviewModal } from '../components/ReportPreviewModal';
 import { useParams, useNavigate } from 'react-router-dom';
 import { workshopService } from '../services/workshopService';
 import { inventoryService } from '../services/inventoryService';
-import { ArrowLeft, Loader2, CheckCircle2, Clock, AlertCircle, ShoppingCart, Text, Box, Plus, Minus, X , Trash2, Wrench, Printer } from 'lucide-react';
+import { ArrowLeft, Loader2, CheckCircle2, Clock, AlertCircle, ShoppingCart, Text, Box, Plus, Minus, X , Trash2, Wrench, Printer, RotateCcw } from 'lucide-react';
 import type { ServiceRequest, SparePart } from '../types';
 import { formatSparePartName } from '../types';
 import SparePartSelector from '../components/SparePartSelector';
@@ -32,6 +32,23 @@ export default function ServiceExecutionDetail() {
   const [closeMileage, setCloseMileage] = useState<number | ''>('');
   const [closeObservations, setCloseObservations] = useState('');
   const [submittingClose, setSubmittingClose] = useState(false);
+  const [submittingReopen, setSubmittingReopen] = useState(false);
+
+  const handleReopenService = async () => {
+    if (!request) return;
+    if (!confirm(`¿Estás seguro de reabrir el Ticket #${request.id.toString().padStart(4, '0')}?\n\nEl estatus cambiará a 'En Revisión' y se habilitará nuevamente la edición de repuestos, requisiciones y bitácora.`)) return;
+
+    try {
+      setSubmittingReopen(true);
+      await workshopService.reopenService(request.id);
+      await fetchData();
+    } catch (error: any) {
+      console.error('Error reopening service:', error);
+      alert(error.response?.data?.message || 'Error al reabrir el servicio.');
+    } finally {
+      setSubmittingReopen(false);
+    }
+  };
   const [previewModal, setPreviewModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -248,21 +265,34 @@ export default function ServiceExecutionDetail() {
               <CheckCircle2 size={18} />
               Concluir Servicio Definitivo
             </button>
-          ) : (
-            <button 
-              onClick={() => setPreviewModal({
-                isOpen: true,
-                title: 'Reporte Oficial de Cierre de Servicio',
-                subtitle: `Ticket #${request.id.toString().padStart(4, '0')} • ${request.vehicle?.licensePlate || request.trailer?.licensePlate || 'Sin Placa'} • Estatus: Completado`,
-                src: `/print-closure/${request.id}`,
-                footerText: 'El servicio ha sido concluido exitosamente y el odómetro de la unidad fue actualizado.'
-              })}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-colors shadow-sm cursor-pointer"
-            >
-              <Printer size={18} />
-              Ver Reporte de Cierre
-            </button>
-          )}
+                      ) : (
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleReopenService}
+                  disabled={submittingReopen}
+                  className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-colors shadow-sm cursor-pointer disabled:opacity-50"
+                  title="Reabrir este servicio para volver a editar repuestos y avance"
+                >
+                  <RotateCcw size={18} className={submittingReopen ? 'animate-spin' : ''} />
+                  {submittingReopen ? 'Reabriendo...' : 'Reabrir Servicio'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreviewModal({
+                    isOpen: true,
+                    title: 'Reporte Oficial de Cierre de Servicio',
+                    subtitle: `Ticket #${request.id.toString().padStart(4, '0')} • ${request.vehicle?.licensePlate || request.trailer?.licensePlate || 'Sin Placa'} • Estatus: Completado`,
+                    src: `/print-closure/${request.id}`,
+                    footerText: 'El servicio ha sido concluido exitosamente y el odómetro de la unidad fue actualizado.'
+                  })}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-colors shadow-sm cursor-pointer"
+                >
+                  <Printer size={18} />
+                  Ver Reporte de Cierre
+                </button>
+              </div>
+            )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

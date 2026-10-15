@@ -336,6 +336,53 @@ namespace TransportManagement.API.Controllers
             await _context.SaveChangesAsync();
             return NoContent();
         }
+
+        // POST: api/ServiceRequests/5/reopen
+        [HttpPost("{id}/reopen")]
+        public async Task<IActionResult> ReopenService(int id)
+        {
+            var request = await _context.ServiceRequests
+                .Include(r => r.Execution)
+                .Include(r => r.Logs)
+                .FirstOrDefaultAsync(r => r.Id == id);
+
+            if (request == null)
+                return NotFound(new { message = $"Solicitud de servicio #{id} no encontrada." });
+
+            if (request.Status != "Completado" && request.Status != "Cerrado")
+            {
+                return BadRequest(new { message = "Solo se pueden reabrir solicitudes que estén en estatus Completado o Cerrado." });
+            }
+
+            request.Status = "En Revisión";
+
+            if (request.Execution != null)
+            {
+                request.Execution.DateCompleted = null;
+            }
+
+            // Eliminar la orden de mantenimiento generada automáticamente para este servicio para evitar duplicados
+            var maintenanceOrders = await _context.MaintenanceOrders
+                .Where(m => m.ServiceRequestId == request.Id)
+                .ToListAsync();
+            if (maintenanceOrders.Any())
+            {
+                _context.MaintenanceOrders.RemoveRange(maintenanceOrders);
+            }
+
+            // Registrar en la bitácora del servicio
+            _context.ServiceLogs.Add(new ServiceLog
+            {
+                CompanyId = request.CompanyId,
+                ServiceRequestId = request.Id,
+                CreatedAt = DateTime.UtcNow,
+                Note = "Servicio reabierto por el usuario. Estatus actualizado a 'En Revisión'.",
+                CreatedBy = "Sistema / Usuario"
+            });
+
+            await _context.SaveChangesAsync();
+            return Ok(new { message = "Servicio reabierto exitosamente.", status = request.Status });
+        }
     
         // DELETE: api/ServiceRequests/5
                 // DELETE: api/ServiceRequests/5
