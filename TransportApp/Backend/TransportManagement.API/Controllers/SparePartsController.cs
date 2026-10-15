@@ -204,22 +204,33 @@ namespace TransportManagement.API.Controllers
                 })
                 .ToListAsync();
 
-            // 2. Services (Salidas)
-            var consumptions = await _context.ServiceExecutionSpareParts
+                        // 2. Services (Salidas)
+            var consumptionsList = await _context.ServiceExecutionSpareParts
                 .Include(d => d.ServiceExecution)
-                    .ThenInclude(e => e.ServiceRequest)
-                        .ThenInclude(r => r.Vehicle)
+                    .ThenInclude(e => e!.ServiceRequest)
+                        .ThenInclude(r => r!.Vehicle)
+                .Include(d => d.ServiceExecution)
+                    .ThenInclude(e => e!.ServiceRequest)
+                        .ThenInclude(r => r!.Trailer)
                 .Where(d => d.SparePartId == id)
-                .Select(d => new
+                .ToListAsync();
+
+            var consumptions = consumptionsList.Select(d => {
+                var sr = d.ServiceExecution?.ServiceRequest;
+                string dest = sr?.Vehicle != null 
+                    ? sr.Vehicle.LicensePlate 
+                    : (sr?.Trailer != null ? $"Remolque {sr.Trailer.LicensePlate}" : "Taller General");
+
+                return new
                 {
                     Type = "SALIDA",
-                    Date = d.ServiceExecution.DateCompleted ?? d.ServiceExecution.ServiceRequest.DateRequested,
-                    Reference = $"ODT #{d.ServiceExecution.ServiceRequest.Id}",
-                    Source = d.ServiceExecution.ServiceRequest.Vehicle.LicensePlate ?? "Vehículo Desconocido",
+                    Date = d.ServiceExecution?.DateCompleted ?? sr?.DateRequested ?? DateTime.UtcNow,
+                    Reference = sr != null ? $"ODT #{sr.Id}" : "Servicio",
+                    Source = dest,
                     Quantity = d.Quantity,
-                    UnitCost = 0m // Se podría agregar el costo promedio en el momento, por simplicidad 0.
-                })
-                .ToListAsync();
+                    UnitCost = d.UnitCost > 0 ? d.UnitCost : part.UnitCost
+                };
+            }).ToList();
 
             // 3. Inventory Adjustments
             var adjustments = await _context.InventoryAdjustmentDetails
