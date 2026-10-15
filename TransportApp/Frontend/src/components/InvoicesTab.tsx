@@ -666,6 +666,7 @@ export default function InvoicesTab() {
                  {details.map((d, index) => {
                     const lineNet = (d.quantityReceived || 0) * (d.unitCost || 0);
                     const veh = d.vehicle;
+                    const trailer = d.trailer;
                     const req = d.purchaseRequisition;
                     return (
                      <tr key={index} className="bg-white dark:bg-gray-900 group hover:bg-slate-50 dark:hover:bg-slate-800/40">
@@ -734,19 +735,23 @@ export default function InvoicesTab() {
                          )}
                        </td>
 
-                       {/* Destino (Vehículo / Req) */}
+                                              {/* Destino (Vehículo / Remolque / Req) */}
                        <td className="px-4 py-2 min-w-[180px]">
                          <div className="text-xs">
                            {veh ? (
                              <span className="font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1 font-mono">
                                <Truck size={12} /> {veh.licensePlate} {veh.fleetOwner ? `(${veh.fleetOwner.name})` : ''}
                              </span>
+                           ) : trailer ? (
+                             <span className="font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1 font-mono">
+                               Remolque {trailer.licensePlate} {trailer.fleetOwner ? `(${trailer.fleetOwner.name})` : ''}
+                             </span>
                            ) : (
                              <span className="text-slate-400 italic text-[11px]">Stock Almacén</span>
                            )}
                            {req && (
                              <span className="text-[10px] text-slate-500 block font-mono">
-                               Req: R.{req.id}
+                               Req: R.{req.id} {req.quantity && d.quantityReceived && d.quantityReceived > req.quantity ? `(${req.quantity} OT + ${d.quantityReceived - req.quantity} Stock)` : ''}
                              </span>
                            )}
                          </div>
@@ -1116,12 +1121,14 @@ export default function InvoicesTab() {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-200/60 dark:divide-slate-800">
-                            {inv.details.map((d, dIdx) => {
+                                                        {inv.details.map((d, dIdx) => {
                               const desc = d.description || formatSparePartName(d.sparePart) || 'Artículo';
-                              const veh = d.vehicle;
-                              const trailer = d.trailer;
+                              const veh = d.vehicle || d.purchaseRequisition?.serviceRequest?.vehicle;
+                              const trailer = d.trailer || d.purchaseRequisition?.serviceRequest?.trailer;
                               const req = d.purchaseRequisition;
                               const lineTotal = d.quantityReceived * d.unitCost;
+                              const qtyForReq = req?.quantity ? Math.min(d.quantityReceived, req.quantity) : 0;
+                              const qtyForStock = req?.quantity && d.quantityReceived > req.quantity ? d.quantityReceived - req.quantity : 0;
                               return (
                                 <tr key={d.id || dIdx} className="hover:bg-slate-100/50 dark:hover:bg-slate-800/40">
                                   <td className="py-2 text-slate-400 font-mono text-[11px]">{dIdx + 1}</td>
@@ -1151,7 +1158,11 @@ export default function InvoicesTab() {
                                     ) : (
                                       <span className="text-slate-400 italic">Stock Almacén</span>
                                     )}
-                                    {req && <span className="text-slate-400 font-mono text-[10px] ml-2">Req: R.{req.id}</span>}
+                                    {req && (
+                                      <span className="text-slate-400 font-mono text-[10px] ml-2">
+                                        Req: R.{req.id} {qtyForStock > 0 ? `(${qtyForReq} OT + ${qtyForStock} Stock)` : ''}
+                                      </span>
+                                    )}
                                   </td>
                                   <td className="py-2 text-center font-mono font-bold text-slate-800 dark:text-slate-200">
                                     {d.quantityReceived}

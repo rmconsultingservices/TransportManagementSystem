@@ -371,7 +371,33 @@ namespace TransportManagement.API.Controllers
 
             invoice.IsCancelled = true;
 
-            // 1. Revert stock for physical parts (not services)
+            // 1. Remove any items injected into Service Requests (tickets) and restore the stock deducted for them
+            var detailIds = invoice.Details.Select(d => d.Id).ToList();
+            if (detailIds.Any())
+            {
+                var linkedServiceParts = await _context.ServiceExecutionSpareParts
+                    .Where(sp => sp.PurchaseInvoiceDetailId.HasValue && detailIds.Contains(sp.PurchaseInvoiceDetailId.Value))
+                    .ToListAsync();
+
+                if (linkedServiceParts.Any())
+                {
+                    foreach (var linked in linkedServiceParts)
+                    {
+                        if (linked.ItemType != "S" && linked.SparePartId.HasValue && linked.SparePartId.Value > 0)
+                        {
+                            var sp = await _context.SpareParts.FindAsync(linked.SparePartId.Value);
+                            if (sp != null && sp.ItemType != "Servicio")
+                            {
+                                decimal baseServiceQty = await _context.GetBaseQuantityAsync(linked.SparePartId.Value, linked.UnitOfMeasureId, linked.Quantity);
+                                sp.StockQuantity += baseServiceQty;
+                            }
+                        }
+                    }
+                    _context.ServiceExecutionSpareParts.RemoveRange(linkedServiceParts);
+                }
+            }
+
+            // 2. Revert incoming stock for physical parts from this invoice
             foreach (var detail in invoice.Details)
             {
                 bool isService = (detail.ItemType == "S");
@@ -384,20 +410,6 @@ namespace TransportManagement.API.Controllers
                         sparePart.StockQuantity -= baseQuantity;
                         if (sparePart.StockQuantity < 0) sparePart.StockQuantity = 0;
                     }
-                }
-            }
-
-            // 2. Remove any items injected into Service Requests (tickets)
-            var detailIds = invoice.Details.Select(d => d.Id).ToList();
-            if (detailIds.Any())
-            {
-                var linkedServiceParts = await _context.ServiceExecutionSpareParts
-                    .Where(sp => sp.PurchaseInvoiceDetailId.HasValue && detailIds.Contains(sp.PurchaseInvoiceDetailId.Value))
-                    .ToListAsync();
-
-                if (linkedServiceParts.Any())
-                {
-                    _context.ServiceExecutionSpareParts.RemoveRange(linkedServiceParts);
                 }
             }
 
@@ -552,6 +564,16 @@ namespace TransportManagement.API.Controllers
                             await _context.SaveChangesAsync();
                         }
 
+                        // Propagate VehicleId / TrailerId if not already set on detail
+                        if (!detail.VehicleId.HasValue && sReq.VehicleId.HasValue)
+                        {
+                            detail.VehicleId = sReq.VehicleId;
+                        }
+                        if (!detail.TrailerId.HasValue && sReq.TrailerId.HasValue)
+                        {
+                            detail.TrailerId = sReq.TrailerId;
+                        }
+
                         // Prevent duplicate injection
                         bool alreadyLinked = await _context.ServiceExecutionSpareParts
                             .AnyAsync(sp => sp.PurchaseInvoiceDetailId == detail.Id);
@@ -574,30 +596,43 @@ namespace TransportManagement.API.Controllers
                                 desc = req.PartNameOrDescription;
                             }
 
-                            var usedItem = new ServiceExecutionSparePart
-                            {
-                                CompanyId = invoice.CompanyId,
-                                ServiceExecutionId = sReq.Execution.Id,
-                                SparePartId = (detail.SparePartId.HasValue && detail.SparePartId.Value > 0) ? detail.SparePartId : null,
-                                Quantity = detail.QuantityReceived > 0 ? detail.QuantityReceived : 1,
-                                UnitCost = detail.UnitCost,
-                                UnitOfMeasureId = detail.UnitOfMeasureId,
-                                ItemType = isService ? "S" : "C",
-                                Description = desc,
-                                PurchaseInvoiceDetailId = detail.Id
-                            };
+                            // Calculate how much quantity is needed for the service ticket vs remaining in warehouse stock
+                            decimal alreadyLinkedQty = await _context.ServiceExecutionSpareParts
+                                .Where(sp => sp.PurchaseInvoiceDetail != null && sp.PurchaseInvoiceDetail.PurchaseRequisitionId == req.Id)
+                                .SumAsync(sp => (decimal?)sp.Quantity) ?? 0m;
 
-                            _context.ServiceExecutionSpareParts.Add(usedItem);
+                            decimal neededQty = req.Quantity > 0 ? Math.Max(0m, req.Quantity - alreadyLinkedQty) : detail.QuantityReceived;
 
-                            // Deduct from physical stock since this purchased part is directly consumed into the service ticket
-                            if (detail.SparePartId.HasValue && detail.SparePartId.Value > 0 && !isService)
+                            if (neededQty > 0)
                             {
-                                var spToDeduct = await _context.SpareParts.FindAsync(detail.SparePartId.Value);
-                                if (spToDeduct != null && spToDeduct.ItemType != "Servicio")
+                                decimal qtyForService = Math.Min(detail.QuantityReceived, neededQty);
+
+                                var usedItem = new ServiceExecutionSparePart
                                 {
-                                    decimal baseQuantity = await _context.GetBaseQuantityAsync(detail.SparePartId.Value, detail.UnitOfMeasureId, usedItem.Quantity);
-                                    spToDeduct.StockQuantity -= baseQuantity;
-                                    if (spToDeduct.StockQuantity < 0) spToDeduct.StockQuantity = 0;
+                                    CompanyId = invoice.CompanyId,
+                                    ServiceExecutionId = sReq.Execution.Id,
+                                    SparePartId = (detail.SparePartId.HasValue && detail.SparePartId.Value > 0) ? detail.SparePartId : null,
+                                    Quantity = qtyForService,
+                                    UnitCost = detail.UnitCost,
+                                    UnitOfMeasureId = detail.UnitOfMeasureId,
+                                    ItemType = isService ? "S" : "C",
+                                    Description = desc,
+                                    PurchaseInvoiceDetailId = detail.Id
+                                };
+
+                                _context.ServiceExecutionSpareParts.Add(usedItem);
+
+                                // Deduct from physical stock ONLY what was consumed into the service ticket
+                                // The surplus (detail.QuantityReceived - qtyForService) remains in warehouse stock!
+                                if (detail.SparePartId.HasValue && detail.SparePartId.Value > 0 && !isService)
+                                {
+                                    var spToDeduct = await _context.SpareParts.FindAsync(detail.SparePartId.Value);
+                                    if (spToDeduct != null && spToDeduct.ItemType != "Servicio")
+                                    {
+                                        decimal baseQuantity = await _context.GetBaseQuantityAsync(detail.SparePartId.Value, detail.UnitOfMeasureId, qtyForService);
+                                        spToDeduct.StockQuantity -= baseQuantity;
+                                        if (spToDeduct.StockQuantity < 0) spToDeduct.StockQuantity = 0;
+                                    }
                                 }
                             }
                         }
