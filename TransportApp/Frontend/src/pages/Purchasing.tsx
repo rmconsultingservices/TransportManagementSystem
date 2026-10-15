@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { 
   ShoppingCart, Building2, Plus, Loader2, DollarSign, CheckCircle2, 
   Factory, Printer, Search, Calendar, Filter, MoreVertical, Edit, 
-  Trash, Download, Star, Users, Check, X, FileText, 
+  Trash, Trash2, XCircle, Download, Star, Users, Check, X, FileText, 
   BarChart3, Zap, Award 
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -499,20 +499,34 @@ export default function Purchasing() {
     }
   };
 
+  const handleCancelPO = async (poId: number, orderNum: string) => {
+    if (!confirm(`¿Está seguro de anular la orden de compra ${orderNum}? Las requisiciones asociadas volverán a estar pendientes para cotizar o comprar.`)) {
+      return;
+    }
+    try {
+      await purchasingService.cancelPurchaseOrder(poId);
+      alert(`Orden ${orderNum} anulada exitosamente.`);
+      await fetchData();
+    } catch (error: any) {
+      console.error('Error cancelling PO:', error);
+      alert(error.response?.data?.message || error.response?.data || 'Error al anular la orden de compra.');
+    }
+  };
+
   const handleSelectQuote = async (reqId: number, quoteId: number) => {
     try {
       await purchasingService.selectQuotation(reqId, quoteId);
-      alert('Selección de cotización actualizada para esta requisición.');
-      fetchData();
-    } catch (error) {
+      await fetchData();
+    } catch (error: any) {
        console.error('Error selecting quote:', error);
+       alert(error.response?.data?.message || error.response?.data || 'Error al actualizar la selección de la cotización.');
     }
   };
 
   const handleGeneratePO = async (supplierId: number) => {
     const pendingReqsForSupplier = requisitions.filter(r => 
       r.status === 'Comprada' && 
-      !purchaseOrders.some(po => po.supplierId === supplierId && po.details?.some(d => d.purchaseRequisitionId === r.id)) &&
+      !purchaseOrders.some(po => po.supplierId === supplierId && po.status !== 'Cancelada' && po.status !== 'Anulada' && po.details?.some(d => d.purchaseRequisitionId === r.id)) &&
       r.quotations?.some(q => q.supplierId === supplierId && q.isSelected)
     );
 
@@ -958,7 +972,7 @@ export default function Purchasing() {
           {suppliers.map(sup => {
             const pendingReqs = requisitions.filter(r => 
               r.status === 'Comprada' && 
-              !purchaseOrders.some(po => po.supplierId === sup.id && po.details?.some(d => d.purchaseRequisitionId === r.id)) &&
+              !purchaseOrders.some(po => po.supplierId === sup.id && po.status !== 'Cancelada' && po.status !== 'Anulada' && po.details?.some(d => d.purchaseRequisitionId === r.id)) &&
               r.quotations?.some(q => q.supplierId === sup.id && q.isSelected)
             );
             
@@ -1023,8 +1037,11 @@ export default function Purchasing() {
                           <div>
                             <div className="flex items-center gap-3">
                               <span className="font-bold text-gray-900 dark:text-white text-lg">Orden {po.orderNumber}</span>
-                              <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase ${
-                                po.status === 'Emitida' ? 'bg-blue-100 text-blue-800 border border-blue-200' : 'bg-emerald-100 text-emerald-800'
+                              <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase border ${
+                                po.status === 'Cancelada' || po.status === 'Anulada' ? 'bg-red-100 text-red-800 border-red-200' :
+                                po.status === 'Completada' ? 'bg-purple-100 text-purple-800 border-purple-200' :
+                                po.status === 'Emitida' ? 'bg-blue-100 text-blue-800 border-blue-200' :
+                                'bg-emerald-100 text-emerald-800 border-emerald-200'
                               }`}>
                                 {po.status}
                               </span>
@@ -1052,6 +1069,16 @@ export default function Purchasing() {
                             >
                               <Printer size={18} />
                             </button>
+                            {po.status !== 'Cancelada' && po.status !== 'Anulada' && po.status !== 'Completada' && (
+                              <button
+                                type="button"
+                                onClick={() => handleCancelPO(po.id, po.orderNumber)}
+                                className="p-2 border border-red-200 dark:border-red-800 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors shadow-sm cursor-pointer"
+                                title="Anular / Reversar Orden de Compra"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            )}
                           </div>
                         </div>
 

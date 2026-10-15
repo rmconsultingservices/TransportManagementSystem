@@ -492,7 +492,7 @@ export default function InvoicesTab() {
 
   // Pending purchase orders available for linking
   const availablePOs = purchaseOrders.filter(po => 
-    po.status !== 'Anulada' && po.status !== 'Completada'
+    po.status !== 'Anulada' && po.status !== 'Cancelada' && po.status !== 'Completada'
   );
 
   // Filtered invoices

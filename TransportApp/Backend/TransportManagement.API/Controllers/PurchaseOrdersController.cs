@@ -73,6 +73,61 @@ namespace TransportManagement.API.Controllers
             return purchaseOrder;
         }
 
+                // POST: api/PurchaseOrders/5/cancel
+        [HttpPost("{id}/cancel")]
+        public async Task<IActionResult> CancelPurchaseOrder(int id)
+        {
+            var po = await _context.PurchaseOrders
+                .Include(p => p.Details)
+                .FirstOrDefaultAsync(p => p.Id == id);
+
+            if (po == null) return NotFound("Orden de compra no encontrada.");
+
+            if (po.Status == "Cancelada" || po.Status == "Anulada")
+            {
+                return BadRequest("La orden de compra ya se encuentra cancelada.");
+            }
+
+            var hasActiveInvoice = await _context.PurchaseInvoices
+                .AnyAsync(pi => pi.PurchaseOrderId == po.Id && !pi.IsCancelled);
+
+            if (hasActiveInvoice)
+            {
+                return BadRequest("No se puede anular la orden de compra: tiene una factura activa registrada.");
+            }
+
+            po.Status = "Cancelada";
+
+            // Revert all associated requisitions back to 'Cotizando' and deselect their quotes from this supplier
+            foreach (var detail in po.Details)
+            {
+                var req = await _context.PurchaseRequisitions
+                    .Include(r => r.Quotations)
+                    .FirstOrDefaultAsync(r => r.Id == detail.PurchaseRequisitionId);
+
+                if (req != null)
+                {
+                    var otherActivePo = await _context.PurchaseOrderDetails
+                        .AnyAsync(pod => pod.PurchaseRequisitionId == req.Id 
+                                      && pod.PurchaseOrderId != po.Id 
+                                      && pod.PurchaseOrder.Status != "Cancelada" 
+                                      && pod.PurchaseOrder.Status != "Anulada");
+
+                    if (!otherActivePo)
+                    {
+                        foreach (var q in req.Quotations.Where(q => q.SupplierId == po.SupplierId))
+                        {
+                            q.IsSelected = false;
+                        }
+                        req.Status = req.Quotations.Any(q => q.IsSelected) ? "Comprada" : "Cotizando";
+                    }
+                }
+            }
+
+            await _context.SaveChangesAsync();
+            return Ok(po);
+        }
+
         // PUT: api/PurchaseOrders/5/status
         [HttpPut("{id}/status")]
         public async Task<IActionResult> UpdateStatus(int id, [FromBody] string status)

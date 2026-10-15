@@ -62,12 +62,52 @@ namespace TransportManagement.API.Controllers
                 
             if (req == null) return NotFound();
 
-            foreach (var q in req.Quotations)
+            var targetQuote = req.Quotations.FirstOrDefault(q => q.Id == quoteId);
+            if (targetQuote == null) return NotFound("Cotización no encontrada.");
+
+            bool willBeSelected = !targetQuote.IsSelected;
+
+            if (!willBeSelected)
             {
-                if (q.Id == quoteId)
+                // Unselecting: reverse any active Purchase Orders linked to this requisition
+                var linkedPoDetails = await _context.PurchaseOrderDetails
+                    .Include(pod => pod.PurchaseOrder)
+                        .ThenInclude(po => po.Details)
+                    .Where(pod => pod.PurchaseRequisitionId == req.Id)
+                    .ToListAsync();
+
+                foreach (var pod in linkedPoDetails)
                 {
-                    q.IsSelected = !q.IsSelected; // Toggle selection
+                    var po = pod.PurchaseOrder;
+                    if (po != null && po.Status != "Cancelada" && po.Status != "Anulada")
+                    {
+                        var hasActiveInvoice = await _context.PurchaseInvoices
+                            .AnyAsync(pi => pi.PurchaseOrderId == po.Id && !pi.IsCancelled);
+
+                        if (hasActiveInvoice)
+                        {
+                            return BadRequest("No se puede deseleccionar la cotización: la orden de compra ya posee una factura activa registrada.");
+                        }
+
+                        var otherRequisitionDetails = po.Details.Where(d => d.PurchaseRequisitionId != req.Id).ToList();
+                        if (otherRequisitionDetails.Count == 0)
+                        {
+                            po.Status = "Cancelada";
+                            po.OrderTotal = 0;
+                        }
+                        else
+                        {
+                            _context.PurchaseOrderDetails.Remove(pod);
+                            po.OrderTotal = otherRequisitionDetails.Sum(d => d.QuantityOrdered * d.UnitPrice);
+                        }
+                    }
                 }
+
+                targetQuote.IsSelected = false;
+            }
+            else
+            {
+                targetQuote.IsSelected = true;
             }
 
             var anySelected = req.Quotations.Any(q => q.IsSelected);

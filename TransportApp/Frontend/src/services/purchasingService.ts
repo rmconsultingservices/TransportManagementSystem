@@ -32,6 +32,10 @@ export const purchasingService = {
   },
 
   // Purchase Orders
+  cancelPurchaseOrder: async (id: number): Promise<void> => {
+    await api.post(`/purchaseorders/${id}/cancel`);
+  },
+
   getPurchaseOrders: async (): Promise<PurchaseOrder[]> => {
     const response = await api.get<PurchaseOrder[]>('/purchaseorders');
     return response.data;
