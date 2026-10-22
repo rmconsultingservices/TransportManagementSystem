@@ -972,70 +972,58 @@ export default function Inventory() {
     </div>
 
     {/* Reporte de Impresión (Solo visible al imprimir) */}
-    <div className="hidden print:block bg-white text-black p-8 font-sans">
-      <div className="flex justify-between items-center mb-8 border-b pb-6">
-        <h1 className="text-4xl font-bold text-gray-900">Inventario Actual</h1>
-        <div className="text-right">
-          <p className="text-gray-500 font-medium">Fecha: {new Date().toLocaleDateString()}</p>
-          <p className="text-gray-500 font-medium">Estado: <span className="text-emerald-600">VERIFICADO</span></p>
+    <div className="hidden print:block bg-white text-black p-6 font-sans">
+      <div className="flex justify-between items-center mb-6 border-b-2 border-gray-900 pb-4">
+        <h1 className="text-3xl font-black text-black">Inventario Actual</h1>
+        <div className="text-right text-sm">
+          <p className="text-gray-800 font-bold">Fecha: {new Date().toLocaleDateString()}</p>
+          <p className="text-gray-800 font-bold">Estado: <span className="text-black font-black">VERIFICADO</span></p>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4 mb-6">
-        <div className="bg-white border border-gray-200 rounded-lg p-5 flex flex-col justify-center">
-          <p className="text-gray-500 font-medium text-sm mb-1">Total de Artículos (SKUs)</p>
-          <p className="text-4xl font-black text-gray-900">{totalItemsPrint.toLocaleString()}</p>
-          <div className="mt-2 flex items-center gap-2 text-blue-600 font-bold text-xs uppercase tracking-tight">
-             <TrendingUp size={14} /> +12% vs el mes pasado
-          </div>
+        <div className="bg-white border border-gray-400 rounded-lg p-5 flex flex-col justify-center">
+          <p className="text-gray-700 font-extrabold text-xs uppercase tracking-wider mb-1">Total de Artículos (SKUs)</p>
+          <p className="text-3xl font-black text-black">{totalItemsPrint.toLocaleString()}</p>
         </div>
-        <div className="bg-blue-600 rounded-lg p-5 flex flex-col justify-center text-white relative overflow-hidden">
-          <div className="absolute right-0 bottom-0 opacity-10 transform translate-x-2 translate-y-2">
-             <Printer size={80} />
-          </div>
-          <p className="text-blue-100 font-medium text-sm mb-1 relative z-10">Valor Total de Inventario</p>
-          <p className="text-4xl font-black relative z-10">${totalValuePrint.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-          <div className="mt-2 flex items-center gap-2 text-blue-100 font-bold text-xs uppercase tracking-tight relative z-10">
-             <FileClock size={14} /> Actualizado hace 2 horas
-          </div>
+        <div className="bg-gray-100 border border-gray-400 rounded-lg p-5 flex flex-col justify-center text-black relative overflow-hidden">
+          <p className="text-gray-700 font-extrabold text-xs uppercase tracking-wider mb-1 relative z-10">Valor Total de Inventario</p>
+          <p className="text-3xl font-black text-black relative z-10">${totalValuePrint.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
         </div>
       </div>
 
       {Object.entries(groupedParts).map(([groupKey, parts]) => (
-        <div key={groupKey} className="mb-10 page-break-inside-avoid">
-          <div className="flex items-center gap-2 mb-4 justify-center relative">
-            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"></div></div>
-            <div className="relative bg-white px-4 text-gray-500 font-semibold flex items-center gap-2 text-lg">
-              <MapPin size={20} /> {groupKey}
+        <div key={groupKey} className="mb-8 page-break-inside-avoid">
+          <div className="flex items-center gap-2 mb-3 justify-center relative">
+            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-400"></div></div>
+            <div className="relative bg-white px-4 text-black font-extrabold flex items-center gap-2 text-base uppercase tracking-wider">
+              <MapPin size={18} /> {groupKey}
             </div>
           </div>
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-left border-collapse border border-gray-400">
             <thead>
-              <tr className="bg-gray-50 text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-                <th className="px-2 py-3 w-32">Código de Artículo</th>
-                <th className="px-2 py-3">Nombre del Artículo</th>
-                <th className="px-2 py-3 text-center w-20">Cantidad</th>
-                <th className="px-2 py-3 text-right w-24">Costo Unitario</th>
-                <th className="px-2 py-3 text-right w-28">Valor Total</th>
+              <tr className="bg-gray-100 text-xs font-extrabold text-black uppercase tracking-wider border-b border-gray-400">
+                <th className="px-3 py-2.5 w-36 border-r border-gray-300">Código de Artículo</th>
+                <th className="px-3 py-2.5 border-r border-gray-300">Nombre del Artículo</th>
+                <th className="px-3 py-2.5 text-center w-24 border-r border-gray-300">Cantidad</th>
+                <th className="px-3 py-2.5 text-right w-28 border-r border-gray-300">Costo Unitario</th>
+                <th className="px-3 py-2.5 text-right w-32">Valor Total</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-gray-300">
               {parts.map(part => {
                 const total = (part.stockQuantity || 0) * (part.unitCost || 0);
                 return (
-                  <tr key={part.id} className="border-b border-gray-50">
-                    <td className="px-2 py-3 font-bold text-blue-600 text-[11px]">#{part.code}</td>
-                    <td className="px-2 py-3 font-bold text-gray-900 text-[11px] leading-tight break-words">{formatSparePartName(part)}</td>
-                    <td className="px-2 py-3 text-center">
-                       <span className={`inline-flex items-center justify-center min-w-[32px] px-2 py-0.5 rounded text-[10px] font-bold ${
-                         part.stockQuantity > 10 ? 'bg-blue-50 text-blue-700 border border-blue-100' :
-                         part.stockQuantity > 0 ? 'bg-amber-50 text-amber-700 border border-amber-100' : 'bg-red-50 text-red-700 border border-red-100'
-                       }`}>
+                  <tr key={part.id} className="border-b border-gray-300">
+                    <td className="px-3 py-2.5 font-mono font-bold text-black text-sm border-r border-gray-300">#{part.code}</td>
+                    <td className="px-3 py-2.5 font-semibold text-black text-sm leading-snug break-words border-r border-gray-300">{formatSparePartName(part)}</td>
+                    <td className="px-3 py-2.5 text-center border-r border-gray-300">
+                       <span className="inline-flex items-center justify-center min-w-[36px] px-2 py-0.5 rounded text-sm font-extrabold font-mono bg-gray-100 text-black border border-gray-400">
                          {part.stockQuantity}
                        </span>
                     </td>
-                    <td className="px-2 py-3 text-right font-medium text-gray-600 text-[11px]">${(part.unitCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                    <td className="px-2 py-3 text-right font-bold text-gray-900 text-[11px]">${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td className="px-3 py-2.5 text-right font-semibold text-gray-800 text-sm font-mono border-r border-gray-300">${(part.unitCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td className="px-3 py-2.5 text-right font-extrabold text-black text-sm font-mono">${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   </tr>
                 );
               })}
@@ -1044,11 +1032,11 @@ export default function Inventory() {
         </div>
       ))}
       
-      <div className="mt-12 pt-8 border-t border-gray-200 text-xs text-gray-400 flex justify-between font-medium">
-         <span>© 2026 TransportApp • Documento: INV2026-5-99</span>
+      <div className="mt-10 pt-4 border-t border-gray-400 text-xs text-gray-700 flex justify-between font-semibold">
+         <span>© 2026 TransportApp • Reporte Oficial de Inventario</span>
          <div className="flex gap-4">
-            <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-blue-600"></div> ESTADO: VERIFICADO</span>
-            <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-gray-400"></div> SINCRONIZADO: {new Date().toLocaleTimeString()}</span>
+            <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-black"></div> ESTADO: VERIFICADO</span>
+            <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-gray-600"></div> IMPRESO: {new Date().toLocaleTimeString()}</span>
          </div>
       </div>
     </div>

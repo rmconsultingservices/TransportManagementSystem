@@ -641,13 +641,13 @@ export default function Purchasing() {
   return (
     <div className="w-full px-4 sm:px-6 lg:px-8 py-6 print:p-0 print:max-w-full">
       {/* Printable Report Header */}
-      <div className="hidden print:block mb-8 border-b-2 border-gray-300 pb-4">
+      <div className="hidden print:block mb-6 border-b-2 border-gray-900 pb-4 text-black">
         <div className="flex justify-between items-start">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Reporte de Proveedores</h1>
-            <p className="text-gray-500 mt-1">Análisis detallado de la cadena de suministro y socios logísticos.</p>
+            <h1 className="text-3xl font-black text-black">Reporte de Proveedores</h1>
+            <p className="text-gray-700 font-semibold text-sm mt-1">Análisis detallado de la cadena de suministro y socios logísticos.</p>
           </div>
-          <div className="text-right text-xs text-gray-400">
+          <div className="text-right text-sm font-bold text-gray-800">
             <div>Generado el: {new Date().toLocaleDateString()}</div>
             <div>Sistema de Gestión de Transporte</div>
           </div>
@@ -866,35 +866,35 @@ export default function Purchasing() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700 text-[11px] font-extrañold uppercase tracking-wider text-gray-400">
-                      <th className="py-4 px-6">Código</th>
-                      <th className="py-4 px-6">RIF</th>
-                      <th className="py-4 px-6">Razón Social</th>
-                      <th className="py-4 px-6">Contacto</th>
-                      <th className="py-4 px-6">Teléfono</th>
-                      <th className="py-4 px-6">Dirección</th>
-                      <th className="py-4 px-6 text-center">Calificación</th>
+                    <tr className="bg-gray-50 dark:bg-gray-900/50 print:bg-gray-100 border-b border-gray-200 dark:border-gray-700 print:border-gray-400 text-xs font-extrabold uppercase tracking-wider text-gray-500 print:text-black">
+                      <th className="py-4 px-6 print:py-2.5 print:px-3">Código</th>
+                      <th className="py-4 px-6 print:py-2.5 print:px-3">RIF</th>
+                      <th className="py-4 px-6 print:py-2.5 print:px-3">Razón Social</th>
+                      <th className="py-4 px-6 print:py-2.5 print:px-3">Contacto</th>
+                      <th className="py-4 px-6 print:py-2.5 print:px-3">Teléfono</th>
+                      <th className="py-4 px-6 print:py-2.5 print:px-3">Dirección</th>
+                      <th className="py-4 px-6 print:py-2.5 print:px-3 text-center">Calificación</th>
                       <th className="py-4 px-6 text-center print:hidden">Estado</th>
                       <th className="py-4 px-6 text-right print:hidden">Acción</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-150 dark:divide-gray-700 text-sm">
+                  <tbody className="divide-y divide-gray-150 dark:divide-gray-700 print:divide-gray-300 text-sm">
                     {paginatedSuppliers.length === 0 ? (
                       <tr>
-                        <td colSpan={9} className="py-12 text-center text-gray-500">No se encontraron proveedores.</td>
+                        <td colSpan={9} className="py-12 text-center text-gray-500 print:text-black">No se encontraron proveedores.</td>
                       </tr>
                     ) : (
                       paginatedSuppliers.map(sup => (
                         <tr key={sup.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-700/25 transition-colors group">
-                          <td className="py-4 px-6 font-bold text-indigo-600 dark:text-indigo-400 whitespace-nowrap">{sup.code || 'N/A'}</td>
-                          <td className="py-4 px-6 text-gray-600 dark:text-gray-300 whitespace-nowrap">{sup.taxId || 'N/A'}</td>
-                          <td className="py-4 px-6 font-extrañold text-gray-950 dark:text-white max-w-[200px] truncate">{sup.name}</td>
-                          <td className="py-4 px-6 text-gray-600 dark:text-gray-400">{sup.contactName || 'N/A'}</td>
-                          <td className="py-4 px-6 text-gray-600 dark:text-gray-400 whitespace-nowrap">{sup.phoneNumber || 'N/A'}</td>
-                          <td className="py-4 px-6 text-gray-400 dark:text-gray-500 max-w-[220px] truncate" title={sup.address}>{sup.address || 'N/A'}</td>
-                          <td className="py-4 px-6 text-center">
-                            <div className="inline-flex items-center gap-1 bg-amber-50 dark:bg-amber-900/10 text-amber-600 dark:text-amber-400 px-2 py-1 rounded text-xs font-bold border border-amber-200/50">
-                              <Star size={12} className="fill-amber-500 text-amber-500" />
+                          <td className="py-4 px-6 print:py-2.5 print:px-3 font-bold text-indigo-600 dark:text-indigo-400 print:text-black whitespace-nowrap">{sup.code || 'N/A'}</td>
+                          <td className="py-4 px-6 print:py-2.5 print:px-3 text-gray-600 dark:text-gray-300 print:text-black print:font-semibold whitespace-nowrap">{sup.taxId || 'N/A'}</td>
+                          <td className="py-4 px-6 print:py-2.5 print:px-3 font-extrabold text-gray-950 dark:text-white print:text-black max-w-[200px] truncate print:max-w-none print:whitespace-normal">{sup.name}</td>
+                          <td className="py-4 px-6 print:py-2.5 print:px-3 text-gray-600 dark:text-gray-400 print:text-black print:font-medium">{sup.contactName || 'N/A'}</td>
+                          <td className="py-4 px-6 print:py-2.5 print:px-3 text-gray-600 dark:text-gray-400 print:text-black print:font-medium whitespace-nowrap">{sup.phoneNumber || 'N/A'}</td>
+                          <td className="py-4 px-6 print:py-2.5 print:px-3 text-gray-400 dark:text-gray-500 print:text-gray-800 max-w-[220px] truncate print:max-w-none print:whitespace-normal" title={sup.address}>{sup.address || 'N/A'}</td>
+                          <td className="py-4 px-6 print:py-2.5 print:px-3 text-center">
+                            <div className="inline-flex items-center gap-1 bg-amber-50 dark:bg-amber-900/10 print:bg-gray-100 text-amber-600 dark:text-amber-400 print:text-black px-2 py-1 rounded text-xs font-bold border border-amber-200/50 print:border-gray-400">
+                              <Star size={12} className="fill-amber-500 text-amber-500 print:fill-black print:text-black" />
                               {getSupplierRating(sup)}
                             </div>
                           </td>
