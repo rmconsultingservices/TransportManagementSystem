@@ -1254,6 +1254,8 @@ export default function InvoicesTab() {
                 >
                   <option value="Transferencia">Transferencia Bancaria</option>
                   <option value="Pago Móvil">Pago Móvil</option>
+                  <option value="Transferencia en cuenta internacional ($ USD)">Transferencia en cuenta internacional ($ USD)</option>
+                  <option value="Transferencia (USDT)">Transferencia (USDT)</option>
                   <option value="Efectivo $">Efectivo ($ USD)</option>
                   <option value="Efectivo Bs">Efectivo (Bs.)</option>
                   <option value="Cheque">Cheque</option>
