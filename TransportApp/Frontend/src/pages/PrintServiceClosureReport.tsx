@@ -61,6 +61,11 @@ export default function PrintServiceClosureReport() {
   const physicalParts = allUsedItems.filter(p => p.itemType !== 'S' && p.sparePart?.itemType !== 'Servicio');
   const externalServices = allUsedItems.filter(p => p.itemType === 'S' || p.sparePart?.itemType === 'Servicio');
 
+  // Chronological logs from the workshop execution bitácora
+  const executionLogs = [...(request.logs || [])].sort(
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  );
+
   const totalPartsCost = physicalParts.reduce((acc: number, part: any) => acc + (part.quantity * (part.unitCost ?? part.sparePart?.unitCost ?? 0)), 0);
   const totalServicesCost = externalServices.reduce((acc: number, srv: any) => acc + (srv.quantity * (srv.unitCost ?? srv.sparePart?.unitCost ?? 0)), 0);
   const totalCost = totalPartsCost + totalServicesCost;
@@ -165,38 +170,80 @@ export default function PrintServiceClosureReport() {
               </div>
             </div>
 
-            {/* Activities / Problem */}
+            {/* 1. Solicitud / Reporte de Avería */}
             <div className="mb-2 flex items-end justify-between">
-              <h3 className="text-sm font-extrabold text-black uppercase tracking-wide">1. Actividades y Protocolo Realizado</h3>
-              <span className="text-xs font-bold text-gray-700">{request.activities?.length || 0} Registros</span>
+              <h3 className="text-sm font-extrabold text-black uppercase tracking-wide">1. Solicitud / Reporte de Avería</h3>
+              <span className="text-xs font-bold text-gray-700">{request.activities?.length || (request.description ? 1 : 0)} Registros</span>
             </div>
 
-            <div className="mb-6 overflow-hidden rounded-md border border-gray-400">
+            <div className="mb-5 overflow-hidden rounded-md border border-gray-400">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-gray-400 bg-gray-100">
-                    <th className="px-4 py-2.5 text-xs font-extrabold text-black tracking-wider uppercase">Descripción de la Avería / Trabajo Realizado</th>
+                    <th className="px-3 py-2 text-xs font-extrabold text-black tracking-wider uppercase w-12 text-center border-r border-gray-300">#</th>
+                    <th className="px-4 py-2 text-xs font-extrabold text-black tracking-wider uppercase">Descripción de la Falla / Avería Reportada</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-300 bg-white">
                   {request.activities && request.activities.length > 0 ? (
                     request.activities.map((act, idx) => (
                       <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                        <td className="px-4 py-2.5 text-sm font-semibold text-black leading-snug">{act.description}</td>
+                        <td className="px-3 py-2 text-xs font-bold text-gray-700 text-center border-r border-gray-300 font-mono">{String(idx + 1).padStart(2, '0')}</td>
+                        <td className="px-4 py-2 text-sm font-semibold text-black leading-snug uppercase">{act.description}</td>
                       </tr>
                     ))
+                  ) : request.description ? (
+                    <tr>
+                      <td className="px-3 py-2 text-xs font-bold text-gray-700 text-center border-r border-gray-300 font-mono">01</td>
+                      <td className="px-4 py-2 text-sm font-semibold text-black leading-snug">{request.description}</td>
+                    </tr>
                   ) : (
                     <tr>
-                      <td className="px-4 py-3 text-sm text-gray-700 italic">No se detallaron renglones específicos de actividad.</td>
+                      <td colSpan={2} className="px-4 py-2.5 text-sm text-gray-700 italic text-center">No se detallaron fallas específicas en la solicitud inicial.</td>
                     </tr>
                   )}
                 </tbody>
               </table>
             </div>
 
-            {/* Parts Consumed */}
+            {/* 2. Actividades y Protocolo Realizado (Bitácora de Taller) */}
             <div className="mb-2 flex items-end justify-between">
-              <h3 className="text-sm font-extrabold text-black uppercase tracking-wide">2. Repuestos Consumidos de Almacén</h3>
+              <h3 className="text-sm font-extrabold text-black uppercase tracking-wide">2. Actividades y Protocolo Realizado</h3>
+              <span className="text-xs font-bold text-gray-700">{executionLogs.length} Registros en Bitácora</span>
+            </div>
+
+            <div className="mb-5 overflow-hidden rounded-md border border-gray-400">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-gray-400 bg-gray-100">
+                    <th className="px-3 py-2 text-xs font-extrabold text-black tracking-wider uppercase w-12 text-center border-r border-gray-300">#</th>
+                    <th className="px-4 py-2 text-xs font-extrabold text-black tracking-wider uppercase w-48 border-r border-gray-300">Fecha / Hora</th>
+                    <th className="px-4 py-2 text-xs font-extrabold text-black tracking-wider uppercase">Trabajo / Protocolo Ejecutado</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-300 bg-white">
+                  {executionLogs.length > 0 ? (
+                    executionLogs.map((log, idx) => (
+                      <tr key={log.id || idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                        <td className="px-3 py-2 text-xs font-bold text-gray-700 text-center border-r border-gray-300 font-mono">{String(idx + 1).padStart(2, '0')}</td>
+                        <td className="px-4 py-2 text-xs font-bold text-gray-800 border-r border-gray-300 font-mono whitespace-nowrap">
+                          {new Date(log.createdAt).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })} {new Date(log.createdAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                        </td>
+                        <td className="px-4 py-2 text-sm font-semibold text-black leading-snug uppercase">{log.note}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={3} className="px-4 py-2.5 text-sm text-gray-700 italic text-center">No se registraron notas de actividades en la bitácora de ejecución.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* 3. Repuestos Consumidos en Almacén */}
+            <div className="mb-2 flex items-end justify-between">
+              <h3 className="text-sm font-extrabold text-black uppercase tracking-wide">3. Repuestos Consumidos en Almacén</h3>
               <span className="text-xs font-bold text-gray-700">{physicalParts.length} Ítems</span>
             </div>
 
@@ -247,7 +294,7 @@ export default function PrintServiceClosureReport() {
             {externalServices.length > 0 && (
               <>
                 <div className="mb-2 mt-4 flex items-end justify-between">
-                  <h3 className="text-sm font-extrabold text-black uppercase tracking-wide">3. Servicios y Trabajos Externos</h3>
+                  <h3 className="text-sm font-extrabold text-black uppercase tracking-wide">4. Servicios y Trabajos Externos</h3>
                   <span className="text-xs font-bold text-gray-700">{externalServices.length} Ítems</span>
                 </div>
 
