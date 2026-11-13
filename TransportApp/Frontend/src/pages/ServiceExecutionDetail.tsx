@@ -179,9 +179,10 @@ export default function ServiceExecutionDetail() {
         src: `/print-closure/${request.id}`,
         footerText: 'El servicio ha sido concluido exitosamente y el odómetro de la unidad fue actualizado.'
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error closing ticket:', error);
-      alert('Error al cerrar el ticket.');
+      const serverMsg = error.response?.data?.message || error.response?.data?.title || error.message;
+      alert(`Error al cerrar el ticket${serverMsg ? `: ${serverMsg}` : '.'}`);
     } finally {
       setSubmittingClose(false);
     }
@@ -687,7 +688,7 @@ export default function ServiceExecutionDetail() {
                   className="w-full rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-sm text-slate-900 dark:text-white font-mono font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
                 <span className="text-[11px] text-slate-400 mt-1 block">
-                  Este kilometraje actualizará el odómetro del vehículo en el catálogo de flota.
+                  Este kilometraje actualizará el odómetro {request.trailer ? 'del remolque' : 'del vehículo'} en el catálogo de flota.
                 </span>
               </div>
 

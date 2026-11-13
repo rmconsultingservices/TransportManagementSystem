@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TransportManagement.API.Data;
 using TransportManagement.API.Models;
@@ -295,6 +295,7 @@ namespace TransportManagement.API.Controllers
                 .Include(r => r.Execution)
                 .Include(r => r.Vehicle)
                 .Include(r => r.Trailer)
+                .Include(r => r.Mechanic)
                 .FirstOrDefaultAsync(r => r.Id == id);
                 
             if (request == null) return NotFound();

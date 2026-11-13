@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using TransportManagement.API.Data;
 using TransportManagement.API.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -81,6 +81,19 @@ using (var scope = app.Services.CreateScope())
             
             IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('MaintenanceOrders') AND name = 'ServiceRequestId')
             ALTER TABLE MaintenanceOrders ADD ServiceRequestId INT NULL;
+
+            IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'MaintenanceOrders' AND COLUMN_NAME = 'VehicleId' AND IS_NULLABLE = 'NO')
+            BEGIN
+                IF EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_MaintenanceOrders_Vehicles_VehicleId')
+                    ALTER TABLE MaintenanceOrders DROP CONSTRAINT FK_MaintenanceOrders_Vehicles_VehicleId;
+                ALTER TABLE MaintenanceOrders ALTER COLUMN VehicleId INT NULL;
+                ALTER TABLE MaintenanceOrders ADD CONSTRAINT FK_MaintenanceOrders_Vehicles_VehicleId FOREIGN KEY (VehicleId) REFERENCES Vehicles (Id);
+            END
+
+            IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_MaintenanceOrders_Trailers_TrailerId')
+            BEGIN
+                ALTER TABLE MaintenanceOrders ADD CONSTRAINT FK_MaintenanceOrders_Trailers_TrailerId FOREIGN KEY (TrailerId) REFERENCES Trailers (Id);
+            END
         ");
         // Dynamic column migrations
             context.Database.ExecuteSqlRaw(@"
