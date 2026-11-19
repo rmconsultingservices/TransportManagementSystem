@@ -34,6 +34,8 @@ namespace TransportManagement.API.Controllers
                 .Include(pi => pi.Supplier)
                 .Include(pi => pi.PurchaseOrder)
                 .Include(pi => pi.Details)
+                    .ThenInclude(d => d.PurchaseOrderDetail)
+                .Include(pi => pi.Details)
                     .ThenInclude(d => d.SparePart)
                 .Include(pi => pi.Details)
                     .ThenInclude(d => d.UnitOfMeasure)
@@ -161,14 +163,15 @@ namespace TransportManagement.API.Controllers
                 invoice.PaymentStatus = "CXP";
             }
 
-            // If created from a PurchaseOrder, mark the purchase order as completed
-            if (invoice.PurchaseOrderId.HasValue && invoice.PurchaseOrderId.Value > 0)
+            // Mark all linked PurchaseOrders (header or line-level details) as Completada
+            var linkedPos = await GetLinkedPurchaseOrdersAsync(invoice);
+            if (!invoice.PurchaseOrderId.HasValue && linkedPos.Any())
             {
-                var po = await _context.PurchaseOrders.FindAsync(invoice.PurchaseOrderId.Value);
-                if (po != null)
-                {
-                    po.Status = "Completada";
-                }
+                invoice.PurchaseOrderId = linkedPos.First().Id;
+            }
+            foreach (var po in linkedPos)
+            {
+                po.Status = "Completada";
             }
 
             _context.PurchaseInvoices.Add(invoice);
@@ -230,7 +233,35 @@ namespace TransportManagement.API.Controllers
                 }
             }
 
-            // Revert old inventory stock
+            var oldLinkedPos = await GetLinkedPurchaseOrdersAsync(existingInvoice);
+
+            // 1. Remove any items previously injected into Service Requests and restore the stock deducted for them
+            var oldDetailIds = existingInvoice.Details.Select(d => d.Id).ToList();
+            if (oldDetailIds.Any())
+            {
+                var linkedServiceParts = await _context.ServiceExecutionSpareParts
+                    .Where(sp => sp.PurchaseInvoiceDetailId.HasValue && oldDetailIds.Contains(sp.PurchaseInvoiceDetailId.Value))
+                    .ToListAsync();
+
+                if (linkedServiceParts.Any())
+                {
+                    foreach (var linked in linkedServiceParts)
+                    {
+                        if (linked.ItemType != "S" && linked.SparePartId.HasValue && linked.SparePartId.Value > 0)
+                        {
+                            var sp = await _context.SpareParts.FindAsync(linked.SparePartId.Value);
+                            if (sp != null && sp.ItemType != "Servicio")
+                            {
+                                decimal baseServiceQty = await _context.GetBaseQuantityAsync(linked.SparePartId.Value, linked.UnitOfMeasureId, linked.Quantity);
+                                sp.StockQuantity += baseServiceQty;
+                            }
+                        }
+                    }
+                    _context.ServiceExecutionSpareParts.RemoveRange(linkedServiceParts);
+                }
+            }
+
+            // 2. Revert old inventory stock
             foreach (var oldDetail in existingInvoice.Details)
             {
                 if (oldDetail.SparePartId.HasValue && oldDetail.SparePartId.Value > 0 && (string.IsNullOrEmpty(oldDetail.ItemType) || oldDetail.ItemType == "C"))
@@ -315,7 +346,28 @@ namespace TransportManagement.API.Controllers
             existingInvoice.PaymentReference = updatedInvoice.PaymentReference ?? existingInvoice.PaymentReference;
             existingInvoice.AmountPaid = updatedInvoice.AmountPaid;
 
+            var newLinkedPos = await GetLinkedPurchaseOrdersAsync(existingInvoice);
+            if (!existingInvoice.PurchaseOrderId.HasValue && newLinkedPos.Any())
+            {
+                existingInvoice.PurchaseOrderId = newLinkedPos.First().Id;
+            }
+            var newPoIds = new HashSet<int>(newLinkedPos.Select(p => p.Id));
+            foreach (var po in newLinkedPos)
+            {
+                po.Status = "Completada";
+            }
+            foreach (var oldPo in oldLinkedPos)
+            {
+                if (!newPoIds.Contains(oldPo.Id))
+                {
+                    oldPo.Status = "Pendiente por Recibir";
+                }
+            }
+
             await _context.SaveChangesAsync();
+
+            await LinkInvoiceDetailsToServiceRequestsAsync(existingInvoice);
+
             return NoContent();
         }
 
@@ -413,14 +465,11 @@ namespace TransportManagement.API.Controllers
                 }
             }
 
-            // 3. Revert Purchase Order status back to "Pendiente por Recibir"
-            if (invoice.PurchaseOrderId.HasValue && invoice.PurchaseOrderId.Value > 0)
+            // 3. Revert all linked Purchase Orders status back to "Pendiente por Recibir"
+            var linkedPos = await GetLinkedPurchaseOrdersAsync(invoice);
+            foreach (var po in linkedPos)
             {
-                var po = await _context.PurchaseOrders.FindAsync(invoice.PurchaseOrderId.Value);
-                if (po != null)
-                {
-                    po.Status = "Pendiente por Recibir";
-                }
+                po.Status = "Pendiente por Recibir";
             }
 
             await _context.SaveChangesAsync();
@@ -497,14 +546,11 @@ namespace TransportManagement.API.Controllers
                 }
             }
 
-            // 2. Re-mark Purchase Order status back to "Completada"
-            if (invoice.PurchaseOrderId.HasValue && invoice.PurchaseOrderId.Value > 0)
+            // 2. Re-mark all linked Purchase Orders status back to "Completada"
+            var linkedPos = await GetLinkedPurchaseOrdersAsync(invoice);
+            foreach (var po in linkedPos)
             {
-                var po = await _context.PurchaseOrders.FindAsync(invoice.PurchaseOrderId.Value);
-                if (po != null)
-                {
-                    po.Status = "Completada";
-                }
+                po.Status = "Completada";
             }
 
             await _context.SaveChangesAsync();
@@ -513,6 +559,44 @@ namespace TransportManagement.API.Controllers
             await LinkInvoiceDetailsToServiceRequestsAsync(invoice);
 
             return NoContent();
+        }
+
+        private async Task<List<PurchaseOrder>> GetLinkedPurchaseOrdersAsync(PurchaseInvoice invoice)
+        {
+            var poIds = new HashSet<int>();
+            if (invoice.PurchaseOrderId.HasValue && invoice.PurchaseOrderId.Value > 0)
+            {
+                poIds.Add(invoice.PurchaseOrderId.Value);
+            }
+
+            if (invoice.Details != null)
+            {
+                var podIds = invoice.Details
+                    .Where(d => d.PurchaseOrderDetailId.HasValue && d.PurchaseOrderDetailId.Value > 0)
+                    .Select(d => d.PurchaseOrderDetailId!.Value)
+                    .Distinct()
+                    .ToList();
+
+                if (podIds.Any())
+                {
+                    var detailPoIds = await _context.PurchaseOrderDetails
+                        .Where(pod => podIds.Contains(pod.Id))
+                        .Select(pod => pod.PurchaseOrderId)
+                        .Distinct()
+                        .ToListAsync();
+
+                    foreach (var id in detailPoIds)
+                    {
+                        if (id > 0) poIds.Add(id);
+                    }
+                }
+            }
+
+            if (!poIds.Any()) return new List<PurchaseOrder>();
+
+            return await _context.PurchaseOrders
+                .Where(po => poIds.Contains(po.Id))
+                .ToListAsync();
         }
 
         private async Task LinkInvoiceDetailsToServiceRequestsAsync(PurchaseInvoice invoice)
@@ -528,6 +612,7 @@ namespace TransportManagement.API.Controllers
                     if (pod != null && pod.PurchaseRequisitionId > 0)
                     {
                         reqId = pod.PurchaseRequisitionId;
+                        detail.PurchaseRequisitionId = reqId;
                     }
                 }
 
@@ -635,6 +720,8 @@ namespace TransportManagement.API.Controllers
                                         if (spToDeduct.StockQuantity < 0) spToDeduct.StockQuantity = 0;
                                     }
                                 }
+
+                                await _context.SaveChangesAsync();
                             }
                         }
                     }

@@ -34,6 +34,7 @@ export default function InvoicesTab() {
   const [editingInvoiceId, setEditingInvoiceId] = useState<number | null>(null);
   
   const [selectedPOId, setSelectedPOId] = useState<number | ''>('');
+  const [selectedPOIds, setSelectedPOIds] = useState<number[]>([]);
   const [supplierId, setSupplierId] = useState<number | ''>('');
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [controlNumber, setControlNumber] = useState('');
@@ -88,7 +89,7 @@ export default function InvoicesTab() {
         unitCost: (line?.unitCost && line.unitCost > 0) ? line.unitCost : (newPart.unitCost || 0),
         itemType: newPart.itemType === 'Servicio' ? 'S' : 'C'
       };
-      updateLineMulti(quickCreateRowIndex, updates);
+      updateLineMultiWithReplication(quickCreateRowIndex, updates);
     }
   };
 
@@ -124,9 +125,34 @@ export default function InvoicesTab() {
     fetchData();
   }, []);
 
+  const getLinkedPOIdsFromInvoice = (inv: PurchaseInvoice): number[] => {
+    const ids = new Set<number>();
+    if (inv.purchaseOrderId && inv.purchaseOrderId > 0) ids.add(inv.purchaseOrderId);
+    inv.details?.forEach(d => {
+      const podId = d.purchaseOrderDetailId;
+      const directPoId = (d as any).purchaseOrderDetail?.purchaseOrderId;
+      if (directPoId && directPoId > 0) {
+        ids.add(directPoId);
+      } else if (podId && podId > 0) {
+        const foundPo = purchaseOrders.find(po => po.details?.some(pod => pod.id === podId));
+        if (foundPo) ids.add(foundPo.id);
+      }
+    });
+    return Array.from(ids);
+  };
+
+  const getPONumberForDetail = (d: Partial<PurchaseInvoiceDetail>): string | null => {
+    if ((d as any)._poNumber) return (d as any)._poNumber;
+    const podId = d.purchaseOrderDetailId;
+    if (!podId) return null;
+    const foundPo = purchaseOrders.find(po => po.details?.some(pod => pod.id === podId));
+    return foundPo ? foundPo.orderNumber : null;
+  };
+
   const resetForm = () => {
     setEditingInvoiceId(null);
     setSelectedPOId('');
+    setSelectedPOIds([]);
     setSupplierId('');
     setInvoiceNumber('');
     setControlNumber('');
@@ -140,8 +166,10 @@ export default function InvoicesTab() {
       alert('No se puede modificar una factura anulada.');
       return;
     }
+    const linkedIds = getLinkedPOIdsFromInvoice(inv);
     setEditingInvoiceId(inv.id);
-    setSelectedPOId(inv.purchaseOrderId || '');
+    setSelectedPOId(linkedIds[0] || inv.purchaseOrderId || '');
+    setSelectedPOIds(linkedIds);
     setSupplierId(inv.supplierId);
     setInvoiceNumber(inv.invoiceNumber);
     setControlNumber(inv.controlNumber || '');
@@ -150,60 +178,159 @@ export default function InvoicesTab() {
     setShowForm(true);
   };
 
-  // Cargar ítems automáticamente al seleccionar una Orden de Compra
-  const handleSelectPurchaseOrder = (poId: number | '') => {
-    setSelectedPOId(poId);
-    if (!poId) return;
+  const buildLinesFromPO = (po: PurchaseOrder, existingLines: Partial<PurchaseInvoiceDetail>[] = []): Partial<PurchaseInvoiceDetail>[] => {
+    if (!po.details || po.details.length === 0) return [];
+    return po.details.map(d => {
+      const req = d.purchaseRequisition;
+      const sr = req?.serviceRequest;
+      const veh = sr?.vehicle;
+      const trailer = sr?.trailer;
+      const rawDesc = (req?.partNameOrDescription || '').trim().toLowerCase();
 
+      // 1. Check if an already loaded line in the invoice has the exact same description and an assigned sparePartId
+      let matchedPartId = 0;
+      const existingSibling = rawDesc
+        ? existingLines.find(el =>
+            el.sparePartId &&
+            el.sparePartId > 0 &&
+            ((el.purchaseRequisition?.partNameOrDescription || el.description || '').trim().toLowerCase() === rawDesc)
+          )
+        : undefined;
+
+      if (existingSibling && existingSibling.sparePartId) {
+        matchedPartId = existingSibling.sparePartId;
+      } else if (rawDesc) {
+        // 2. Try to match spare part from catalog by description or code
+        const match = parts.find(p =>
+          p.name.toLowerCase() === rawDesc ||
+          p.code.toLowerCase() === rawDesc ||
+          formatSparePartName(p).toLowerCase() === rawDesc
+        );
+        if (match) matchedPartId = match.id;
+      }
+
+      const matchedPart = parts.find(p => p.id === matchedPartId);
+      const isPartService = matchedPart?.itemType === 'Servicio' || existingSibling?.itemType === 'S';
+      const isTextService = rawDesc.includes('servicio') || rawDesc.includes('trabajo') || false;
+
+      const line: Partial<PurchaseInvoiceDetail> & { _poId?: number; _poNumber?: string } = {
+        sparePartId: matchedPartId,
+        description: req?.partNameOrDescription || 'Artículo OC',
+        quantityReceived: d.quantityOrdered || 1,
+        unitCost: d.unitPrice || 0,
+        taxPercentage: 16,
+        unitOfMeasureId: (d as any).unitOfMeasureId || (req as any)?.unitOfMeasureId || matchedPart?.unitOfMeasureId,
+        purchaseOrderDetailId: d.id,
+        purchaseRequisitionId: d.purchaseRequisitionId,
+        purchaseRequisition: req,
+        vehicleId: veh?.id || null,
+        vehicle: veh,
+        trailerId: trailer?.id || null,
+        trailer: trailer,
+        itemType: (isPartService || isTextService) ? 'S' : 'C',
+        _poId: po.id,
+        _poNumber: po.orderNumber
+      };
+      return line;
+    });
+  };
+
+  // Alternar (agregar o quitar) una Orden de Compra en la factura actual
+  const handleTogglePurchaseOrder = (poId: number) => {
     const po = purchaseOrders.find(p => p.id === Number(poId));
     if (!po) return;
 
-    // Set supplier from PO
-    setSupplierId(po.supplierId);
+    const isAlreadySelected = selectedPOIds.includes(po.id);
 
-    // If PO has details, pre-populate invoice items
-    if (po.details && po.details.length > 0) {
-      const newLines: Partial<PurchaseInvoiceDetail>[] = po.details.map(d => {
-        const req = d.purchaseRequisition;
-        const sr = req?.serviceRequest;
-        const veh = sr?.vehicle;
-        const trailer = sr?.trailer;
-
-        // Try to match spare part by description if available
-        let matchedPartId = 0;
-        if (req?.partNameOrDescription) {
-          const match = parts.find(p => 
-            p.name.toLowerCase() === req.partNameOrDescription.toLowerCase() ||
-            p.code.toLowerCase() === req.partNameOrDescription.toLowerCase() ||
-            formatSparePartName(p).toLowerCase() === req.partNameOrDescription.toLowerCase()
-          );
-          if (match) matchedPartId = match.id;
-        }
-
-        const matchedPart = parts.find(p => p.id === matchedPartId);
-        const isPartService = matchedPart?.itemType === 'Servicio';
-        const isTextService = req?.partNameOrDescription?.toLowerCase().includes('servicio') || req?.partNameOrDescription?.toLowerCase().includes('trabajo') || false;
-
-        return {
-          sparePartId: matchedPartId,
-          description: req?.partNameOrDescription || 'Artículo OC',
-          quantityReceived: d.quantityOrdered || 1,
-          unitCost: d.unitPrice || 0,
+    if (isAlreadySelected) {
+      const nextIds = selectedPOIds.filter(id => id !== po.id);
+      setSelectedPOIds(nextIds);
+      setSelectedPOId(nextIds[0] || '');
+      const poDetailIds = new Set((po.details || []).map(d => d.id));
+      setDetails(prev => {
+        const filtered = prev.filter(d => (d as any)._poId !== po.id && (!d.purchaseOrderDetailId || !poDetailIds.has(d.purchaseOrderDetailId)));
+        return filtered.length > 0 ? filtered : [{
+          sparePartId: 0,
+          quantityReceived: 1,
+          unitCost: 0,
           taxPercentage: 16,
-          unitOfMeasureId: d.unitOfMeasureId || req?.unitOfMeasureId,
-          purchaseOrderDetailId: d.id,
-          purchaseRequisitionId: d.purchaseRequisitionId,
-          purchaseRequisition: req,
-          vehicleId: veh?.id || null,
-          vehicle: veh,
-          trailerId: trailer?.id || null,
-          trailer: trailer,
-          itemType: (isPartService || isTextService) ? 'S' : 'C'
-        };
+          itemType: 'C',
+          description: ''
+        }];
       });
+    } else {
+      // Si la factura tenía otro proveedor distinto con OCs cargadas, cambiamos al proveedor de la nueva OC
+      if (supplierId && Number(supplierId) !== po.supplierId && selectedPOIds.length > 0) {
+        if (!confirm(`La Orden de Compra ${po.orderNumber} pertenece a otro proveedor (${po.supplier?.name}). ¿Desea reemplazar las OCs seleccionadas por las de este proveedor?`)) {
+          return;
+        }
+        setSupplierId(po.supplierId);
+        setSelectedPOIds([po.id]);
+        setSelectedPOId(po.id);
+        setDetails(buildLinesFromPO(po, []));
+        return;
+      }
 
-      setDetails(newLines);
+      setSupplierId(po.supplierId);
+      const nextIds = [...selectedPOIds, po.id];
+      setSelectedPOIds(nextIds);
+      setSelectedPOId(nextIds[0]);
+
+      setDetails(prev => {
+        // Quitar líneas vacías iniciales sin datos
+        const nonEmptyPrev = prev.filter(d =>
+          (d.sparePartId && d.sparePartId > 0) ||
+          (d.description && d.description.trim() !== '') ||
+          (d.purchaseOrderDetailId && d.purchaseOrderDetailId > 0)
+        );
+        const existingPodIds = new Set(nonEmptyPrev.map(d => d.purchaseOrderDetailId).filter(Boolean));
+        const newLines = buildLinesFromPO(po, nonEmptyPrev).filter(nl => !nl.purchaseOrderDetailId || !existingPodIds.has(nl.purchaseOrderDetailId));
+        return [...nonEmptyPrev, ...newLines];
+      });
     }
+  };
+
+  // Incluir en 1 clic todas las OCs pendientes del proveedor actual
+  const handleIncludeAllSupplierPOs = (targetSupId: number) => {
+    const supPOs = availablePOs.filter(po => po.supplierId === targetSupId);
+    if (supPOs.length === 0) return;
+
+    setSupplierId(targetSupId);
+    const allIds = Array.from(new Set([...selectedPOIds, ...supPOs.map(p => p.id)]));
+    setSelectedPOIds(allIds);
+    setSelectedPOId(allIds[0] || '');
+
+    setDetails(prev => {
+      let accumulated = prev.filter(d =>
+        (d.sparePartId && d.sparePartId > 0) ||
+        (d.description && d.description.trim() !== '') ||
+        (d.purchaseOrderDetailId && d.purchaseOrderDetailId > 0)
+      );
+      const existingPodIds = new Set(accumulated.map(d => d.purchaseOrderDetailId).filter(Boolean));
+
+      for (const po of supPOs) {
+        const newLines = buildLinesFromPO(po, accumulated).filter(nl => !nl.purchaseOrderDetailId || !existingPodIds.has(nl.purchaseOrderDetailId));
+        newLines.forEach(nl => {
+          if (nl.purchaseOrderDetailId) existingPodIds.add(nl.purchaseOrderDetailId);
+        });
+        accumulated = [...accumulated, ...newLines];
+      }
+      return accumulated;
+    });
+  };
+
+  // Limpiar todas las OCs seleccionadas
+  const handleClearSelectedPOs = () => {
+    setSelectedPOIds([]);
+    setSelectedPOId('');
+    setDetails([{
+      sparePartId: 0,
+      quantityReceived: 1,
+      unitCost: 0,
+      taxPercentage: 16,
+      itemType: 'C',
+      description: ''
+    }]);
   };
 
   const handleCancelInvoice = async (inv: PurchaseInvoice) => {
@@ -290,6 +417,36 @@ export default function InvoicesTab() {
     });
   };
 
+  // Autovinculación inteligente: si hay varias requisiciones del mismo artículo en la factura, replica el repuesto seleccionado
+  const updateLineMultiWithReplication = (index: number, updates: Partial<PurchaseInvoiceDetail>) => {
+    setDetails(prev => {
+      const newDetails = [...prev];
+      const targetLine = newDetails[index];
+      const rawSourceDesc = (targetLine?.purchaseRequisition?.partNameOrDescription || targetLine?.description || '').trim().toLowerCase();
+      const prevSparePartId = targetLine?.sparePartId;
+
+      newDetails[index] = { ...targetLine, ...updates };
+
+      if (rawSourceDesc && updates.sparePartId && updates.sparePartId > 0) {
+        for (let i = 0; i < newDetails.length; i++) {
+          if (i === index) continue;
+          const sibling = newDetails[i];
+          const siblingDesc = (sibling?.purchaseRequisition?.partNameOrDescription || sibling?.description || '').trim().toLowerCase();
+          if (siblingDesc === rawSourceDesc && (!sibling.sparePartId || sibling.sparePartId === 0 || sibling.sparePartId === prevSparePartId)) {
+            newDetails[i] = {
+              ...sibling,
+              sparePartId: updates.sparePartId,
+              unitOfMeasureId: updates.unitOfMeasureId || sibling.unitOfMeasureId,
+              itemType: updates.itemType || sibling.itemType,
+              unitCost: (sibling.unitCost && sibling.unitCost > 0) ? sibling.unitCost : (updates.unitCost || 0)
+            };
+          }
+        }
+      }
+      return newDetails;
+    });
+  };
+
   const calculateTotals = () => {
     let sub = 0;
     let tax = 0;
@@ -363,7 +520,7 @@ export default function InvoicesTab() {
     const totals = calculateTotals();
     const payload: Partial<PurchaseInvoice> = {
       supplierId: Number(supplierId),
-      purchaseOrderId: selectedPOId ? Number(selectedPOId) : null,
+      purchaseOrderId: selectedPOIds.length > 0 ? Number(selectedPOIds[0]) : (selectedPOId ? Number(selectedPOId) : null),
       invoiceNumber: invoiceNumber.trim(),
       controlNumber: controlNumber.trim() || undefined,
       dateIssued: new Date(dateIssued).toISOString(),
@@ -549,8 +706,8 @@ export default function InvoicesTab() {
       {showForm ? (
         <form onSubmit={handleSave} className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-visible animate-in fade-in slide-in-from-top-4 relative">
           
-          {/* Banner de Vinculación con Orden de Compra */}
-          <div className="p-4 bg-indigo-50/80 dark:bg-indigo-950/40 border-b border-indigo-100 dark:border-indigo-900/50 rounded-t-2xl">
+          {/* Banner de Vinculación con una o múltiples Órdenes de Compra */}
+          <div className="p-4 bg-indigo-50/80 dark:bg-indigo-950/40 border-b border-indigo-100 dark:border-indigo-900/50 rounded-t-2xl space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 rounded-xl bg-indigo-600 text-white shadow-sm">
@@ -558,32 +715,118 @@ export default function InvoicesTab() {
                 </div>
                 <div>
                   <span className="text-xs font-black uppercase tracking-wider text-indigo-700 dark:text-indigo-300">
-                    Automatización 1-Clic
+                    Automatización 1-Clic • Multi-OC
                   </span>
                   <h3 className="text-sm font-bold text-gray-900 dark:text-white">
-                    Cargar datos desde una Orden de Compra aprobada
+                    Cargar una o varias Órdenes de Compra en esta Factura
                   </h3>
                 </div>
               </div>
 
-              <div className="w-full sm:w-80">
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                 <select
-                  value={selectedPOId}
-                  onChange={(e) => handleSelectPurchaseOrder(e.target.value === '' ? '' : Number(e.target.value))}
-                  className="w-full text-xs font-semibold rounded-xl border border-indigo-200 dark:border-indigo-800 px-3 py-2 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                  value=""
+                  onChange={(e) => {
+                    if (e.target.value !== '') {
+                      handleTogglePurchaseOrder(Number(e.target.value));
+                    }
+                  }}
+                  className="w-full sm:w-80 text-xs font-semibold rounded-xl border border-indigo-200 dark:border-indigo-800 px-3 py-2 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
                 >
-                  <option value="">-- Sin Orden de Compra (Carga Directa) --</option>
-                  {availablePOs.map(po => (
-                    <option key={po.id} value={po.id}>
-                      {po.orderNumber} • {po.supplier?.name} (${po.orderTotal.toFixed(2)})
-                    </option>
-                  ))}
+                  <option value="">
+                    {selectedPOIds.length > 0
+                      ? `+ Agregar otra Orden de Compra (${selectedPOIds.length} incluida${selectedPOIds.length > 1 ? 's' : ''})...`
+                      : '-- Seleccionar Orden de Compra (o Carga Directa) --'}
+                  </option>
+                  {(supplierId ? availablePOs.filter(po => po.supplierId === Number(supplierId)) : availablePOs).map(po => {
+                    const isChecked = selectedPOIds.includes(po.id);
+                    return (
+                      <option key={po.id} value={po.id}>
+                        {isChecked ? '✓ ' : '+ '}{po.orderNumber} • {po.supplier?.name} (${po.orderTotal.toFixed(2)})
+                      </option>
+                    );
+                  })}
                 </select>
+
+                {supplierId && availablePOs.filter(po => po.supplierId === Number(supplierId)).length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => handleIncludeAllSupplierPOs(Number(supplierId))}
+                    className="px-3 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition-colors cursor-pointer whitespace-nowrap"
+                    title="Agrega automáticamente todas las Órdenes de Compra pendientes de este proveedor a la factura"
+                  >
+                    + Incluir todas las OCs del proveedor ({availablePOs.filter(po => po.supplierId === Number(supplierId)).length})
+                  </button>
+                )}
+
+                {selectedPOIds.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleClearSelectedPOs}
+                    className="px-2.5 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-gray-800 text-red-600 hover:bg-red-50 border border-red-200 dark:border-red-900/50 transition-colors cursor-pointer"
+                    title="Quitar todas las Órdenes de Compra importadas"
+                  >
+                    Limpiar OCs
+                  </button>
+                )}
               </div>
             </div>
-            {selectedPOId && (
-              <p className="text-[11px] text-indigo-600 dark:text-indigo-400 mt-2">
-                ✓ Ítems, cantidades, costos, requisición y vehículos precargados automáticamente. La Orden de Compra se marcará como completada al guardar.
+
+            {/* Píldoras de OCs pendientes del proveedor seleccionado para marcar/desmarcar con 1 clic */}
+            {(() => {
+              const targetSupId = supplierId ? Number(supplierId) : null;
+              const supplierPOs = targetSupId
+                ? purchaseOrders.filter(po =>
+                    po.supplierId === targetSupId &&
+                    (selectedPOIds.includes(po.id) || (po.status !== 'Anulada' && po.status !== 'Cancelada' && po.status !== 'Completada'))
+                  )
+                : purchaseOrders.filter(po => selectedPOIds.includes(po.id));
+
+              if (supplierPOs.length === 0) return null;
+
+              return (
+                <div className="pt-2 border-t border-indigo-100 dark:border-indigo-900/60">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-[11px] font-bold text-indigo-800 dark:text-indigo-300 mr-1">
+                      OCs del proveedor (clic para incluir/quitar):
+                    </span>
+                    {supplierPOs.map(po => {
+                      const active = selectedPOIds.includes(po.id);
+                      const itemsCount = po.details?.length || 0;
+                      const firstPart = po.details?.[0]?.purchaseRequisition?.partNameOrDescription || '';
+                      return (
+                        <button
+                          key={po.id}
+                          type="button"
+                          onClick={() => handleTogglePurchaseOrder(po.id)}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
+                            active
+                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                              : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-700 hover:border-indigo-400'
+                          }`}
+                          title={`${po.orderNumber}: ${firstPart} (${itemsCount} ítem(s) - $${po.orderTotal.toFixed(2)})`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={active}
+                            readOnly
+                            className="w-3.5 h-3.5 rounded pointer-events-none accent-white"
+                          />
+                          <span>{po.orderNumber}</span>
+                          <span className={`text-[10px] font-normal ${active ? 'text-indigo-100' : 'text-gray-500'}`}>
+                            ({itemsCount} {itemsCount === 1 ? 'ítem' : 'ítems'} • ${po.orderTotal.toFixed(2)})
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {selectedPOIds.length > 0 && (
+              <p className="text-[11px] text-indigo-700 dark:text-indigo-300 font-medium">
+                ✓ <strong>{selectedPOIds.length}</strong> {selectedPOIds.length === 1 ? 'Orden de Compra vinculada' : 'Órdenes de Compra vinculadas'}. Cada renglón conserva su OT/Requisición destino y si seleccionas un repuesto de catálogo en un artículo repetido, se autovinculará en los demás renglones iguales.
               </p>
             )}
           </div>
@@ -711,7 +954,7 @@ export default function InvoicesTab() {
                                       if (!d.description) updates.description = part.name;
                                     }
                                   }
-                                  updateLineMulti(index, updates);
+                                  updateLineMultiWithReplication(index, updates);
                                 }}
                                 spareParts={parts}
                                 placeholder="-- Buscar en Catálogo de Repuestos --"
@@ -749,11 +992,18 @@ export default function InvoicesTab() {
                            ) : (
                              <span className="text-slate-400 italic text-[11px]">Stock Almacén</span>
                            )}
-                           {req && (
-                             <span className="text-[10px] text-slate-500 block font-mono">
-                               Req: R.{req.id} {req.quantity && d.quantityReceived && d.quantityReceived > req.quantity ? `(${req.quantity} OT + ${d.quantityReceived - req.quantity} Stock)` : ''}
-                             </span>
-                           )}
+                           <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                             {getPONumberForDetail(d) && (
+                               <span className="text-[10px] bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.2 rounded border border-indigo-200 dark:border-indigo-800 font-mono font-bold">
+                                 OC: {getPONumberForDetail(d)}
+                               </span>
+                             )}
+                             {req && (
+                               <span className="text-[10px] text-slate-500 font-mono">
+                                 Req: R.{req.id}{req.serviceRequestId ? ` • OT #${req.serviceRequestId.toString().padStart(4, '0')}` : ''} {req.quantity && d.quantityReceived && d.quantityReceived > req.quantity ? `(${req.quantity} OT + ${d.quantityReceived - req.quantity} Stock)` : ''}
+                               </span>
+                             )}
+                           </div>
                          </div>
                        </td>
 
@@ -977,12 +1227,29 @@ export default function InvoicesTab() {
                             </span>
                           )}
 
-                          {/* Badge de Orden de Compra si existe */}
-                          {inv.purchaseOrder && (
-                            <span className="bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
-                              <ShoppingCart size={11} /> OC: {inv.purchaseOrder.orderNumber}
-                            </span>
-                          )}
+                          {/* Badges de todas las Órdenes de Compra vinculadas a esta factura */}
+                          {(() => {
+                            const linkedPoIds = getLinkedPOIdsFromInvoice(inv);
+                            const linkedOrderNumbers = Array.from(
+                              new Set(
+                                [
+                                  inv.purchaseOrder?.orderNumber,
+                                  ...linkedPoIds.map(id => purchaseOrders.find(p => p.id === id)?.orderNumber)
+                                ].filter(Boolean)
+                              )
+                            ) as string[];
+
+                            if (linkedOrderNumbers.length === 0) return null;
+
+                            return (
+                              <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 flex items-center gap-1 flex-wrap">
+                                <ShoppingCart size={11} />
+                                {linkedOrderNumbers.length === 1
+                                  ? `OC: ${linkedOrderNumbers[0]}`
+                                  : `OCs (${linkedOrderNumbers.length}): ${linkedOrderNumbers.join(', ')}`}
+                              </span>
+                            );
+                          })()}
 
                           {inv.controlNumber && (
                             <span className="text-[11px] text-slate-400 font-mono">
