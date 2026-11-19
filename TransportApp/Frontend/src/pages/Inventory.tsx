@@ -1,10 +1,12 @@
 import api from '../lib/api';
 import { useEffect, useState } from 'react';
-import { PackageOpen, FileUp, Download, Plus, Loader2, Trash2, AlertTriangle, FileClock, X, ArrowUpRight, ArrowDownRight, Search, Printer, MapPin, TrendingUp } from 'lucide-react';
+import { PackageOpen, FileUp, Download, Plus, Loader2, Trash2, AlertTriangle, FileClock, X, ArrowUpRight, ArrowDownRight, Search, Printer, MapPin, TrendingUp, QrCode } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { inventoryService } from '../services/inventoryService';
 import type { SparePart, SparePartUnit } from '../types/inventory';
 import { formatSparePartName } from '../types/inventory';
+import { useAuthStore } from '../store/authStore';
+import { QrLabelPrintModal } from '../components/QrLabelPrintModal';
 
 export default function Inventory() {
   const [spareParts, setSpareParts] = useState<SparePart[]>([]);
@@ -49,7 +51,10 @@ export default function Inventory() {
   const [historyPart, setHistoryPart] = useState<SparePart | null>(null);
   const [historyData, setHistoryData] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const { selectedCompany } = useAuthStore();
   const [showPrintModal, setShowPrintModal] = useState(false);
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [qrSelectedPart, setQrSelectedPart] = useState<SparePart | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
@@ -352,6 +357,17 @@ export default function Inventory() {
               Importar Excel
             </button>
 
+          <button 
+            onClick={() => {
+              setQrSelectedPart(null);
+              setShowQrModal(true);
+            }}
+            className="bg-gray-900 hover:bg-black dark:bg-amber-500 dark:hover:bg-amber-600 text-white dark:text-gray-950 px-4 py-2 rounded-lg font-semibold flex items-center gap-2 transition-colors shadow-sm cursor-pointer"
+            title="Generar e imprimir etiquetas QR (6,40 cm x 3,80 cm - 15 por hoja)"
+          >
+            <QrCode size={19} />
+            Etiquetas QR
+          </button>
           <button 
             onClick={() => setShowPrintModal(true)}
             className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors shadow-sm"
@@ -755,6 +771,18 @@ export default function Inventory() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3" onClick={e => e.stopPropagation()}>
+                        {part.itemType !== 'Servicio' && (
+                          <button
+                            onClick={() => {
+                              setQrSelectedPart(part);
+                              setShowQrModal(true);
+                            }}
+                            className="text-gray-700 dark:text-amber-400 hover:text-black dark:hover:text-amber-300 px-2.5 py-1.5 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 border border-gray-200 dark:border-gray-700 transition-colors flex items-center gap-1.5 text-xs font-bold cursor-pointer"
+                            title="Imprimir Etiqueta QR de este artículo"
+                          >
+                            <QrCode size={15} /> QR
+                          </button>
+                        )}
                         <button 
                           onClick={() => loadHistory(part)}
                           className="text-blue-600 hover:text-blue-800 p-2 rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors flex items-center gap-2 text-sm font-medium"
@@ -1040,6 +1068,17 @@ export default function Inventory() {
          </div>
       </div>
     </div>
+
+      <QrLabelPrintModal
+        isOpen={showQrModal}
+        onClose={() => {
+          setShowQrModal(false);
+          setQrSelectedPart(null);
+        }}
+        spareParts={spareParts}
+        initialSelectedPart={qrSelectedPart}
+        companyName={selectedCompany?.name || 'TRANSPORMETALS'}
+      />
 
       {showImportModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">

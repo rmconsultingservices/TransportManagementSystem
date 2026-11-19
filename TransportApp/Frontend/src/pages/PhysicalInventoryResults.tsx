@@ -1,9 +1,10 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, CheckCircle, PackageOpen, MapPin, Calculator, AlertTriangle, AlertCircle, Ban } from 'lucide-react';
+import { ArrowLeft, Save, CheckCircle, PackageOpen, MapPin, Calculator, AlertTriangle, AlertCircle, Ban, QrCode, Camera } from 'lucide-react';
 import type { PhysicalInventory, PhysicalInventoryDetail } from '../types/inventory';
 import { formatSparePartName } from '../types/inventory';
 import { physicalInventoryService } from '../services/physicalInventoryService';
+import { QrScannerModal } from '../components/QrScannerModal';
 import toast from 'react-hot-toast';
 
 export default function PhysicalInventoryResults() {
@@ -18,6 +19,61 @@ export default function PhysicalInventoryResults() {
   const [zeroUncounted, setZeroUncounted] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [multiUnitInputs, setMultiUnitInputs] = useState<Record<number, Record<number, string>>>({});
+  const [showQrScanner, setShowQrScanner] = useState(false);
+  const [scannedDetailFromWedge, setScannedDetailFromWedge] = useState<PhysicalInventoryDetail | null>(null);
+  const [lastScannedPartId, setLastScannedPartId] = useState<number | null>(null);
+
+  // Support physical USB / Bluetooth barcode & QR scanner guns (keyboard wedge)
+  useEffect(() => {
+    let buffer = '';
+    let lastKeyTime = 0;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')) {
+        return;
+      }
+      const now = Date.now();
+      if (now - lastKeyTime > 80) {
+        buffer = '';
+      }
+      lastKeyTime = now;
+
+      if (e.key === 'Enter' && buffer.length >= 4) {
+        const cleaned = buffer.trim().replace(/^#/, '').toUpperCase();
+        buffer = '';
+        const found = details.find(d => (d.sparePart?.code || '').trim().toUpperCase() === cleaned);
+        if (found) {
+          setScannedDetailFromWedge(found);
+          setShowQrScanner(true);
+        }
+      } else if (e.key.length === 1) {
+        buffer += e.key;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [details]);
+
+  const handleQrCountConfirmed = async (sparePartId: number, countedQuantity: number) => {
+    setDetails(prev =>
+      prev.map(d => (d.sparePartId === sparePartId ? { ...d, realStock: countedQuantity } : d))
+    );
+    setLastScannedPartId(sparePartId);
+    toast.success(`Conteo registrado: ${countedQuantity}`);
+
+    // Auto-save count to server in background so mobile counts are persisted immediately
+    if (inventory?.id) {
+      try {
+        await physicalInventoryService.updateResults(inventory.id, [
+          { sparePartId, realStock: countedQuantity }
+        ]);
+      } catch (err) {
+        console.warn('Auto-save count warning:', err);
+      }
+    }
+  };
 
   useEffect(() => {
     if (id) {
@@ -275,13 +331,29 @@ export default function PhysicalInventoryResults() {
 
       {/* Toolbar & Options */}
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-4 shrink-0">
-        <input
-          type="text"
-          placeholder="Buscar por código, nombre, marca o modelo..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full sm:w-80 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-        />
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <input
+            type="text"
+            placeholder="Buscar por código, nombre, marca o modelo..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="flex-1 sm:w-80 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+          />
+          {!isProcessed && inventory.status !== 'CANCELLED' && (
+            <button
+              type="button"
+              onClick={() => {
+                setScannedDetailFromWedge(null);
+                setShowQrScanner(true);
+              }}
+              className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-extrabold rounded-lg shadow-md shadow-amber-500/20 flex items-center gap-2 transition cursor-pointer shrink-0"
+              title="Escanear código QR del artículo o estante con la cámara"
+            >
+              <QrCode size={19} />
+              <span>Escanear QR</span>
+            </button>
+          )}
+        </div>
 
         {!isProcessed && (
           <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer p-2 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800/50 hover:bg-red-100 transition">
@@ -396,6 +468,33 @@ export default function PhysicalInventoryResults() {
           </table>
         </div>
       </div>
+
+      {/* Botón Flotante Móvil para Escaneo con el Pulgar en Pasillos */}
+      {!isProcessed && inventory.status !== 'CANCELLED' && (
+        <button
+          type="button"
+          onClick={() => {
+            setScannedDetailFromWedge(null);
+            setShowQrScanner(true);
+          }}
+          className="sm:hidden fixed bottom-5 right-5 z-40 bg-amber-500 hover:bg-amber-600 text-white font-extrabold px-5 py-3.5 rounded-full shadow-2xl shadow-amber-500/40 flex items-center gap-2 border-2 border-white dark:border-gray-900 cursor-pointer"
+        >
+          <Camera size={20} />
+          <span>Escanear QR</span>
+        </button>
+      )}
+
+      {/* Modal Escáner QR con Cámara y Tarjeta de Conteo Rápido */}
+      <QrScannerModal
+        isOpen={showQrScanner}
+        onClose={() => {
+          setShowQrScanner(false);
+          setScannedDetailFromWedge(null);
+        }}
+        details={details}
+        onCountConfirmed={handleQrCountConfirmed}
+        initialScannedDetail={scannedDetailFromWedge}
+      />
     </div>
   );
 }
