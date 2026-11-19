@@ -84,6 +84,111 @@ export default function Purchasing() {
 
   // Requisitions Filter State ('pending' | 'approved' | 'all')
   const [reqFilterStatus, setReqFilterStatus] = useState<'pending' | 'approved' | 'all'>('pending');
+  const [reqGlobalSearch, setReqGlobalSearch] = useState('');
+  const [reqColIdOrOt, setReqColIdOrOt] = useState('');
+  const [reqColPart, setReqColPart] = useState('');
+  const [reqColVehicle, setReqColVehicle] = useState('');
+  const [reqColSupplier, setReqColSupplier] = useState('');
+  const [reqColStatus, setReqColStatus] = useState('all');
+
+  const normalizeReqText = (val?: string | number | null) =>
+    String(val ?? '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+
+  const hasActiveReqFilters = Boolean(
+    reqGlobalSearch.trim() ||
+    reqColIdOrOt.trim() ||
+    reqColPart.trim() ||
+    reqColVehicle.trim() ||
+    reqColSupplier.trim() ||
+    reqColStatus !== 'all'
+  );
+
+  const clearAllReqFilters = () => {
+    setReqGlobalSearch('');
+    setReqColIdOrOt('');
+    setReqColPart('');
+    setReqColVehicle('');
+    setReqColSupplier('');
+    setReqColStatus('all');
+  };
+
+  const displayedReqs = requisitions.filter(r => {
+    const isApproved = r.status === 'Comprada' || Boolean(r.quotations?.some(q => q.isSelected));
+    if (reqFilterStatus === 'pending' && isApproved) return false;
+    if (reqFilterStatus === 'approved' && !isApproved) return false;
+
+    if (reqColStatus !== 'all') {
+      if (reqColStatus === 'Pendiente' && r.status !== 'Pendiente') return false;
+      if (reqColStatus === 'Cotizando' && r.status !== 'Cotizando') return false;
+      if (reqColStatus === 'Comprada' && r.status !== 'Comprada' && !isApproved) return false;
+      if (reqColStatus === 'without_quotes' && (r.quotations?.length || 0) > 0) return false;
+      if (reqColStatus === 'with_quotes' && (r.quotations?.length || 0) === 0) return false;
+    }
+
+    const reqIdPadded = r.id.toString().padStart(4, '0');
+    const otIdPadded = r.serviceRequestId ? r.serviceRequestId.toString().padStart(4, '0') : '';
+    const dObj = new Date(r.dateRequested);
+    const dateEs = dObj.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const dateShort = dObj.toLocaleDateString();
+    const dateIso = !isNaN(dObj.getTime()) ? dObj.toISOString().split('T')[0] : '';
+
+    const idOrOtText = normalizeReqText(`#${reqIdPadded} req ${r.id} ot #${r.serviceRequestId || ''} #${otIdPadded} ${dateEs} ${dateShort} ${dateIso}`);
+    const partText = normalizeReqText(`${r.partNameOrDescription || ''} ${r.observations || ''} ${r.serviceRequest?.description || ''} ${r.serviceRequest?.repairType || ''}`);
+    const veh = r.serviceRequest?.vehicle;
+    const trl = r.serviceRequest?.trailer;
+    const vehicleText = normalizeReqText(`${veh?.licensePlate || ''} ${veh?.brand || ''} ${veh?.model || ''} ${trl?.licensePlate || ''} ${trl?.type || ''}`);
+    const quotesList = r.quotations || [];
+    const supplierText = quotesList.length > 0
+      ? normalizeReqText(quotesList.map(q => `${q.supplier?.name || ''} ${q.notes || ''} ${q.unitPrice}`).join(' '))
+      : normalizeReqText('sin cotizaciones sin cotizar');
+    const statusText = normalizeReqText(r.status || '');
+
+    if (reqColIdOrOt.trim()) {
+      const tokens = normalizeReqText(reqColIdOrOt).split(/\s+/);
+      if (!tokens.every(t => idOrOtText.includes(t))) return false;
+    }
+
+    if (reqColPart.trim()) {
+      const tokens = normalizeReqText(reqColPart).split(/\s+/);
+      if (!tokens.every(t => partText.includes(t))) return false;
+    }
+
+    if (reqColVehicle.trim()) {
+      const tokens = normalizeReqText(reqColVehicle).split(/\s+/);
+      if (!tokens.every(t => vehicleText.includes(t))) return false;
+    }
+
+    if (reqColSupplier.trim()) {
+      const tokens = normalizeReqText(reqColSupplier).split(/\s+/);
+      if (!tokens.every(t => supplierText.includes(t))) return false;
+    }
+
+    if (reqGlobalSearch.trim()) {
+      const fullText = `${idOrOtText} ${partText} ${vehicleText} ${supplierText} ${statusText}`;
+      const tokens = normalizeReqText(reqGlobalSearch).split(/\s+/);
+      if (!tokens.every(t => fullText.includes(t))) return false;
+    }
+
+    return true;
+  });
+
+  const distinctReqUnits = Array.from(
+    new Set(
+      requisitions
+        .map(r => {
+          const v = r.serviceRequest?.vehicle;
+          const t = r.serviceRequest?.trailer;
+          if (v) return `${v.licensePlate} - ${v.brand || ''} ${v.model || ''}`.trim();
+          if (t) return `${t.licensePlate} - ${t.type || 'Remolque'}`.trim();
+          return null;
+        })
+        .filter(Boolean)
+    )
+  ) as string[];
 
   // Comparative Matrix Modal State
   const [showCompareModal, setShowCompareModal] = useState(false);
@@ -254,10 +359,12 @@ export default function Purchasing() {
   };
 
   const handleSelectAllReqs = () => {
-    if (selectedReqIds.length === requisitions.length) {
-      setSelectedReqIds([]);
+    const visibleIds = displayedReqs.map(r => r.id);
+    const allVisibleSelected = visibleIds.length > 0 && visibleIds.every(id => selectedReqIds.includes(id));
+    if (allVisibleSelected) {
+      setSelectedReqIds(prev => prev.filter(id => !visibleIds.includes(id)));
     } else {
-      setSelectedReqIds(requisitions.map(r => r.id));
+      setSelectedReqIds(prev => Array.from(new Set([...prev, ...visibleIds])));
     }
   };
 
@@ -1168,11 +1275,11 @@ export default function Purchasing() {
                   <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300">
                     <input 
                       type="checkbox" 
-                      checked={requisitions.length > 0 && selectedReqIds.length === requisitions.length}
+                      checked={displayedReqs.length > 0 && displayedReqs.every(r => selectedReqIds.includes(r.id))}
                       onChange={handleSelectAllReqs}
                       className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                     />
-                    <span>Seleccionar todos ({requisitions.length})</span>
+                    <span>Seleccionar visibles ({displayedReqs.length})</span>
                   </label>
                   {selectedReqIds.length > 0 && (
                     <span className="text-xs bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300 font-semibold px-2.5 py-1 rounded-full border border-indigo-200 dark:border-indigo-800">
@@ -1181,7 +1288,7 @@ export default function Purchasing() {
                   )}
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
                     disabled={selectedReqIds.length === 0}
@@ -1229,23 +1336,208 @@ export default function Purchasing() {
                 </div>
               </div>
 
+              {/* Panel de Filtro Inteligente y Búsqueda por Campos para el Buzón de Requisiciones */}
+              <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm space-y-3">
+                <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+                  {/* Buscador Inteligente Multi-campo */}
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                    <input
+                      type="text"
+                      value={reqGlobalSearch}
+                      onChange={(e) => setReqGlobalSearch(e.target.value)}
+                      placeholder="Filtro inteligente: busca por # requisición, # OT, placa, repuesto, motivo, proveedor cotizado o fecha..."
+                      className="w-full pl-10 pr-9 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50/50 dark:bg-gray-900/50 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all"
+                    />
+                    {reqGlobalSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setReqGlobalSearch('')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                        title="Limpiar búsqueda general"
+                      >
+                        <X size={16} />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between md:justify-end gap-3">
+                    {hasActiveReqFilters && (
+                      <button
+                        type="button"
+                        onClick={clearAllReqFilters}
+                        className="px-3 py-2 rounded-lg text-xs font-semibold bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-950/50 dark:hover:bg-red-900/60 dark:text-red-300 border border-red-200 dark:border-red-800/60 flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap"
+                      >
+                        <X size={14} />
+                        Limpiar filtros
+                      </button>
+                    )}
+                    <div className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                      Mostrando <span className="font-bold text-gray-900 dark:text-white">{displayedReqs.length}</span> de{' '}
+                      <span className="font-bold text-gray-900 dark:text-white">{requisitions.length}</span> requisiciones
+                    </div>
+                  </div>
+                </div>
+
+                {/* Filtros Específicos por cada Campo / Columna */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 pt-2 border-t border-gray-100 dark:border-gray-700/70">
+                  {/* 1. # Requisición / # OT / Fecha */}
+                  <div className="relative">
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1">
+                      # Requisición / OT / Fecha
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={reqColIdOrOt}
+                        onChange={(e) => setReqColIdOrOt(e.target.value)}
+                        placeholder="Ej: #0145, OT 246 o fecha..."
+                        className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-2.5 py-1.5 pr-6 text-xs text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 outline-none"
+                      />
+                      {reqColIdOrOt && (
+                        <button
+                          type="button"
+                          onClick={() => setReqColIdOrOt('')}
+                          className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                        >
+                          <X size={13} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 2. Repuesto / Descripción / Motivo */}
+                  <div className="relative">
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1">
+                      Repuesto / Motivo / Obs.
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={reqColPart}
+                        onChange={(e) => setReqColPart(e.target.value)}
+                        placeholder="Buscar repuesto o motivo..."
+                        className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-2.5 py-1.5 pr-6 text-xs text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 outline-none"
+                      />
+                      {reqColPart && (
+                        <button
+                          type="button"
+                          onClick={() => setReqColPart('')}
+                          className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                        >
+                          <X size={13} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 3. Vehículo / Placa / Remolque */}
+                  <div className="relative">
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1">
+                      Vehículo / Placa / Unidad
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        list="req-units-filter-list"
+                        value={reqColVehicle}
+                        onChange={(e) => setReqColVehicle(e.target.value)}
+                        placeholder="Placa, marca o remolque..."
+                        className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-2.5 py-1.5 pr-6 text-xs text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 outline-none"
+                      />
+                      <datalist id="req-units-filter-list">
+                        {distinctReqUnits.map((u, idx) => (
+                          <option key={idx} value={u.split(' - ')[0]}>{u}</option>
+                        ))}
+                      </datalist>
+                      {reqColVehicle && (
+                        <button
+                          type="button"
+                          onClick={() => setReqColVehicle('')}
+                          className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                        >
+                          <X size={13} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 4. Proveedor Cotizado */}
+                  <div className="relative">
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1">
+                      Proveedor Cotizado
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        list="req-suppliers-filter-list"
+                        value={reqColSupplier}
+                        onChange={(e) => setReqColSupplier(e.target.value)}
+                        placeholder="Proveedor o Sin cotizar..."
+                        className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-2.5 py-1.5 pr-6 text-xs text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 outline-none"
+                      />
+                      <datalist id="req-suppliers-filter-list">
+                        <option value="Sin cotizaciones" />
+                        {suppliers.map(s => (
+                          <option key={s.id} value={s.name} />
+                        ))}
+                      </datalist>
+                      {reqColSupplier && (
+                        <button
+                          type="button"
+                          onClick={() => setReqColSupplier('')}
+                          className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                        >
+                          <X size={13} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 5. Estatus / Cotizaciones */}
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1">
+                      Estatus / Cotizaciones
+                    </label>
+                    <select
+                      value={reqColStatus}
+                      onChange={(e) => setReqColStatus(e.target.value)}
+                      className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-2.5 py-1.5 text-xs text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                    >
+                      <option value="all">Todos los estados</option>
+                      <option value="Pendiente">Estatus: Pendiente</option>
+                      <option value="Cotizando">Estatus: Cotizando</option>
+                      <option value="Comprada">Estatus: Comprada / Aprobada</option>
+                      <option value="without_quotes">Sin cotizaciones cargadas</option>
+                      <option value="with_quotes">Con cotizaciones cargadas</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 gap-6">
               {(() => {
-                const displayedReqs = requisitions.filter(r => {
-                  const isApproved = r.status === 'Comprada' || r.quotations?.some(q => q.isSelected);
-                  if (reqFilterStatus === 'pending') return !isApproved;
-                  if (reqFilterStatus === 'approved') return isApproved;
-                  return true;
-                });
-
                 if (displayedReqs.length === 0) {
                   return (
-                    <div className="py-12 text-center text-gray-400 italic bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-                      {reqFilterStatus === 'pending'
-                        ? 'No hay requisiciones pendientes por aprobar cotización.'
-                        : reqFilterStatus === 'approved'
-                          ? 'No hay requisiciones con cotizaciones aprobadas aún.'
-                          : 'No hay requisiciones registradas.'}
+                    <div className="py-12 text-center text-gray-400 italic bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 space-y-2">
+                      <p>
+                        {hasActiveReqFilters
+                          ? 'No se encontraron requisiciones que coincidan con los filtros aplicados.'
+                          : reqFilterStatus === 'pending'
+                            ? 'No hay requisiciones pendientes por aprobar cotización.'
+                            : reqFilterStatus === 'approved'
+                              ? 'No hay requisiciones con cotizaciones aprobadas aún.'
+                              : 'No hay requisiciones registradas.'}
+                      </p>
+                      {hasActiveReqFilters && (
+                        <button
+                          type="button"
+                          onClick={clearAllReqFilters}
+                          className="text-xs font-semibold not-italic text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+                        >
+                          Limpiar todos los filtros de búsqueda
+                        </button>
+                      )}
                     </div>
                   );
                 }
