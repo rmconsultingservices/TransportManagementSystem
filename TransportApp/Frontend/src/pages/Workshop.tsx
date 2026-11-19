@@ -2,11 +2,11 @@ import { ReportPreviewModal } from '../components/ReportPreviewModal';
 import { useAuthStore } from '../store/authStore';
 ﻿import { toast } from 'react-hot-toast';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 
 import { Link } from 'react-router-dom';
 
-import { Wrench, Plus, Loader2, PenTool, CheckCircle2, Clock, UserCheck, Trash2, Printer, Edit, RotateCcw } from 'lucide-react';
+import { Wrench, Plus, Loader2, PenTool, CheckCircle2, Clock, UserCheck, Trash2, Printer, Edit, RotateCcw, Search, Filter, X } from 'lucide-react';
 
 import { workshopService } from '../services/workshopService';
 
@@ -357,6 +357,134 @@ export default function Workshop() {
 
 
 
+  // Smart & Per-Column Filters State
+  const [globalSearch, setGlobalSearch] = useState('');
+  const [colFilterTicket, setColFilterTicket] = useState('');
+  const [colFilterRepairType, setColFilterRepairType] = useState('all');
+  const [colFilterVehicle, setColFilterVehicle] = useState('');
+  const [colFilterFault, setColFilterFault] = useState('');
+  const [colFilterMechanic, setColFilterMechanic] = useState('');
+  const [colFilterStatus, setColFilterStatus] = useState('all');
+
+  const normalizeText = (val?: string | number | null) =>
+    String(val ?? '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+
+  const hasActiveFilters = Boolean(
+    globalSearch.trim() ||
+    colFilterTicket.trim() ||
+    colFilterRepairType !== 'all' ||
+    colFilterVehicle.trim() ||
+    colFilterFault.trim() ||
+    colFilterMechanic.trim() ||
+    colFilterStatus !== 'all'
+  );
+
+  const clearAllFilters = () => {
+    setGlobalSearch('');
+    setColFilterTicket('');
+    setColFilterRepairType('all');
+    setColFilterVehicle('');
+    setColFilterFault('');
+    setColFilterMechanic('');
+    setColFilterStatus('all');
+  };
+
+  const statusCounts = useMemo(() => {
+    return {
+      all: requests.length,
+      pendiente: requests.filter(r => r.status === 'Pendiente').length,
+      revision: requests.filter(r => r.status?.includes('Revisi')).length,
+      completado: requests.filter(r => r.status === 'Completado').length,
+    };
+  }, [requests]);
+
+  const filteredRequests = useMemo(() => {
+    return requests.filter((req) => {
+      const ticketIdPadded = req.id.toString().padStart(4, '0');
+      const reqDateObj = new Date(req.dateRequested);
+      const dateFormatted = reqDateObj.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const dateShort = reqDateObj.toLocaleDateString();
+      const dateIso = !isNaN(reqDateObj.getTime()) ? reqDateObj.toISOString().split('T')[0] : '';
+      const rType = req.repairType || 'Preventiva';
+
+      const ticketText = normalizeText(`#${ticketIdPadded} ${req.id} ${rType} ${dateFormatted} ${dateShort} ${dateIso}`);
+
+      const plate = req.vehicle ? req.vehicle.licensePlate : (req.trailer ? req.trailer.licensePlate : 'N/A');
+      const unitDetails = req.vehicle
+        ? `${req.vehicle.brand || ''} ${req.vehicle.model || ''}`
+        : (req.trailer ? `${req.trailer.type || 'Remolque'}` : '');
+      const driverName = req.driver?.name || 'Chofer Desconocido';
+      const vehicleText = normalizeText(`${plate} ${unitDetails} ${driverName}`);
+
+      const activitiesText = (req.activities || []).map(a => a.description).join(' ');
+      const faultText = normalizeText(`${req.description || ''} ${req.roadsideLocation || ''} ${activitiesText}`);
+
+      const mechanicName = req.mechanic?.name || 'Sin Asignar';
+      const mechanicText = normalizeText(mechanicName);
+
+      const statusText = normalizeText(req.status || '');
+
+      // 1. Column Filter: Ticket / Fecha / Tipo
+      if (colFilterTicket.trim()) {
+        const tokens = normalizeText(colFilterTicket).split(/\s+/);
+        if (!tokens.every(t => ticketText.includes(t))) return false;
+      }
+
+      if (colFilterRepairType !== 'all') {
+        if (normalizeText(rType) !== normalizeText(colFilterRepairType)) return false;
+      }
+
+      // 2. Column Filter: Vehículo / Chofer
+      if (colFilterVehicle.trim()) {
+        const tokens = normalizeText(colFilterVehicle).split(/\s+/);
+        if (!tokens.every(t => vehicleText.includes(t))) return false;
+      }
+
+      // 3. Column Filter: Falla Reportada / Actividades / Ubicación
+      if (colFilterFault.trim()) {
+        const tokens = normalizeText(colFilterFault).split(/\s+/);
+        if (!tokens.every(t => faultText.includes(t))) return false;
+      }
+
+      // 4. Column Filter: Mecánico Asignado
+      if (colFilterMechanic.trim()) {
+        const tokens = normalizeText(colFilterMechanic).split(/\s+/);
+        if (!tokens.every(t => mechanicText.includes(t))) return false;
+      }
+
+      // 5. Column Filter: Estatus
+      if (colFilterStatus !== 'all') {
+        if (colFilterStatus === 'En Revisión') {
+          if (!statusText.includes('revisi')) return false;
+        } else if (statusText !== normalizeText(colFilterStatus)) {
+          return false;
+        }
+      }
+
+      // 6. Global Smart Search across all columns
+      if (globalSearch.trim()) {
+        const fullRowText = `${ticketText} ${vehicleText} ${faultText} ${mechanicText} ${statusText}`;
+        const tokens = normalizeText(globalSearch).split(/\s+/);
+        if (!tokens.every(t => fullRowText.includes(t))) return false;
+      }
+
+      return true;
+    });
+  }, [
+    requests,
+    globalSearch,
+    colFilterTicket,
+    colFilterRepairType,
+    colFilterVehicle,
+    colFilterFault,
+    colFilterMechanic,
+    colFilterStatus
+  ]);
+
   const getStatusBadge = (status: string) => {
     if (!status) return null;
     if (status === 'Pendiente') {
@@ -633,6 +761,118 @@ export default function Workshop() {
 
 
 
+      {/* Barra de Filtro Inteligente Global y Accesos Rápidos */}
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 space-y-3">
+        <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between">
+          {/* Buscador Inteligente Multi-columna */}
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <input
+              type="text"
+              value={globalSearch}
+              onChange={(e) => setGlobalSearch(e.target.value)}
+              placeholder="Filtro inteligente: busca por # ticket, placa, chofer, falla, actividad, mecánico, fecha o estatus..."
+              className="w-full pl-10 pr-9 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50/50 dark:bg-gray-900/50 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all"
+            />
+            {globalSearch && (
+              <button
+                type="button"
+                onClick={() => setGlobalSearch('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                title="Limpiar búsqueda general"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
+
+          {/* Filtro Rápido por Tipo de Reparación y Botón Limpiar */}
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={colFilterRepairType}
+              onChange={(e) => setColFilterRepairType(e.target.value)}
+              className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-xs font-semibold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
+              title="Filtrar por Tipo de Reparación"
+            >
+              <option value="all">Todos los tipos</option>
+              <option value="Preventiva">Preventiva</option>
+              <option value="Correctiva">Correctiva</option>
+              <option value="Preventiva / Correctiva">Ambas (Prev. / Corr.)</option>
+              <option value="Auxilio Vial">🚨 Auxilio Vial</option>
+            </select>
+
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={clearAllFilters}
+                className="px-3 py-2 rounded-lg text-xs font-semibold bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-950/50 dark:hover:bg-red-900/60 dark:text-red-300 border border-red-200 dark:border-red-800/60 flex items-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <X size={14} />
+                Limpiar filtros
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Pestañas Rápidas de Estatus y Contador de Resultados */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-gray-100 dark:border-gray-700/70">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 flex items-center gap-1 mr-1">
+              <Filter size={13} /> Estatus:
+            </span>
+            <button
+              type="button"
+              onClick={() => setColFilterStatus('all')}
+              className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
+                colFilterStatus === 'all'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'bg-gray-100 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+              }`}
+            >
+              Todos ({statusCounts.all})
+            </button>
+            <button
+              type="button"
+              onClick={() => setColFilterStatus('Pendiente')}
+              className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1 ${
+                colFilterStatus === 'Pendiente'
+                  ? 'bg-red-600 text-white shadow-xs'
+                  : 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-950/70'
+              }`}
+            >
+              <Clock size={11} /> Pendientes ({statusCounts.pendiente})
+            </button>
+            <button
+              type="button"
+              onClick={() => setColFilterStatus('En Revisión')}
+              className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1 ${
+                colFilterStatus === 'En Revisión'
+                  ? 'bg-amber-500 text-white shadow-xs'
+                  : 'bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-950/70'
+              }`}
+            >
+              <PenTool size={11} /> En Revisión ({statusCounts.revision})
+            </button>
+            <button
+              type="button"
+              onClick={() => setColFilterStatus('Completado')}
+              className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1 ${
+                colFilterStatus === 'Completado'
+                  ? 'bg-green-600 text-white shadow-xs'
+                  : 'bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-950/70'
+              }`}
+            >
+              <CheckCircle2 size={11} /> Completados ({statusCounts.completado})
+            </button>
+          </div>
+
+          <div className="text-xs text-gray-500 dark:text-gray-400">
+            Mostrando <span className="font-bold text-gray-900 dark:text-white">{filteredRequests.length}</span> de{' '}
+            <span className="font-bold text-gray-900 dark:text-white">{requests.length}</span> solicitudes
+          </div>
+        </div>
+      </div>
+
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
 
         <div className="overflow-x-auto">
@@ -657,6 +897,140 @@ export default function Workshop() {
 
               </tr>
 
+              {/* Fila de Filtros Inteligentes por cada Columna */}
+              <tr className="bg-gray-100/70 dark:bg-gray-800/90 border-b border-gray-200 dark:border-gray-700">
+                {/* Columna 1: Ticket / Fecha / Tipo */}
+                <th className="px-3 py-2 align-top">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={colFilterTicket}
+                      onChange={(e) => setColFilterTicket(e.target.value)}
+                      placeholder="# Ticket, fecha o tipo..."
+                      className="w-full min-w-[130px] rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-2.5 py-1.5 pr-6 text-xs font-normal text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                    {colFilterTicket && (
+                      <button
+                        type="button"
+                        onClick={() => setColFilterTicket('')}
+                        className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                        title="Limpiar filtro de ticket"
+                      >
+                        <X size={13} />
+                      </button>
+                    )}
+                  </div>
+                </th>
+
+                {/* Columna 2: Vehículo / Placa / Chofer */}
+                <th className="px-3 py-2 align-top">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={colFilterVehicle}
+                      onChange={(e) => setColFilterVehicle(e.target.value)}
+                      placeholder="Placa, unidad o chofer..."
+                      className="w-full min-w-[150px] rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-2.5 py-1.5 pr-6 text-xs font-normal text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                    {colFilterVehicle && (
+                      <button
+                        type="button"
+                        onClick={() => setColFilterVehicle('')}
+                        className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                        title="Limpiar filtro de vehículo"
+                      >
+                        <X size={13} />
+                      </button>
+                    )}
+                  </div>
+                </th>
+
+                {/* Columna 3: Falla Reportada / Actividades / Ubicación */}
+                <th className="px-3 py-2 align-top">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={colFilterFault}
+                      onChange={(e) => setColFilterFault(e.target.value)}
+                      placeholder="Buscar falla, actividad o lugar..."
+                      className="w-full min-w-[180px] rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-2.5 py-1.5 pr-6 text-xs font-normal text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                    {colFilterFault && (
+                      <button
+                        type="button"
+                        onClick={() => setColFilterFault('')}
+                        className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                        title="Limpiar filtro de falla"
+                      >
+                        <X size={13} />
+                      </button>
+                    )}
+                  </div>
+                </th>
+
+                {/* Columna 4: Mecánico Asignado */}
+                <th className="px-3 py-2 align-top">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      list="workshop-mechanics-filter-list"
+                      value={colFilterMechanic}
+                      onChange={(e) => setColFilterMechanic(e.target.value)}
+                      placeholder="Mecánico o Sin asignar..."
+                      className="w-full min-w-[150px] rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-2.5 py-1.5 pr-6 text-xs font-normal text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                    <datalist id="workshop-mechanics-filter-list">
+                      <option value="Sin Asignar" />
+                      {mechanics.map((m) => (
+                        <option key={m.id} value={m.name} />
+                      ))}
+                    </datalist>
+                    {colFilterMechanic && (
+                      <button
+                        type="button"
+                        onClick={() => setColFilterMechanic('')}
+                        className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                        title="Limpiar filtro de mecánico"
+                      >
+                        <X size={13} />
+                      </button>
+                    )}
+                  </div>
+                </th>
+
+                {/* Columna 5: Estatus */}
+                <th className="px-3 py-2 align-top">
+                  <select
+                    value={colFilterStatus}
+                    onChange={(e) => setColFilterStatus(e.target.value)}
+                    className="w-full min-w-[130px] rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-2.5 py-1.5 text-xs font-normal text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                  >
+                    <option value="all">Todos los estatus</option>
+                    <option value="Pendiente">Pendiente</option>
+                    <option value="En Revisión">En Revisión</option>
+                    <option value="Completado">Completado</option>
+                  </select>
+                </th>
+
+                {/* Columna 6: Acciones de Filtro */}
+                <th className="px-3 py-2 align-middle text-right">
+                  {hasActiveFilters ? (
+                    <button
+                      type="button"
+                      onClick={clearAllFilters}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 transition-colors cursor-pointer"
+                      title="Restablecer todos los filtros de columnas"
+                    >
+                      <X size={12} /> Limpiar
+                    </button>
+                  ) : (
+                    <span className="text-[11px] font-normal text-gray-400 dark:text-gray-500">
+                      Filtros por columna
+                    </span>
+                  )}
+                </th>
+              </tr>
+
             </thead>
 
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -675,21 +1049,32 @@ export default function Workshop() {
 
                 </tr>
 
-              ) : requests.length === 0 ? (
+              ) : filteredRequests.length === 0 ? (
 
                 <tr>
 
                   <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
-
-                    No hay solicitudes de mantenimiento pendientes en este momento.
-
+                    {requests.length === 0 ? (
+                      'No hay solicitudes de mantenimiento pendientes en este momento.'
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="font-medium text-gray-700 dark:text-gray-300">No se encontraron tickets que coincidan con los filtros aplicados.</p>
+                        <button
+                          type="button"
+                          onClick={clearAllFilters}
+                          className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                        >
+                          Limpiar todos los filtros
+                        </button>
+                      </div>
+                    )}
                   </td>
 
                 </tr>
 
               ) : (
 
-                requests.map((req) => (
+                filteredRequests.map((req) => (
 
                   <tr key={req.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
 
