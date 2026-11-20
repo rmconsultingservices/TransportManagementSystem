@@ -519,20 +519,24 @@ export default function Workshop() {
 
         </div>
 
-        <button 
-
-          onClick={() => setShowForm(!showForm)}
-
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors shadow-sm"
-
-        >
+        <div className="flex items-center gap-2.5">
+          <Link
+            to="/reports"
+            className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 px-4 py-2 rounded-lg font-semibold text-sm flex items-center gap-2 transition-colors shadow-xs"
+          >
+            <Printer size={18} />
+            Reporte Diario de Trabajo
+          </Link>
+          <button 
+            onClick={() => setShowForm(!showForm)}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors shadow-sm"
+          >
 
           <Plus size={20} />
 
           {showForm ? 'Cancelar' : 'Nueva Solicitud'}
-
-        </button>
-
+          </button>
+        </div>
       </div>
 
 

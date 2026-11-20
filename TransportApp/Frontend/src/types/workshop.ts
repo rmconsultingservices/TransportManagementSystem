@@ -1,4 +1,4 @@
-﻿import type { Vehicle, Trailer, Mechanic } from './index';
+import type { Vehicle, Trailer, Mechanic } from './index';
 import type { SparePart } from './inventory';
 import type { ServiceLog, PurchaseRequisition } from './logs';
 
@@ -11,6 +11,7 @@ export interface ServiceExecutionSparePart {
   unitOfMeasureId?: number | null;
   itemType?: string;
   description?: string;
+  createdAt?: string;
   purchaseInvoiceDetailId?: number | null;
   purchaseInvoiceDetail?: {
     id: number;

@@ -108,7 +108,7 @@ function Layout() {
         <nav className="flex-1 overflow-y-auto py-4">
           <ul className="space-y-1 px-3">
             <li><Link onClick={closeSidebar} to="/" className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"><Home size={20} className="text-gray-500" /> Inicio</Link></li>
-            <li><Link onClick={closeSidebar} to="/reports" className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"><FileBarChart size={20} className="text-gray-500" /> Reportes</Link></li>
+            <li><Link onClick={closeSidebar} to="/reports" className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"><FileBarChart size={20} className="text-gray-500" /> Reporte Diario</Link></li>
             <li><Link onClick={closeSidebar} to="/fleet" className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"><Truck size={20} className="text-gray-500" /> Flota</Link></li>
             
             {/* Inventory Accordion Menu */}

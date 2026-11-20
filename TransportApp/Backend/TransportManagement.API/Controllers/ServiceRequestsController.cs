@@ -34,8 +34,12 @@ namespace TransportManagement.API.Controllers
                     .ThenInclude(t => t.FleetOwner)
                 .Include(s => s.Driver)
                 .Include(s => s.Mechanic)
-                .Include(s => s.Execution)
                 .Include(s => s.Activities)
+                .Include(s => s.Logs)
+                .Include(s => s.Requisitions)
+                .Include(s => s.Execution)
+                    .ThenInclude(e => e!.UsedSpareParts)
+                        .ThenInclude(usp => usp.SparePart)
                 .OrderByDescending(s => s.DateRequested)
                 .ToListAsync();
         }
