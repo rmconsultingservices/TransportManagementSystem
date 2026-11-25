@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { 
   ShoppingCart, Building2, Plus, Loader2, DollarSign, CheckCircle2, 
   Factory, Printer, Search, Calendar, Filter, MoreVertical, Edit, 
   Trash, Trash2, XCircle, Download, Star, Users, Check, X, FileText, 
-  BarChart3, Zap, Award 
+  BarChart3, Zap, Award, ChevronDown 
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { purchasingService } from '../services/purchasingService';
@@ -202,6 +202,37 @@ export default function Purchasing() {
   const [quotePrice, setQuotePrice] = useState<number | ''>('');
   const [quoteQuantity, setQuoteQuantity] = useState<number | ''>('');
   const [quoteNotes, setQuoteNotes] = useState('');
+  const [quoteSupplierSearch, setQuoteSupplierSearch] = useState('');
+  const [isQuoteSupplierOpen, setIsQuoteSupplierOpen] = useState(false);
+  const quoteSupplierDropdownRef = useRef<HTMLDivElement>(null);
+
+  const [bulkSupplierSearch, setBulkSupplierSearch] = useState('');
+  const [isBulkSupplierOpen, setIsBulkSupplierOpen] = useState(false);
+  const bulkSupplierDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (quoteSupplierDropdownRef.current && !quoteSupplierDropdownRef.current.contains(event.target as Node)) {
+        setIsQuoteSupplierOpen(false);
+      }
+      if (bulkSupplierDropdownRef.current && !bulkSupplierDropdownRef.current.contains(event.target as Node)) {
+        setIsBulkSupplierOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filterActiveSuppliers = (query: string) => {
+    const activeList = suppliers.filter(s => s.isActive);
+    const q = normalizeReqText(query);
+    if (!q) return activeList;
+    const tokens = q.split(/\s+/);
+    return activeList.filter(s => {
+      const haystack = normalizeReqText(`${s.name} ${s.taxId || ''} ${s.code || ''} ${s.contactName || ''} ${s.phoneNumber || ''}`);
+      return tokens.every(t => haystack.includes(t));
+    });
+  };
 
   const fetchData = async () => {
     try {
@@ -329,6 +360,9 @@ export default function Purchasing() {
   // Open quote entry form and set default split quantity
   const handleOpenQuotingForm = (req: PurchaseRequisition) => {
     setQuotingReqId(req.id);
+    setQuoteSupplierId('');
+    setQuoteSupplierSearch('');
+    setIsQuoteSupplierOpen(false);
     const alreadyQuotedQty = req.quotations?.reduce((acc, q) => acc + (q.quantity || 0), 0) || 0;
     const remaining = Math.max(1, req.quantity - alreadyQuotedQty);
     setQuoteQuantity(remaining);
@@ -345,7 +379,7 @@ export default function Purchasing() {
         notes: quoteNotes || undefined
       });
       setQuotingReqId(null);
-      setQuoteSupplierId(''); setQuotePrice(''); setQuoteQuantity(''); setQuoteNotes('');
+      setQuoteSupplierId(''); setQuoteSupplierSearch(''); setIsQuoteSupplierOpen(false); setQuotePrice(''); setQuoteQuantity(''); setQuoteNotes('');
       fetchData();
     } catch (error) {
       console.error('Error adding quote:', error);
@@ -424,6 +458,8 @@ export default function Purchasing() {
 
     setBulkItems(items);
     setBulkSupplierId('');
+    setBulkSupplierSearch('');
+    setIsBulkSupplierOpen(false);
     setBulkGeneralNotes('');
     setShowBulkQuoteModal(true);
   };
@@ -1624,12 +1660,127 @@ export default function Purchasing() {
                       <div className="p-5 bg-blue-50/50 dark:bg-blue-950/20 border-b border-gray-100 dark:border-gray-800">
                         <h4 className="text-sm font-semibold mb-3 flex items-center gap-2 text-blue-800 dark:text-blue-400"><DollarSign size={16}/> Nueva Cotización</h4>
                         <form onSubmit={(e) => handleAddQuote(e, req.id)} className="flex flex-wrap gap-4 items-end">
-                          <div className="flex-1 min-w-[200px]">
+                          <div className="flex-1 min-w-[250px] relative" ref={quoteSupplierDropdownRef}>
                             <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Proveedor</label>
-                            <select required value={quoteSupplierId} onChange={e => setQuoteSupplierId(e.target.value === '' ? '' : Number(e.target.value))} className="w-full text-sm rounded border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
-                              <option value="" disabled className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">Seleccione proveedor...</option>
-                              {suppliers.filter(s => s.isActive).map(s => <option key={s.id} value={s.id} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">{s.name}</option>)}
-                            </select>
+                            <input
+                              type="text"
+                              required
+                              tabIndex={-1}
+                              value={quoteSupplierId}
+                              onChange={() => {}}
+                              className="sr-only"
+                              aria-hidden="true"
+                            />
+                            {(() => {
+                              const selectedSup = suppliers.find(s => s.id === Number(quoteSupplierId));
+                              const matchingSups = filterActiveSuppliers(quoteSupplierSearch);
+                              return (
+                                <>
+                                  <div
+                                    onClick={() => setIsQuoteSupplierOpen(true)}
+                                    className={`w-full text-sm rounded border px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white flex items-center justify-between gap-2 cursor-text transition-all ${
+                                      isQuoteSupplierOpen
+                                        ? 'border-blue-500 ring-2 ring-blue-500/20'
+                                        : 'border-gray-300 dark:border-gray-600 hover:border-gray-400'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                                      <Search size={14} className="text-gray-400 shrink-0" />
+                                      {!isQuoteSupplierOpen && selectedSup ? (
+                                        <div className="truncate flex items-center gap-1.5">
+                                          <span className="font-semibold text-gray-900 dark:text-white truncate">{selectedSup.name}</span>
+                                          {selectedSup.taxId && (
+                                            <span className="text-[11px] font-mono text-gray-500 dark:text-gray-400 shrink-0">({selectedSup.taxId})</span>
+                                          )}
+                                        </div>
+                                      ) : (
+                                        <input
+                                          type="text"
+                                          value={quoteSupplierSearch}
+                                          onFocus={() => setIsQuoteSupplierOpen(true)}
+                                          onChange={(e) => {
+                                            setQuoteSupplierSearch(e.target.value);
+                                            setIsQuoteSupplierOpen(true);
+                                          }}
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Escape') {
+                                              setIsQuoteSupplierOpen(false);
+                                            } else if (e.key === 'Enter' && isQuoteSupplierOpen) {
+                                              e.preventDefault();
+                                              if (matchingSups.length > 0) {
+                                                setQuoteSupplierId(matchingSups[0].id);
+                                                setQuoteSupplierSearch('');
+                                                setIsQuoteSupplierOpen(false);
+                                              }
+                                            }
+                                          }}
+                                          placeholder={selectedSup ? `${selectedSup.name}${selectedSup.taxId ? ` (${selectedSup.taxId})` : ''}` : 'Buscar proveedor por nombre o RIF...'}
+                                          className="w-full bg-transparent outline-none text-sm text-gray-900 dark:text-white placeholder-gray-400"
+                                        />
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      {(quoteSupplierId !== '' || quoteSupplierSearch) && (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setQuoteSupplierId('');
+                                            setQuoteSupplierSearch('');
+                                            setIsQuoteSupplierOpen(true);
+                                          }}
+                                          title="Limpiar proveedor"
+                                          className="p-0.5 text-gray-400 hover:text-rose-500 rounded transition-colors"
+                                        >
+                                          <X size={14} />
+                                        </button>
+                                      )}
+                                      <ChevronDown size={15} className={`text-gray-400 transition-transform ${isQuoteSupplierOpen ? 'rotate-180' : ''}`} />
+                                    </div>
+                                  </div>
+
+                                  {isQuoteSupplierOpen && (
+                                    <div className="absolute z-50 left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-60 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700/60">
+                                      {matchingSups.length === 0 ? (
+                                        <div className="px-3 py-4 text-center text-xs text-gray-500 dark:text-gray-400">
+                                          No se encontraron proveedores activos con "{quoteSupplierSearch}"
+                                        </div>
+                                      ) : (
+                                        matchingSups.map(s => {
+                                          const isSelected = Number(quoteSupplierId) === s.id;
+                                          return (
+                                            <button
+                                              type="button"
+                                              key={s.id}
+                                              onClick={() => {
+                                                setQuoteSupplierId(s.id);
+                                                setQuoteSupplierSearch('');
+                                                setIsQuoteSupplierOpen(false);
+                                              }}
+                                              className={`w-full text-left px-3 py-2 text-sm flex items-center justify-between gap-2 transition-colors ${
+                                                isSelected
+                                                  ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold'
+                                                  : 'hover:bg-gray-50 dark:hover:bg-gray-700/60 text-gray-800 dark:text-gray-200'
+                                              }`}
+                                            >
+                                              <div className="min-w-0 flex-1">
+                                                <div className="truncate font-medium">{s.name}</div>
+                                                <div className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-2 truncate">
+                                                  {s.taxId && <span className="font-mono">{s.taxId}</span>}
+                                                  {s.contactName && <span>• {s.contactName}</span>}
+                                                  {s.phoneNumber && <span>• {s.phoneNumber}</span>}
+                                                </div>
+                                              </div>
+                                              {isSelected && <Check size={14} className="text-blue-600 dark:text-blue-400 shrink-0" />}
+                                            </button>
+                                          );
+                                        })
+                                      )}
+                                    </div>
+                                  )}
+                                </>
+                              );
+                            })()}
                           </div>
                           <div className="w-24">
                             <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Cantidad</label>
@@ -1870,23 +2021,129 @@ export default function Purchasing() {
               <div className="p-6 overflow-y-auto space-y-6 flex-1">
                 {/* Supplier & General Terms Header */}
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-4 bg-emerald-50/50 dark:bg-emerald-950/20 p-4 rounded-xl border border-emerald-100 dark:border-emerald-900/40">
-                  <div className="md:col-span-6">
+                  <div className="md:col-span-6 relative" ref={bulkSupplierDropdownRef}>
                     <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1">
                       Proveedor / Casa Comercial <span className="text-rose-500">*</span>
                     </label>
-                    <select
+                    <input
+                      type="text"
                       required
+                      tabIndex={-1}
                       value={bulkSupplierId}
-                      onChange={e => setBulkSupplierId(e.target.value === '' ? '' : Number(e.target.value))}
-                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium focus:ring-2 focus:ring-emerald-500 outline-none"
-                    >
-                      <option value="" disabled>-- Seleccione el proveedor que cotizó --</option>
-                      {suppliers.filter(s => s.isActive).map(s => (
-                        <option key={s.id} value={s.id}>
-                          {s.name} {s.taxId ? `(${s.taxId})` : ''}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={() => {}}
+                      className="sr-only"
+                      aria-hidden="true"
+                    />
+                    {(() => {
+                      const selectedBulkSup = suppliers.find(s => s.id === Number(bulkSupplierId));
+                      const matchingBulkSups = filterActiveSuppliers(bulkSupplierSearch);
+                      return (
+                        <>
+                          <div
+                            onClick={() => setIsBulkSupplierOpen(true)}
+                            className={`w-full rounded-lg border px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium flex items-center justify-between gap-2 cursor-text transition-all ${
+                              isBulkSupplierOpen
+                                ? 'border-emerald-500 ring-2 ring-emerald-500/20'
+                                : 'border-gray-300 dark:border-gray-600 hover:border-gray-400'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <Search size={15} className="text-gray-400 shrink-0" />
+                              {!isBulkSupplierOpen && selectedBulkSup ? (
+                                <div className="truncate flex items-center gap-1.5">
+                                  <span className="font-semibold text-gray-900 dark:text-white truncate">{selectedBulkSup.name}</span>
+                                  {selectedBulkSup.taxId && (
+                                    <span className="text-xs font-mono text-gray-500 dark:text-gray-400 shrink-0">({selectedBulkSup.taxId})</span>
+                                  )}
+                                </div>
+                              ) : (
+                                <input
+                                  type="text"
+                                  value={bulkSupplierSearch}
+                                  onFocus={() => setIsBulkSupplierOpen(true)}
+                                  onChange={(e) => {
+                                    setBulkSupplierSearch(e.target.value);
+                                    setIsBulkSupplierOpen(true);
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Escape') {
+                                      setIsBulkSupplierOpen(false);
+                                    } else if (e.key === 'Enter' && isBulkSupplierOpen) {
+                                      e.preventDefault();
+                                      if (matchingBulkSups.length > 0) {
+                                        setBulkSupplierId(matchingBulkSups[0].id);
+                                        setBulkSupplierSearch('');
+                                        setIsBulkSupplierOpen(false);
+                                      }
+                                    }
+                                  }}
+                                  placeholder={selectedBulkSup ? `${selectedBulkSup.name}${selectedBulkSup.taxId ? ` (${selectedBulkSup.taxId})` : ''}` : 'Buscar proveedor por nombre, RIF o contacto...'}
+                                  className="w-full bg-transparent outline-none text-sm text-gray-900 dark:text-white placeholder-gray-400"
+                                />
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              {(bulkSupplierId !== '' || bulkSupplierSearch) && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setBulkSupplierId('');
+                                    setBulkSupplierSearch('');
+                                    setIsBulkSupplierOpen(true);
+                                  }}
+                                  title="Limpiar proveedor"
+                                  className="p-0.5 text-gray-400 hover:text-rose-500 rounded transition-colors"
+                                >
+                                  <X size={15} />
+                                </button>
+                              )}
+                              <ChevronDown size={16} className={`text-gray-400 transition-transform ${isBulkSupplierOpen ? 'rotate-180' : ''}`} />
+                            </div>
+                          </div>
+
+                          {isBulkSupplierOpen && (
+                            <div className="absolute z-50 left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-64 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700/60">
+                              {matchingBulkSups.length === 0 ? (
+                                <div className="px-3 py-4 text-center text-xs text-gray-500 dark:text-gray-400">
+                                  No se encontraron proveedores activos con "{bulkSupplierSearch}"
+                                </div>
+                              ) : (
+                                matchingBulkSups.map(s => {
+                                  const isSelected = Number(bulkSupplierId) === s.id;
+                                  return (
+                                    <button
+                                      type="button"
+                                      key={s.id}
+                                      onClick={() => {
+                                        setBulkSupplierId(s.id);
+                                        setBulkSupplierSearch('');
+                                        setIsBulkSupplierOpen(false);
+                                      }}
+                                      className={`w-full text-left px-3 py-2.5 text-sm flex items-center justify-between gap-2 transition-colors ${
+                                        isSelected
+                                          ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-semibold'
+                                          : 'hover:bg-gray-50 dark:hover:bg-gray-700/60 text-gray-800 dark:text-gray-200'
+                                      }`}
+                                    >
+                                      <div className="min-w-0 flex-1">
+                                        <div className="truncate font-medium">{s.name}</div>
+                                        <div className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-2 truncate">
+                                          {s.taxId && <span className="font-mono">{s.taxId}</span>}
+                                          {s.contactName && <span>• {s.contactName}</span>}
+                                          {s.phoneNumber && <span>• {s.phoneNumber}</span>}
+                                        </div>
+                                      </div>
+                                      {isSelected && <Check size={15} className="text-emerald-600 dark:text-emerald-400 shrink-0" />}
+                                    </button>
+                                  );
+                                })
+                              )}
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
 
                   <div className="md:col-span-6">
