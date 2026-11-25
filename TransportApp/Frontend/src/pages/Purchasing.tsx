@@ -1588,7 +1588,7 @@ export default function Purchasing() {
                       selectedReqIds.includes(req.id)
                         ? 'border-indigo-500 ring-2 ring-indigo-500/20 shadow-md' 
                         : 'border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md'
-                    } overflow-hidden flex flex-col justify-between`}
+                    } ${quotingReqId === req.id ? 'overflow-visible relative z-30' : 'overflow-hidden'} flex flex-col justify-between`}
                   >
                     <div className="p-6 flex flex-col md:flex-row justify-between items-start gap-4 border-b border-gray-100 dark:border-gray-700">
                       <div className="flex items-start gap-3">
