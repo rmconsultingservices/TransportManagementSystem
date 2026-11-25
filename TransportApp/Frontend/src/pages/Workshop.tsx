@@ -2,11 +2,11 @@ import { ReportPreviewModal } from '../components/ReportPreviewModal';
 import { useAuthStore } from '../store/authStore';
 ﻿import { toast } from 'react-hot-toast';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 
 import { Link } from 'react-router-dom';
 
-import { Wrench, Plus, Loader2, PenTool, CheckCircle2, Clock, UserCheck, Trash2, Printer, Edit, RotateCcw, Search, Filter, X } from 'lucide-react';
+import { Wrench, Plus, Loader2, PenTool, CheckCircle2, Clock, UserCheck, Trash2, Printer, Edit, RotateCcw, Search, Filter, X, ChevronDown, Check, Truck } from 'lucide-react';
 
 import { workshopService } from '../services/workshopService';
 
@@ -65,8 +65,31 @@ export default function Workshop() {
   // Form state
 
   const [affectedUnit, setAffectedUnit] = useState<string>('');
+  const [unitSearch, setUnitSearch] = useState<string>('');
+  const [unitCategoryTab, setUnitCategoryTab] = useState<'all' | 'vehicles' | 'trailers'>('all');
+  const [isUnitDropdownOpen, setIsUnitDropdownOpen] = useState<boolean>(false);
+  const unitDropdownRef = useRef<HTMLDivElement>(null);
+  const unitSearchInputRef = useRef<HTMLInputElement>(null);
 
   const [driverId, setDriverId] = useState<number | ''>('');
+  const [driverSearch, setDriverSearch] = useState<string>('');
+  const [isDriverDropdownOpen, setIsDriverDropdownOpen] = useState<boolean>(false);
+  const driverDropdownRef = useRef<HTMLDivElement>(null);
+  const driverSearchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (unitDropdownRef.current && !unitDropdownRef.current.contains(target)) {
+        setIsUnitDropdownOpen(false);
+      }
+      if (driverDropdownRef.current && !driverDropdownRef.current.contains(target)) {
+        setIsDriverDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const [repairType, setRepairType] = useState('Preventiva');
   const [roadsideLocation, setRoadsideLocation] = useState('');
@@ -217,8 +240,13 @@ export default function Workshop() {
   const resetForm = () => {
 
     setAffectedUnit('');
+    setUnitSearch('');
+    setUnitCategoryTab('all');
+    setIsUnitDropdownOpen(false);
 
     setDriverId('');
+    setDriverSearch('');
+    setIsDriverDropdownOpen(false);
 
     setRepairType('Preventiva');
     setRoadsideLocation('');
@@ -553,70 +581,385 @@ export default function Workshop() {
 
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-            <div>
-
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Unidad Afectada</label>
-
-              <select 
-
+            {/* Selector Inteligente con Filtro para Unidad Afectada */}
+            <div className="relative" ref={unitDropdownRef}>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Unidad Afectada
+              </label>
+              {/* Input oculto para mantener validación HTML5 required */}
+              <input
+                type="text"
                 required
+                value={affectedUnit}
+                onChange={() => {}}
+                tabIndex={-1}
+                className="sr-only"
+              />
+              {(() => {
+                const selectedVeh = affectedUnit.startsWith('v-')
+                  ? vehicles.find(v => `v-${v.id}` === affectedUnit)
+                  : undefined;
+                const selectedTrl = affectedUnit.startsWith('t-')
+                  ? trailers.find(t => `t-${t.id}` === affectedUnit)
+                  : undefined;
 
-                value={affectedUnit} onChange={e => setAffectedUnit(e.target.value)}
+                const tokens = normalizeText(unitSearch).split(/\s+/).filter(Boolean);
+                const matchingVehicles = vehicles.filter(v => {
+                  const str = normalizeText(`${v.licensePlate} ${v.brand || ''} ${v.model || ''} ${v.fleetOwner?.name || ''} vehiculo chuto camion`);
+                  return tokens.every(t => str.includes(t));
+                });
+                const matchingTrailers = trailers.filter(t => {
+                  const str = normalizeText(`${t.licensePlate} ${t.type || ''} ${t.axlesCount || ''} ejes ${t.fleetOwner?.name || ''} remolque batea plataforma`);
+                  return tokens.every(tok => str.includes(tok));
+                });
 
-                className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                const showVehs = unitCategoryTab === 'all' || unitCategoryTab === 'vehicles';
+                const showTrls = unitCategoryTab === 'all' || unitCategoryTab === 'trailers';
 
-              >
+                return (
+                  <>
+                    <div
+                      onClick={() => {
+                        const next = !isUnitDropdownOpen;
+                        setIsUnitDropdownOpen(next);
+                        if (next) {
+                          setTimeout(() => unitSearchInputRef.current?.focus(), 40);
+                        }
+                      }}
+                      className={`w-full rounded-md border px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white flex items-center justify-between cursor-pointer transition-all ${
+                        isUnitDropdownOpen
+                          ? 'border-blue-500 ring-2 ring-blue-500/20'
+                          : 'border-gray-300 dark:border-gray-600 hover:border-blue-400'
+                      }`}
+                    >
+                      <div className="truncate text-sm">
+                        {selectedVeh ? (
+                          <span className="flex items-center gap-2">
+                            <span className="font-mono font-bold text-blue-600 dark:text-blue-400">{selectedVeh.licensePlate}</span>
+                            <span className="text-gray-700 dark:text-gray-200">— {selectedVeh.brand} {selectedVeh.model}</span>
+                          </span>
+                        ) : selectedTrl ? (
+                          <span className="flex items-center gap-2">
+                            <span className="font-mono font-bold text-amber-600 dark:text-amber-400">{selectedTrl.licensePlate}</span>
+                            <span className="text-gray-700 dark:text-gray-200">— {selectedTrl.type} ({selectedTrl.axlesCount} Ejes)</span>
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">Seleccione o busque una unidad activa...</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0 ml-2">
+                        {affectedUnit && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setAffectedUnit('');
+                            }}
+                            className="p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded"
+                            title="Limpiar unidad seleccionada"
+                          >
+                            <X size={14} />
+                          </button>
+                        )}
+                        <ChevronDown size={16} className={`text-gray-400 transition-transform ${isUnitDropdownOpen ? 'rotate-180' : ''}`} />
+                      </div>
+                    </div>
 
-                <option value="" disabled className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">Seleccione una unidad activa...</option>
+                    {isUnitDropdownOpen && (
+                      <div className="absolute left-0 right-0 mt-1.5 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 z-50 overflow-hidden animate-in fade-in duration-100">
+                        <div className="p-2.5 border-b border-gray-100 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-900/50 space-y-2">
+                          <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
+                            <input
+                              ref={unitSearchInputRef}
+                              type="text"
+                              value={unitSearch}
+                              onChange={(e) => setUnitSearch(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  if (showVehs && matchingVehicles.length > 0) {
+                                    setAffectedUnit(`v-${matchingVehicles[0].id}`);
+                                    setIsUnitDropdownOpen(false);
+                                  } else if (showTrls && matchingTrailers.length > 0) {
+                                    setAffectedUnit(`t-${matchingTrailers[0].id}`);
+                                    setIsUnitDropdownOpen(false);
+                                  }
+                                } else if (e.key === 'Escape') {
+                                  setIsUnitDropdownOpen(false);
+                                }
+                              }}
+                              placeholder="Buscar por placa, marca, modelo o tipo..."
+                              className="w-full pl-8 pr-7 py-1.5 text-xs rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                            />
+                            {unitSearch && (
+                              <button
+                                type="button"
+                                onClick={() => setUnitSearch('')}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                              >
+                                <X size={13} />
+                              </button>
+                            )}
+                          </div>
 
-                <optgroup label="Vehículos" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-semibold">
+                          {/* Pestañas Rápidas: Todas / Vehículos / Remolques */}
+                          <div className="flex items-center gap-1 text-[11px] font-semibold">
+                            <button
+                              type="button"
+                              onClick={() => setUnitCategoryTab('all')}
+                              className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
+                                unitCategoryTab === 'all'
+                                  ? 'bg-blue-600 text-white'
+                                  : 'bg-gray-200/70 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300/70'
+                              }`}
+                            >
+                              Todas ({matchingVehicles.length + matchingTrailers.length})
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setUnitCategoryTab('vehicles')}
+                              className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
+                                unitCategoryTab === 'vehicles'
+                                  ? 'bg-blue-600 text-white'
+                                  : 'bg-gray-200/70 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300/70'
+                              }`}
+                            >
+                              Vehículos ({matchingVehicles.length})
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setUnitCategoryTab('trailers')}
+                              className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
+                                unitCategoryTab === 'trailers'
+                                  ? 'bg-blue-600 text-white'
+                                  : 'bg-gray-200/70 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300/70'
+                              }`}
+                            >
+                              Remolques ({matchingTrailers.length})
+                            </button>
+                          </div>
+                        </div>
 
-                  {vehicles.map(v => (
+                        <div className="max-h-64 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700/60">
+                          {showVehs && matchingVehicles.length > 0 && (
+                            <div>
+                              <div className="px-3 py-1.5 bg-gray-100/80 dark:bg-gray-900/80 text-[10px] font-extrabold uppercase tracking-wider text-gray-500 dark:text-gray-400 sticky top-0">
+                                Vehículos ({matchingVehicles.length})
+                              </div>
+                              {matchingVehicles.map(v => {
+                                const val = `v-${v.id}`;
+                                const isSelected = affectedUnit === val;
+                                return (
+                                  <button
+                                    key={val}
+                                    type="button"
+                                    onClick={() => {
+                                      setAffectedUnit(val);
+                                      setIsUnitDropdownOpen(false);
+                                    }}
+                                    className={`w-full px-3 py-2 text-left text-xs flex items-center justify-between hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors cursor-pointer ${
+                                      isSelected ? 'bg-blue-50/80 dark:bg-blue-950/60 font-bold' : ''
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <Truck size={14} className="text-blue-600 dark:text-blue-400 shrink-0" />
+                                      <span className="font-mono font-extrabold text-gray-900 dark:text-white">{v.licensePlate}</span>
+                                      <span className="text-gray-600 dark:text-gray-300 truncate">— {v.brand} {v.model}</span>
+                                    </div>
+                                    {isSelected && <Check size={15} className="text-blue-600 dark:text-blue-400 shrink-0" />}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
 
-                    <option key={`v-${v.id}`} value={`v-${v.id}`} className="font-normal">{v.licensePlate} - {v.brand} {v.model}</option>
+                          {showTrls && matchingTrailers.length > 0 && (
+                            <div>
+                              <div className="px-3 py-1.5 bg-gray-100/80 dark:bg-gray-900/80 text-[10px] font-extrabold uppercase tracking-wider text-gray-500 dark:text-gray-400 sticky top-0">
+                                Remolques ({matchingTrailers.length})
+                              </div>
+                              {matchingTrailers.map(t => {
+                                const val = `t-${t.id}`;
+                                const isSelected = affectedUnit === val;
+                                return (
+                                  <button
+                                    key={val}
+                                    type="button"
+                                    onClick={() => {
+                                      setAffectedUnit(val);
+                                      setIsUnitDropdownOpen(false);
+                                    }}
+                                    className={`w-full px-3 py-2 text-left text-xs flex items-center justify-between hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors cursor-pointer ${
+                                      isSelected ? 'bg-amber-50/80 dark:bg-amber-950/60 font-bold' : ''
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <span className="font-mono font-extrabold text-gray-900 dark:text-white">{t.licensePlate}</span>
+                                      <span className="text-gray-600 dark:text-gray-300 truncate">— {t.type} ({t.axlesCount} Ejes)</span>
+                                    </div>
+                                    {isSelected && <Check size={15} className="text-amber-600 dark:text-amber-400 shrink-0" />}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
 
-                  ))}
-
-                </optgroup>
-
-                <optgroup label="Remolques" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-semibold">
-
-                  {trailers.map(t => (
-
-                    <option key={`t-${t.id}`} value={`t-${t.id}`} className="font-normal">{t.licensePlate} - {t.type} ({t.axlesCount} Ejes)</option>
-
-                  ))}
-
-                </optgroup>
-
-              </select>
-
+                          {((!showVehs || matchingVehicles.length === 0) && (!showTrls || matchingTrailers.length === 0)) && (
+                            <div className="p-6 text-center text-xs text-gray-400">
+                              No se encontraron unidades con "{unitSearch}".
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
 
-            <div>
-
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Chofer Reportante</label>
-
-              <select 
-
+            {/* Selector Inteligente con Filtro para Chofer Reportante */}
+            <div className="relative" ref={driverDropdownRef}>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Chofer Reportante
+              </label>
+              {/* Input oculto para mantener validación HTML5 required */}
+              <input
+                type="text"
                 required
+                value={driverId === '' ? '' : String(driverId)}
+                onChange={() => {}}
+                tabIndex={-1}
+                className="sr-only"
+              />
+              {(() => {
+                const selectedDriver = driverId !== '' ? drivers.find(d => d.id === Number(driverId)) : undefined;
+                const tokens = normalizeText(driverSearch).split(/\s+/).filter(Boolean);
+                const matchingDrivers = drivers.filter(d => {
+                  const str = normalizeText(`${d.name} ${d.licenseNumber || ''} ${d.phoneNumber || ''}`);
+                  return tokens.every(t => str.includes(t));
+                });
 
-                value={driverId} onChange={e => setDriverId(e.target.value === '' ? '' : parseInt(e.target.value))}
+                return (
+                  <>
+                    <div
+                      onClick={() => {
+                        const next = !isDriverDropdownOpen;
+                        setIsDriverDropdownOpen(next);
+                        if (next) {
+                          setTimeout(() => driverSearchInputRef.current?.focus(), 40);
+                        }
+                      }}
+                      className={`w-full rounded-md border px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white flex items-center justify-between cursor-pointer transition-all ${
+                        isDriverDropdownOpen
+                          ? 'border-blue-500 ring-2 ring-blue-500/20'
+                          : 'border-gray-300 dark:border-gray-600 hover:border-blue-400'
+                      }`}
+                    >
+                      <div className="truncate text-sm">
+                        {selectedDriver ? (
+                          <span className="flex items-center gap-2">
+                            <span className="font-semibold text-gray-900 dark:text-white">{selectedDriver.name}</span>
+                            {selectedDriver.licenseNumber && (
+                              <span className="text-xs font-mono text-gray-500 dark:text-gray-400">({selectedDriver.licenseNumber})</span>
+                            )}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">Seleccione o busque un chofer de la lista...</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0 ml-2">
+                        {driverId !== '' && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDriverId('');
+                            }}
+                            className="p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded"
+                            title="Limpiar chofer seleccionado"
+                          >
+                            <X size={14} />
+                          </button>
+                        )}
+                        <ChevronDown size={16} className={`text-gray-400 transition-transform ${isDriverDropdownOpen ? 'rotate-180' : ''}`} />
+                      </div>
+                    </div>
 
-                className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                    {isDriverDropdownOpen && (
+                      <div className="absolute left-0 right-0 mt-1.5 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 z-50 overflow-hidden animate-in fade-in duration-100">
+                        <div className="p-2.5 border-b border-gray-100 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-900/50">
+                          <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
+                            <input
+                              ref={driverSearchInputRef}
+                              type="text"
+                              value={driverSearch}
+                              onChange={(e) => setDriverSearch(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  if (matchingDrivers.length > 0) {
+                                    setDriverId(matchingDrivers[0].id);
+                                    setIsDriverDropdownOpen(false);
+                                  }
+                                } else if (e.key === 'Escape') {
+                                  setIsDriverDropdownOpen(false);
+                                }
+                              }}
+                              placeholder="Buscar chofer por nombre, apellido o cédula/licencia..."
+                              className="w-full pl-8 pr-7 py-1.5 text-xs rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                            />
+                            {driverSearch && (
+                              <button
+                                type="button"
+                                onClick={() => setDriverSearch('')}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                              >
+                                <X size={13} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
 
-              >
-
-                <option value="" disabled className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">Seleccione un chofer de la lista...</option>
-
-                {drivers.map(d => (
-
-                  <option key={d.id} value={d.id} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">{d.name} {d.licenseNumber ? `(${d.licenseNumber})` : ''}</option>
-
-                ))}
-
-              </select>
-
+                        <div className="max-h-64 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700/60">
+                          {matchingDrivers.length > 0 ? (
+                            matchingDrivers.map(d => {
+                              const isSelected = Number(driverId) === d.id;
+                              return (
+                                <button
+                                  key={d.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setDriverId(d.id);
+                                    setIsDriverDropdownOpen(false);
+                                  }}
+                                  className={`w-full px-3 py-2 text-left text-xs flex items-center justify-between hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors cursor-pointer ${
+                                    isSelected ? 'bg-blue-50/80 dark:bg-blue-950/60 font-bold' : ''
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <UserCheck size={14} className="text-blue-600 dark:text-blue-400 shrink-0" />
+                                    <span className="font-semibold text-gray-900 dark:text-white truncate">{d.name}</span>
+                                    {d.licenseNumber && (
+                                      <span className="font-mono text-[11px] text-gray-500 dark:text-gray-400">({d.licenseNumber})</span>
+                                    )}
+                                  </div>
+                                  {isSelected && <Check size={15} className="text-blue-600 dark:text-blue-400 shrink-0" />}
+                                </button>
+                              );
+                            })
+                          ) : (
+                            <div className="p-6 text-center text-xs text-gray-400">
+                              No se encontraron choferes con "{driverSearch}".
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
 
             <div className="md:col-span-2">
