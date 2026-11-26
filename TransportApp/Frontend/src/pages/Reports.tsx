@@ -271,8 +271,11 @@ export default function Reports() {
       usedPartsToday.forEach(usp => {
         const unit = ensureUnit(plate, driverName);
         const partLabel = (usp.description || usp.sparePart?.name || 'REPUESTO').trim().toUpperCase();
-        const qtyStr = String(usp.quantity).padStart(2, '0');
-        unit.activities.add(`${qtyStr} ${partLabel}`);
+        const numQty = Number(usp.quantity);
+        const qtyStr = Number.isInteger(numQty) ? String(numQty).padStart(2, '0') : String(numQty);
+        const uAbbr = (usp.unitOfMeasure?.abbreviation || usp.sparePart?.unitOfMeasure?.abbreviation || '').trim().toUpperCase();
+        const unitSuffix = uAbbr && uAbbr !== 'UND' && uAbbr !== 'UNI' ? ` ${uAbbr}` : '';
+        unit.activities.add(`${qtyStr}${unitSuffix} ${partLabel}`);
       });
     });
 

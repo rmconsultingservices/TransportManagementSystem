@@ -161,7 +161,7 @@ export default function SparePartSelector({
                         {isSelected && <Check size={12} className="text-indigo-600 dark:text-indigo-400 font-bold" />}
                       </div>
                       <span className="text-[10px] bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-full text-slate-600 dark:text-slate-300 font-bold">
-                        Stock: {p.stockQuantity}
+                        Stock: {Number(p.stockQuantity)}{p.unitOfMeasure?.abbreviation ? ` ${p.unitOfMeasure.abbreviation}` : ''}
                       </span>
                     </div>
 

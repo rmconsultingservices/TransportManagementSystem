@@ -1,5 +1,5 @@
 import type { Vehicle, Trailer, Mechanic } from './index';
-import type { SparePart } from './inventory';
+import type { SparePart, UnitOfMeasure } from './inventory';
 import type { ServiceLog, PurchaseRequisition } from './logs';
 
 export interface ServiceExecutionSparePart {
@@ -9,6 +9,7 @@ export interface ServiceExecutionSparePart {
   quantity: number;
   unitCost?: number;
   unitOfMeasureId?: number | null;
+  unitOfMeasure?: UnitOfMeasure | null;
   itemType?: string;
   description?: string;
   createdAt?: string;

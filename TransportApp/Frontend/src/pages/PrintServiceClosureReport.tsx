@@ -267,7 +267,7 @@ export default function PrintServiceClosureReport() {
                         <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                           <td className="px-4 py-2.5 text-sm font-mono font-bold text-black">{usp.sparePart?.code || '---'}</td>
                           <td className="px-4 py-2.5 text-sm font-semibold text-black">{usp.description || formatSparePartName(usp.sparePart)}</td>
-                          <td className="px-4 py-2.5 text-sm font-bold text-black text-right font-mono">{usp.quantity}</td>
+                          <td className="px-4 py-2.5 text-sm font-bold text-black text-right font-mono whitespace-nowrap">{Number(usp.quantity)}{(usp.unitOfMeasure?.abbreviation || usp.sparePart?.unitOfMeasure?.abbreviation) ? ` ${usp.unitOfMeasure?.abbreviation || usp.sparePart?.unitOfMeasure?.abbreviation}` : ''}</td>
                           <td className="px-4 py-2.5 text-sm font-semibold text-gray-800 text-right font-mono">${unitCost.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
                           <td className="px-4 py-2.5 text-sm font-extrabold text-black text-right font-mono">${subTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
                         </tr>

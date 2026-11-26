@@ -874,7 +874,7 @@ export default function Inventory() {
                                   <td className="px-4 py-3 text-gray-600">{mov.reference}</td>
                                   <td className="px-4 py-3 text-gray-600">{mov.source}</td>
                                   <td className={`px-4 py-3 text-right font-black ${mov.type === 'ENTRADA' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                     {mov.type === 'ENTRADA' ? '+' : '-'}{mov.quantity}
+                                     {mov.type === 'ENTRADA' ? '+' : '-'}{Number(mov.quantity)}{mov.unitAbbreviation ? ` ${mov.unitAbbreviation}` : ''}
                                   </td>
                                   <td className="px-4 py-3 text-right text-gray-500 font-medium">
                                      {mov.type === 'ENTRADA' ? `$${mov.unitCost.toFixed(2)}` : '---'}

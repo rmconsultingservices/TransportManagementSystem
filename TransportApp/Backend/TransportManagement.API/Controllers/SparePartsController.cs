@@ -185,26 +185,35 @@ namespace TransportManagement.API.Controllers
         [HttpGet("{id}/history")]
         public async Task<ActionResult<IEnumerable<object>>> GetSparePartHistory(int id)
         {
-            var part = await _context.SpareParts.FindAsync(id);
+            var part = await _context.SpareParts
+                .Include(p => p.UnitOfMeasure)
+                .FirstOrDefaultAsync(p => p.Id == id);
             if (part == null) return NotFound();
 
+            var uomMap = await _context.UnitsOfMeasure
+                .AsNoTracking()
+                .ToDictionaryAsync(u => u.Id, u => u.Abbreviation);
+            string defaultAbbr = part.UnitOfMeasure?.Abbreviation ?? "";
+
             // 1. Invoices (Entradas)
-            var purchases = await _context.PurchaseInvoiceDetails
+            var purchasesRaw = await _context.PurchaseInvoiceDetails
                 .Include(d => d.PurchaseInvoice)
                     .ThenInclude(i => i.Supplier)
                 .Where(d => d.SparePartId == id && !d.PurchaseInvoice.IsCancelled)
-                .Select(d => new
-                {
-                    Type = "ENTRADA",
-                    Date = d.PurchaseInvoice.DateIssued,
-                    Reference = $"Fact. {d.PurchaseInvoice.InvoiceNumber}",
-                    Source = d.PurchaseInvoice.Supplier.Name,
-                    Quantity = d.QuantityReceived,
-                    UnitCost = d.UnitCost
-                })
                 .ToListAsync();
 
-                        // 2. Services (Salidas)
+            var purchases = purchasesRaw.Select(d => new
+            {
+                Type = "ENTRADA",
+                Date = d.PurchaseInvoice.DateIssued,
+                Reference = $"Fact. {d.PurchaseInvoice.InvoiceNumber}",
+                Source = d.PurchaseInvoice.Supplier.Name,
+                Quantity = d.QuantityReceived,
+                UnitAbbreviation = (d.UnitOfMeasureId.HasValue && uomMap.TryGetValue(d.UnitOfMeasureId.Value, out var pa)) ? pa : defaultAbbr,
+                UnitCost = d.UnitCost
+            }).ToList();
+
+            // 2. Services (Salidas)
             var consumptionsList = await _context.ServiceExecutionSpareParts
                 .Include(d => d.ServiceExecution)
                     .ThenInclude(e => e!.ServiceRequest)
@@ -228,24 +237,27 @@ namespace TransportManagement.API.Controllers
                     Reference = sr != null ? $"ODT #{sr.Id}" : "Servicio",
                     Source = dest,
                     Quantity = d.Quantity,
+                    UnitAbbreviation = (d.UnitOfMeasureId.HasValue && uomMap.TryGetValue(d.UnitOfMeasureId.Value, out var ca)) ? ca : defaultAbbr,
                     UnitCost = d.UnitCost > 0 ? d.UnitCost : part.UnitCost
                 };
             }).ToList();
 
             // 3. Inventory Adjustments
-            var adjustments = await _context.InventoryAdjustmentDetails
+            var adjustmentsRaw = await _context.InventoryAdjustmentDetails
                 .Include(d => d.InventoryAdjustment)
                 .Where(d => d.SparePartId == id)
-                .Select(d => new
-                {
-                    Type = d.Type.ToUpper(),
-                    Date = d.InventoryAdjustment.Date,
-                    Reference = $"Ajuste #{d.InventoryAdjustment.Id}",
-                    Source = d.InventoryAdjustment.Remarks,
-                    Quantity = d.Quantity,
-                    UnitCost = d.UnitCost
-                })
                 .ToListAsync();
+
+            var adjustments = adjustmentsRaw.Select(d => new
+            {
+                Type = d.Type.ToUpper(),
+                Date = d.InventoryAdjustment.Date,
+                Reference = $"Ajuste #{d.InventoryAdjustment.Id}",
+                Source = d.InventoryAdjustment.Remarks,
+                Quantity = d.Quantity,
+                UnitAbbreviation = (d.UnitOfMeasureId.HasValue && uomMap.TryGetValue(d.UnitOfMeasureId.Value, out var aa)) ? aa : defaultAbbr,
+                UnitCost = d.UnitCost
+            }).ToList();
 
             var combinedHistory = purchases.Concat(consumptions).Concat(adjustments)
                 .OrderByDescending(x => x.Date)

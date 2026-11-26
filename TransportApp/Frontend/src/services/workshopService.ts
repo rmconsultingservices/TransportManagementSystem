@@ -37,8 +37,12 @@ export const workshopService = {
     await api.post(`/servicerequests/${id}/Requisitions`, { partNameOrDescription, quantity, observations });
   },
 
-  addUsedPart: async (id: number, sparePartId: number, quantity: number): Promise<void> => {
-    await api.post(`/servicerequests/${id}/UsedParts`, { sparePartId, quantity });
+  addUsedPart: async (id: number, sparePartId: number, quantity: number, unitOfMeasureId?: number | null): Promise<void> => {
+    await api.post(`/servicerequests/${id}/UsedParts`, {
+      sparePartId,
+      quantity,
+      unitOfMeasureId: unitOfMeasureId || null
+    });
   },
 
   removeUsedPart: async (requestId: number, usedPartId: number): Promise<void> => {

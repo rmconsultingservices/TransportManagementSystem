@@ -40,6 +40,10 @@ namespace TransportManagement.API.Controllers
                 .Include(s => s.Execution)
                     .ThenInclude(e => e!.UsedSpareParts)
                         .ThenInclude(usp => usp.SparePart)
+                            .ThenInclude(sp => sp!.UnitOfMeasure)
+                .Include(s => s.Execution)
+                    .ThenInclude(e => e!.UsedSpareParts)
+                        .ThenInclude(usp => usp.UnitOfMeasure)
                 .OrderByDescending(s => s.DateRequested)
                 .ToListAsync();
         }
@@ -61,6 +65,10 @@ namespace TransportManagement.API.Controllers
                 .Include(s => s.Execution)
                     .ThenInclude(e => e.UsedSpareParts)
                         .ThenInclude(usp => usp.SparePart)
+                            .ThenInclude(sp => sp!.UnitOfMeasure)
+                .Include(s => s.Execution)
+                    .ThenInclude(e => e.UsedSpareParts)
+                        .ThenInclude(usp => usp.UnitOfMeasure)
                 .Include(s => s.Execution)
                     .ThenInclude(e => e.UsedSpareParts)
                         .ThenInclude(usp => usp.PurchaseInvoiceDetail)
@@ -196,24 +204,40 @@ namespace TransportManagement.API.Controllers
         public class AddUsedPartDto
         {
             public int SparePartId { get; set; }
-            public int Quantity { get; set; }
+            public decimal Quantity { get; set; }
+            public int? UnitOfMeasureId { get; set; }
         }
 
         // POST: api/ServiceRequests/5/UsedParts
         [HttpPost("{id}/UsedParts")]
         public async Task<ActionResult<ServiceExecutionSparePart>> AddUsedPart(int id, [FromBody] AddUsedPartDto dto)
         {
+            if (dto.Quantity <= 0)
+                return BadRequest(new { message = "La cantidad a descontar debe ser mayor a cero." });
+
             var request = await _context.ServiceRequests
                 .Include(r => r.Execution)
                 .FirstOrDefaultAsync(r => r.Id == id);
                 
             if (request == null) return NotFound();
 
-            var part = await _context.SpareParts.FindAsync(dto.SparePartId);
-            if (part == null) return NotFound("Spare part not found.");
+            var part = await _context.SpareParts
+                .Include(sp => sp.UnitOfMeasure)
+                .Include(sp => sp.SparePartUnits)
+                .FirstOrDefaultAsync(sp => sp.Id == dto.SparePartId);
+            if (part == null) return NotFound(new { message = "Repuesto no encontrado." });
 
-            if (part.ItemType != "Servicio" && part.StockQuantity < dto.Quantity)
-                return BadRequest("Insufficient stock.");
+            int? effectiveUnitId = (dto.UnitOfMeasureId.HasValue && dto.UnitOfMeasureId.Value > 0)
+                ? dto.UnitOfMeasureId.Value
+                : part.UnitOfMeasureId;
+
+            decimal baseQuantity = await _context.GetBaseQuantityAsync(dto.SparePartId, effectiveUnitId, dto.Quantity);
+
+            if (part.ItemType != "Servicio" && part.StockQuantity < baseQuantity)
+            {
+                string baseUnitAbbr = part.UnitOfMeasure?.Abbreviation ?? "UND";
+                return BadRequest(new { message = $"Stock insuficiente. Disponible: {part.StockQuantity:0.####} {baseUnitAbbr}, requerido: {baseQuantity:0.####} {baseUnitAbbr}." });
+            }
 
             // Ensure execution exists
             if (request.Execution == null)
@@ -223,21 +247,25 @@ namespace TransportManagement.API.Controllers
                 await _context.SaveChangesAsync();
             }
 
+            decimal multiplier = dto.Quantity == 0 ? 1m : (baseQuantity / dto.Quantity);
+            decimal effectiveUnitCost = Math.Round(part.UnitCost * multiplier, 2);
+
             var usedPart = new ServiceExecutionSparePart
             {
                 CompanyId = request.CompanyId,
                 ServiceExecutionId = request.Execution.Id,
                 SparePartId = dto.SparePartId,
                 Quantity = dto.Quantity,
-                UnitCost = part.UnitCost,
+                UnitCost = effectiveUnitCost,
+                UnitOfMeasureId = effectiveUnitId,
                 ItemType = part.ItemType == "Servicio" ? "S" : "C",
                 Description = part.Name
             };
 
-            // Deduct from stock
+            // Deduct converted base quantity from stock
             if (part.ItemType != "Servicio")
             {
-                part.StockQuantity -= dto.Quantity;
+                part.StockQuantity -= baseQuantity;
             }
 
             _context.ServiceExecutionSpareParts.Add(usedPart);
@@ -261,7 +289,7 @@ namespace TransportManagement.API.Controllers
 
             if (usedPart == null) return NotFound("Registro no encontrado.");
 
-            // Restore physical stock if it was not a service and not from a cancelled invoice
+            // Restore physical stock (converted to base unit) if it was not a service and not from a cancelled invoice
             if (usedPart.ItemType != "S" && usedPart.SparePartId.HasValue && usedPart.SparePartId.Value > 0)
             {
                 var part = await _context.SpareParts.FindAsync(usedPart.SparePartId.Value);
@@ -280,7 +308,8 @@ namespace TransportManagement.API.Controllers
                     }
                     if (!isCancelledPurchase)
                     {
-                        part.StockQuantity += usedPart.Quantity;
+                        decimal baseRestoreQty = await _context.GetBaseQuantityAsync(usedPart.SparePartId.Value, usedPart.UnitOfMeasureId, usedPart.Quantity);
+                        part.StockQuantity += baseRestoreQty;
                     }
                 }
             }

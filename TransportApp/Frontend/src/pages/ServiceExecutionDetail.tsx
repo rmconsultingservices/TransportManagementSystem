@@ -24,7 +24,8 @@ export default function ServiceExecutionDetail() {
   // Stock Consumption State
   const [spareParts, setSpareParts] = useState<SparePart[]>([]);
   const [selectedPartId, setSelectedPartId] = useState<number | ''>('');
-  const [stockQty, setStockQty] = useState(1);
+  const [stockQtyInput, setStockQtyInput] = useState<string>('1');
+  const [selectedUnitId, setSelectedUnitId] = useState<number | ''>('');
   const [showStockForm, setShowStockForm] = useState(false);
 
   // Cierre de ticket y modal de reporte
@@ -124,17 +125,54 @@ export default function ServiceExecutionDetail() {
     }
   };
 
+  const handleSelectStockPart = (partId: number) => {
+    setSelectedPartId(partId);
+    const part = spareParts.find(p => p.id === Number(partId));
+    const baseUomId = part?.unitOfMeasureId || part?.unitOfMeasure?.id || '';
+    setSelectedUnitId(baseUomId);
+  };
+
+  const handleAdjustStockQty = (delta: number) => {
+    const current = parseFloat(String(stockQtyInput).replace(',', '.'));
+    const safeCurrent = isNaN(current) ? 0 : current;
+    let next: number;
+    if (delta < 0) {
+      if (safeCurrent > 1) {
+        next = Number((safeCurrent - 1).toFixed(4));
+      } else if (safeCurrent > 0.5) {
+        next = 0.5;
+      } else {
+        next = Math.max(0.1, Number((safeCurrent - 0.1).toFixed(4)));
+      }
+    } else {
+      next = Number((safeCurrent + 1).toFixed(4));
+    }
+    setStockQtyInput(String(next));
+  };
+
   const handleConsumeStock = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedPartId || !request) return;
+    const parsedQty = parseFloat(String(stockQtyInput).replace(',', '.'));
+    if (isNaN(parsedQty) || parsedQty <= 0) {
+      alert('Ingrese una cantidad válida mayor a cero.');
+      return;
+    }
     try {
-      await workshopService.addUsedPart(request.id, Number(selectedPartId), stockQty);
+      await workshopService.addUsedPart(
+        request.id,
+        Number(selectedPartId),
+        parsedQty,
+        selectedUnitId !== '' ? Number(selectedUnitId) : null
+      );
       setShowStockForm(false);
       setSelectedPartId('');
-      setStockQty(1);
+      setSelectedUnitId('');
+      setStockQtyInput('1');
       fetchData();
-    } catch (error) {
-      alert('Error: Probablemente no hay stock suficiente.');
+    } catch (error: any) {
+      const msg = error?.response?.data?.message || (typeof error?.response?.data === 'string' ? error.response.data : null) || 'Error: Probablemente no hay stock suficiente.';
+      alert(msg);
       console.error('Error consuming stock:', error);
     }
   };
@@ -335,7 +373,7 @@ export default function ServiceExecutionDetail() {
                              </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <div className="text-xl font-black text-amber-700 dark:text-amber-300">x{usp.quantity}</div>
+                            <div className="text-xl font-black text-amber-700 dark:text-amber-300">x{Number(usp.quantity)}</div>
                             {request.status !== 'Completado' && (
                               <button 
                                 onClick={() => handleRemoveUsedPart(usp.id)}
@@ -374,7 +412,16 @@ export default function ServiceExecutionDetail() {
                            </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <div className="text-xl font-black text-emerald-600">x{usp.quantity}</div>
+                          <div className="text-right">
+                            <div className="text-xl font-black text-emerald-600">
+                              x{Number(usp.quantity)}
+                              {(usp.unitOfMeasure?.abbreviation || usp.sparePart?.unitOfMeasure?.abbreviation) && (
+                                <span className="ml-1 text-xs font-bold uppercase text-emerald-700 dark:text-emerald-300">
+                                  {usp.unitOfMeasure?.abbreviation || usp.sparePart?.unitOfMeasure?.abbreviation}
+                                </span>
+                              )}
+                            </div>
+                          </div>
                           {request.status !== 'Completado' && (
                             <button 
                               onClick={() => handleRemoveUsedPart(usp.id)}
@@ -620,31 +667,182 @@ export default function ServiceExecutionDetail() {
               )}
             </div>
 
-            {showStockForm && (
-              <form onSubmit={handleConsumeStock} className="mb-4 bg-emerald-50 dark:bg-emerald-900/30 p-4 rounded-lg border border-emerald-100 dark:border-emerald-800">
-                <label className="block text-xs font-semibold text-emerald-700 dark:text-emerald-400 uppercase mb-2">Seleccionar para Descontar</label>
-                <div className="mb-3">
-                  <SparePartSelector 
-                    value={selectedPartId} 
-                    spareParts={spareParts} 
-                    onChange={val => setSelectedPartId(val)} 
-                    placeholder="Escriba código o nombre..."
-                  />
-                </div>
-                
-                <div className="flex items-center gap-4">
-                   <div className="flex items-center bg-white dark:bg-gray-800 rounded border border-emerald-200 dark:border-emerald-700">
-                      <button type="button" onClick={() => setStockQty(Math.max(1, stockQty-1))} className="p-2 text-emerald-600 hover:bg-emerald-50"><Minus size={16}/></button>
-                      <input type="number" readOnly value={stockQty} className="w-12 text-center text-sm font-bold bg-transparent outline-none"/>
-                      <button type="button" onClick={() => setStockQty(stockQty+1)} className="p-2 text-emerald-600 hover:bg-emerald-50"><Plus size={16}/></button>
-                   </div>
-                   <button type="submit" className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded font-bold text-sm transition-transform active:scale-95 shadow-sm">
+            {showStockForm && (() => {
+              const selectedPart = spareParts.find(p => p.id === Number(selectedPartId));
+              const baseUomId = selectedPart?.unitOfMeasureId || selectedPart?.unitOfMeasure?.id;
+              const baseAbbr = selectedPart?.unitOfMeasure?.abbreviation || 'UND';
+              const baseName = selectedPart?.unitOfMeasure?.name || baseAbbr;
+
+              const assignedUnits: Array<{
+                id: number;
+                abbrev: string;
+                name: string;
+                isBase: boolean;
+                multiplierToBase: number;
+                relationHint: string;
+              }> = [];
+
+              if (selectedPart && baseUomId) {
+                assignedUnits.push({
+                  id: baseUomId,
+                  abbrev: baseAbbr,
+                  name: baseName,
+                  isBase: true,
+                  multiplierToBase: 1,
+                  relationHint: 'Principal / Base'
+                });
+              }
+
+              if (selectedPart?.sparePartUnits && selectedPart.sparePartUnits.length > 0) {
+                selectedPart.sparePartUnits.forEach(su => {
+                  const uId = su.unitOfMeasure?.id || su.unitOfMeasureId;
+                  if (!uId || assignedUnits.some(u => u.id === uId)) return;
+                  const altAbbr = su.unitOfMeasure?.abbreviation || 'ALT';
+                  const altName = su.unitOfMeasure?.name || altAbbr;
+                  const eq = Number(su.equivalence) || 1;
+                  const mult = su.isInverse ? (1 / eq) : eq;
+                  const hint = su.isInverse
+                    ? `1 ${baseAbbr} = ${eq} ${altAbbr}`
+                    : `1 ${altAbbr} = ${eq} ${baseAbbr}`;
+                  assignedUnits.push({
+                    id: uId,
+                    abbrev: altAbbr,
+                    name: altName,
+                    isBase: false,
+                    multiplierToBase: mult,
+                    relationHint: hint
+                  });
+                });
+              }
+
+              const activeUnit = assignedUnits.find(u => u.id === Number(selectedUnitId)) || assignedUnits[0];
+              const parsedQty = parseFloat(String(stockQtyInput).replace(',', '.'));
+              const validQty = !isNaN(parsedQty) && parsedQty > 0 ? parsedQty : 0;
+              const baseQtyToDeduct = activeUnit ? Number((validQty * activeUnit.multiplierToBase).toFixed(4)) : validQty;
+              const availableBaseStock = selectedPart ? Number(selectedPart.stockQuantity) : 0;
+              const availableInSelectedUnit = (selectedPart && activeUnit && activeUnit.multiplierToBase > 0)
+                ? Number((availableBaseStock / activeUnit.multiplierToBase).toFixed(4))
+                : availableBaseStock;
+              const exceedsStock = Boolean(
+                selectedPart &&
+                selectedPart.itemType !== 'Servicio' &&
+                validQty > 0 &&
+                baseQtyToDeduct > availableBaseStock
+              );
+
+              return (
+                <form onSubmit={handleConsumeStock} className="mb-4 bg-emerald-50 dark:bg-emerald-900/30 p-4 rounded-lg border border-emerald-100 dark:border-emerald-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-semibold text-emerald-700 dark:text-emerald-400 uppercase">
+                      Seleccionar para Descontar
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowStockForm(false)}
+                      className="text-gray-400 hover:text-red-500 transition-colors"
+                      title="Cerrar"
+                    >
+                      <X size={18}/>
+                    </button>
+                  </div>
+
+                  <div>
+                    <SparePartSelector 
+                      value={selectedPartId} 
+                      spareParts={spareParts} 
+                      onChange={handleSelectStockPart} 
+                      placeholder="Escriba código o nombre..."
+                    />
+                  </div>
+
+                  {/* Cantidad con soporte decimal + Selector de 2da Unidad si el artículo la posee */}
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <div className="flex items-center bg-white dark:bg-gray-800 rounded-lg border border-emerald-200 dark:border-emerald-700 focus-within:ring-2 focus-within:ring-emerald-500/30 focus-within:border-emerald-500">
+                      <button
+                        type="button"
+                        onClick={() => handleAdjustStockQty(-1)}
+                        className="p-2 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/40 rounded-l-lg transition-colors"
+                        title="Disminuir cantidad"
+                      >
+                        <Minus size={15}/>
+                      </button>
+                      <input
+                        type="number"
+                        step="any"
+                        min="0.0001"
+                        required
+                        value={stockQtyInput}
+                        onChange={(e) => setStockQtyInput(e.target.value)}
+                        placeholder="Ej. 1 o 0.5"
+                        className="w-20 text-center text-sm font-bold bg-transparent text-gray-900 dark:text-white outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleAdjustStockQty(1)}
+                        className="p-2 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/40 rounded-r-lg transition-colors"
+                        title="Aumentar cantidad"
+                      >
+                        <Plus size={15}/>
+                      </button>
+                    </div>
+
+                    {selectedPart && assignedUnits.length > 1 ? (
+                      <select
+                        value={selectedUnitId || baseUomId || ''}
+                        onChange={(e) => setSelectedUnitId(Number(e.target.value))}
+                        title="Unidad de medida a descontar"
+                        className="bg-white dark:bg-gray-800 border border-emerald-200 dark:border-emerald-700 rounded-lg px-2.5 py-2 text-xs font-bold text-emerald-900 dark:text-emerald-200 focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 outline-none"
+                      >
+                        {assignedUnits.map(u => (
+                          <option key={u.id} value={u.id} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+                            {u.abbrev} ({u.relationHint})
+                          </option>
+                        ))}
+                      </select>
+                    ) : selectedPart ? (
+                      <span className="px-2.5 py-2 rounded-lg bg-emerald-100/80 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-xs font-bold text-emerald-800 dark:text-emerald-300">
+                        {baseAbbr}
+                      </span>
+                    ) : null}
+
+                    <button
+                      type="submit"
+                      disabled={!selectedPartId || validQty <= 0 || exceedsStock}
+                      className={`flex-1 min-w-[140px] py-2 px-4 rounded-lg font-bold text-sm transition-all shadow-sm ${
+                        !selectedPartId || validQty <= 0 || exceedsStock
+                          ? 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+                          : 'bg-emerald-600 hover:bg-emerald-700 text-white active:scale-95 cursor-pointer'
+                      }`}
+                    >
                       Registrar Salida
-                   </button>
-                   <button type="button" onClick={() => setShowStockForm(false)} className="text-gray-400 hover:text-red-500"><X size={20}/></button>
-                </div>
-              </form>
-            )}
+                    </button>
+                  </div>
+
+                  {selectedPart && (
+                    <div className={`text-[11px] px-2.5 py-1.5 rounded-md flex flex-wrap items-center justify-between gap-2 ${
+                      exceedsStock
+                        ? 'bg-rose-100/80 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 font-semibold'
+                        : 'bg-white/70 dark:bg-gray-800/70 text-emerald-800 dark:text-emerald-300 border border-emerald-100 dark:border-emerald-800/60'
+                    }`}>
+                      <span>
+                        Disponible: <strong>{availableBaseStock} {baseAbbr}</strong>
+                        {activeUnit && !activeUnit.isBase && (
+                          <span> (equiv. <strong>{availableInSelectedUnit} {activeUnit.abbrev}</strong>)</span>
+                        )}
+                      </span>
+                      {activeUnit && !activeUnit.isBase && validQty > 0 && (
+                        <span>
+                          Descuento en stock base: <strong>{baseQtyToDeduct} {baseAbbr}</strong>
+                        </span>
+                      )}
+                      {exceedsStock && (
+                        <span>Stock insuficiente para esta salida</span>
+                      )}
+                    </div>
+                  )}
+                </form>
+              );
+            })()}
 
             <p className="text-xs text-gray-500 italic text-center">
               Selecciona repuestos que ya existen en inventario para registrar su uso inmediato.
